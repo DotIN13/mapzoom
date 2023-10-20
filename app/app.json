@@ -21,7 +21,8 @@
       "compatible": "3.0.0",
       "target": "3.0.0",
       "minVersion": "3.0"
-    }
+    },
+    "type": 0
   },
   "debug": false,
   "targets": {

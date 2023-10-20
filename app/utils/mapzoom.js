@@ -1,3 +1,6 @@
+import * as ui from "@zos/ui";
+import { onDigitalCrown, offDigitalCrown, KEY_HOME } from "@zos/interaction";
+
 import {
   getBoundingBox,
   calculateCanvasOrigin,
@@ -10,16 +13,168 @@ import { logger } from "./logger.js";
 const canvasW = 480; // Manually defined canvas width
 const canvasH = 480; // Manually defined canvas height
 
-const PAN_SPEED_FACTOR = 1.5; // adjust this value as needed
+const PAN_SPEED_FACTOR = 1.8; // adjust this value as needed
+const ZOOM_SPEED_FACTOR = 0.5; // adjust this value as needed
+
+const THROTTLING_DELAY = 50; // Throttle delay of 50ms
+
+export class Map {
+  constructor(
+    geojson,
+    canvas,
+    initialCenter,
+    initialZoom,
+    canvasW = 480,
+    canvasH = 480
+  ) {
+    this.geojson = geojson;
+    this.canvas = canvas;
+    this.center = initialCenter;
+    this.zoom = initialZoom;
+    this.canvasW = canvasW;
+    this.canvasH = canvasH;
+
+    // Variables for throttling and debouncing
+    this.lastRendered = Date.now();
+    this.isWaiting = false;
+    this.lastCenterUpdate = Date.now();
+    this.followGPS = true;
+
+    this.initListeners();
+  }
+
+  // Getters
+  get geojson() {
+    return this._geojson;
+  }
+
+  get center() {
+    return this._center;
+  }
+
+  get zoom() {
+    return this._zoom;
+  }
+
+  get canvasW() {
+    return this._canvasW;
+  }
+
+  get canvasH() {
+    return this._canvasH;
+  }
+
+  // Setters
+  set geojson(data) {
+    this._geojson = data;
+  }
+
+  set center(coords) {
+    this._center = coords;
+  }
+
+  set zoom(level) {
+    level = Math.max(0, level);
+    level = Math.min(20, level);
+    this._zoom = level;
+  }
+
+  set canvasW(width) {
+    this._canvasW = width;
+  }
+
+  set canvasH(height) {
+    this._canvasH = height;
+  }
+
+  initListeners() {
+    let isDragging = false;
+    let lastPosition = null;
+
+    onDigitalCrown({
+      callback: (key, degree) => {
+        logger.debug(`Digital crown callback: ${key}, ${degree}`);
+        if (key == KEY_HOME) {
+          // KEY_HOME is the Crown wheel
+          this.zoom += (degree / Math.abs(degree)) * ZOOM_SPEED_FACTOR;
+          this.render();
+        }
+      },
+    });
+
+    this.canvas.addEventListener(ui.event.CLICK_DOWN, (e) => {
+      isDragging = true;
+      this.followGPS = false;
+      lastPosition = { x: e.x, y: e.y };
+    });
+
+    this.canvas.addEventListener(ui.event.CLICK_UP, (e) => {
+      isDragging = false;
+      lastPosition = null;
+      this.render(); // We ensure to render the final state after the user stops dragging.
+    });
+
+    this.canvas.addEventListener(ui.event.MOVE, (e) => {
+      if (!isDragging || !lastPosition) return;
+
+      const currentTime = Date.now();
+      if (currentTime - this.lastCenterUpdate < THROTTLING_DELAY) {
+        // Throttle updates to 20 times per second
+        return;
+      }
+
+      const deltaX = e.x - lastPosition.x;
+      const deltaY = e.y - lastPosition.y;
+      this.updateCenter(deltaX, deltaY); // Update center without immediate rendering
+
+      lastPosition = { x: e.x, y: e.y };
+      this.lastCenterUpdate = currentTime;
+
+      if (!this.isWaiting) {
+        setTimeout(() => {
+          this.render();
+          this.isWaiting = false;
+        }, 50); // Debounce the rendering to max 10 times per second
+        this.isWaiting = true;
+      }
+    });
+  }
+
+  // Calculate updated center based on move input
+  updateCenter(deltaX, deltaY) {
+    const lonDelta =
+      (deltaX * PAN_SPEED_FACTOR) /
+      (this.canvasW / 360) /
+      Math.pow(2, this.zoom);
+    const latDelta =
+      (deltaY * PAN_SPEED_FACTOR) /
+      (this.canvasH / 180) /
+      Math.pow(2, this.zoom);
+
+    const newLon = this.center.lon - lonDelta;
+    const newLat = this.center.lat + latDelta;
+
+    // Ensure the values are within the allowed ranges
+    const boundedLat = Math.min(Math.max(newLat, -90), 90);
+    const boundedLon = ((newLon + 180) % 360) - 180; // Wrap-around for longitude
+
+    this.center = { lon: boundedLon, lat: boundedLat };
+  }
+
+  // Render the map based on the current state
+  render() {
+    drawMap(this.geojson, this.canvas, this.center, this.zoom);
+  }
+}
 
 /**
  * Renders features from a GeoJSON on a customized canvas based on the given parameters.
- * @param {Array<number>} center - An array representing the [longitude, latitude] of the map's center.
  * @param {Object} geojson - A GeoJSON object containing the features to be rendered.
- * @param {number} zoom - The current zoom level.
  * @param {Object} canvas - The customized canvas object.
+ * @param {Object} center - An object representing the {lon, lat} of the map's center.
+ * @param {number} zoom - The current zoom level.
  */
-export function drawMap(center, geojson, zoom, canvas) {
+export function drawMap(geojson, canvas, center, zoom) {
   // Usage example:
   // const geojson = { ... };  // Your GeoJSON data here
   // drawMap([longitude, latitude], geojson, zoomLevel, canvas);
@@ -133,28 +288,3 @@ export function drawMap(center, geojson, zoom, canvas) {
 
   logger.debug("Canvas update complete.");
 }
-
-export const updateCenter = (deltaX, deltaY, center, zoom) => {
-  const lonDelta =
-    (deltaX * PAN_SPEED_FACTOR) / (canvasW / 360) / Math.pow(2, zoom);
-  const latDelta =
-    (deltaY * PAN_SPEED_FACTOR) / (canvasH / 180) / Math.pow(2, zoom);
-
-  // Finger swipe from right to left, deltaX is negative, viewport should move right,
-  // center should move right, lonDelta is positive
-  // Thus, negative relationship.
-  center.lon -= lonDelta;
-
-  // Finger moves from bottom up, deltaY is positive, viewport should move down,
-  // center should move down, latDelta is positive.
-  // Thus, positive relationship.
-  center.lat += latDelta;
-
-  // Ensure the values are within the allowed ranges
-  center.lat = Math.min(Math.max(center.lat, -90), 90);
-  center.lon = ((center.lon + 180) % 360) - 180; // Wrap-around for longitude
-
-  logger.debug(center.lon, center.lat);
-
-  return center;
-};
