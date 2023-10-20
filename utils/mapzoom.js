@@ -10,6 +10,8 @@ import { logger } from "./logger.js";
 const canvasW = 480; // Manually defined canvas width
 const canvasH = 480; // Manually defined canvas height
 
+const PAN_SPEED_FACTOR = 1.5; // adjust this value as needed
+
 /**
  * Renders features from a GeoJSON on a customized canvas based on the given parameters.
  * @param {Array<number>} center - An array representing the [longitude, latitude] of the map's center.
@@ -32,12 +34,12 @@ export function drawMap(center, geojson, zoom, canvas) {
     h: 480,
   });
 
-  logger.debug("Canvas cleared.");
+  // logger.debug("Canvas cleared.");
 
   // Get viewport bounding box
   const bbox = getBoundingBox(center, zoom, canvasH, canvasW);
 
-  logger.debug(`Current bbox: ${JSON.stringify(bbox)}`);
+  logger.debug(`Drawing map in bbox: ${JSON.stringify(bbox)}`);
 
   // Set default paint for features
   canvas.setPaint({
@@ -128,4 +130,31 @@ export function drawMap(center, geojson, zoom, canvas) {
       }
     }
   });
+
+  logger.debug("Canvas update complete.");
 }
+
+export const updateCenter = (deltaX, deltaY, center, zoom) => {
+  const lonDelta =
+    (deltaX * PAN_SPEED_FACTOR) / (canvasW / 360) / Math.pow(2, zoom);
+  const latDelta =
+    (deltaY * PAN_SPEED_FACTOR) / (canvasH / 180) / Math.pow(2, zoom);
+
+  // Finger swipe from right to left, deltaX is negative, viewport should move right,
+  // center should move right, lonDelta is positive
+  // Thus, negative relationship.
+  center.lon -= lonDelta;
+
+  // Finger moves from bottom up, deltaY is positive, viewport should move down,
+  // center should move down, latDelta is positive.
+  // Thus, positive relationship.
+  center.lat += latDelta;
+
+  // Ensure the values are within the allowed ranges
+  center.lat = Math.min(Math.max(center.lat, -90), 90);
+  center.lon = ((center.lon + 180) % 360) - 180; // Wrap-around for longitude
+
+  logger.debug(center.lon, center.lat);
+
+  return center;
+};

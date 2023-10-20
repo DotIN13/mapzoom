@@ -2,19 +2,19 @@
   "configVersion": "v3",
   "app": {
     "appId": 20287,
-    "appName": "Hello World",
+    "appName": "MapZoom",
     "appType": "app",
     "version": {
       "code": 1,
       "name": "1.0.1"
     },
     "icon": "icon.png",
-    "vender": "zepp",
+    "vender": "DotIN13",
     "description": "hello world app"
   },
   "permissions": [
     "data:os.device.info",
-    "device:os.local_storage"
+    "device:os.geolocation"
   ],
   "runtime": {
     "apiVersion": {
@@ -46,7 +46,7 @@
   },
   "i18n": {
     "en-US": {
-      "appName": "Hello World"
+      "appName": "MapZoom"
     }
   },
   "defaultLanguage": "en-US"
