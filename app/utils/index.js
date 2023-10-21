@@ -186,11 +186,11 @@ export function fetchGeojson(path) {
     return {};
   }
 
-  logger.debug("readSync result: ", result);
+  // logger.debug("readSync result: ", result);
 
   const jsonString = Buffer.from(buffer).toString(); // 128KB max
   const geojson = JSON.parse(jsonString);
 
-  logger.debug("GeoJSON parsed.");
+  // logger.debug("GeoJSON parsed.");
   return geojson;
 }

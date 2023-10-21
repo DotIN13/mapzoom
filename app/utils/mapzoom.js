@@ -1,5 +1,11 @@
 import * as ui from "@zos/ui";
-import { onDigitalCrown, offDigitalCrown, KEY_HOME } from "@zos/interaction";
+import {
+  onDigitalCrown,
+  onKey,
+  KEY_DOWN,
+  KEY_HOME,
+  KEY_EVENT_CLICK,
+} from "@zos/interaction";
 
 import {
   getBoundingBox,
@@ -16,8 +22,17 @@ const canvasH = 480; // Manually defined canvas height
 const PAN_SPEED_FACTOR = 1.8; // adjust this value as needed
 const ZOOM_SPEED_FACTOR = 0.5; // adjust this value as needed
 
-const THROTTLING_DELAY = 50; // Throttle delay of 50ms
+const THROTTLING_DELAY = 40; // Throttle delay of 50ms
 
+/**
+ * A class representing a map object.
+ * @param {Object} geojson - A GeoJSON object containing the features to be rendered.
+ * @param {Object} canvas - The customized canvas object.
+ * @param {Object} initialCenter - An object representing the {lon, lat} of the map's initial center.
+ * @param {number} initialZoom - The initial zoom level.
+ * @param {number} canvasW - The width of the canvas.
+ * @param {number} canvasH - The height of the canvas.
+ */
 export class Map {
   constructor(
     geojson,
@@ -38,6 +53,7 @@ export class Map {
     this.lastRendered = Date.now();
     this.isWaiting = false;
     this.lastCenterUpdate = Date.now();
+    this.lastZoomUpdate = Date.now();
     this.followGPS = true;
 
     this.initListeners();
@@ -93,12 +109,35 @@ export class Map {
 
     onDigitalCrown({
       callback: (key, degree) => {
-        logger.debug(`Digital crown callback: ${key}, ${degree}`);
+        // logger.debug(`Digital crown callback: ${key}, ${degree}`);
         if (key == KEY_HOME) {
+          const currentTime = Date.now();
+          // Throttle updates to 25 times per second
+          if (currentTime - this.lastZoomUpdate < THROTTLING_DELAY) return;
+
           // KEY_HOME is the Crown wheel
+          logger.debug("Crown wheel: ", key, degree);
           this.zoom += (degree / Math.abs(degree)) * ZOOM_SPEED_FACTOR;
           this.render();
+
+          this.lastZoomUpdate = currentTime;
         }
+      },
+    });
+
+    onKey({
+      callback: (key, keyEvent) => {
+        // logger.debug(`Key callback: ${key}`);
+        if (key == KEY_DOWN && keyEvent === KEY_EVENT_CLICK) {
+          // Debugging only
+          this.center = { lon: 121.5, lat: 31.295 };
+          this.zoom = 14;
+          this.followGPS = false;
+          this.render();
+          return true;
+        }
+
+        return false;
       },
     });
 
@@ -118,25 +157,17 @@ export class Map {
       if (!isDragging || !lastPosition) return;
 
       const currentTime = Date.now();
-      if (currentTime - this.lastCenterUpdate < THROTTLING_DELAY) {
-        // Throttle updates to 20 times per second
-        return;
-      }
+      // Throttle updates to 25 times per second
+      if (currentTime - this.lastCenterUpdate < THROTTLING_DELAY) return;
 
       const deltaX = e.x - lastPosition.x;
       const deltaY = e.y - lastPosition.y;
       this.updateCenter(deltaX, deltaY); // Update center without immediate rendering
 
       lastPosition = { x: e.x, y: e.y };
-      this.lastCenterUpdate = currentTime;
+      this.render();
 
-      if (!this.isWaiting) {
-        setTimeout(() => {
-          this.render();
-          this.isWaiting = false;
-        }, 50); // Debounce the rendering to max 10 times per second
-        this.isWaiting = true;
-      }
+      this.lastCenterUpdate = currentTime;
     });
   }
 
@@ -163,7 +194,15 @@ export class Map {
 
   // Render the map based on the current state
   render() {
-    drawMap(this.geojson, this.canvas, this.center, this.zoom);
+    // If the renderer is already waiting for the next render, then skip this render request.
+    if (this.isWaiting) return;
+
+    this.isWaiting = true;
+
+    setTimeout(() => {
+      drawMap(this.geojson, this.canvas, this.center, this.zoom);
+      this.isWaiting = false;
+    }, 40); // Debounce the rendering to max 10 times per second
   }
 }
 
@@ -194,7 +233,7 @@ export function drawMap(geojson, canvas, center, zoom) {
   // Get viewport bounding box
   const bbox = getBoundingBox(center, zoom, canvasH, canvasW);
 
-  logger.debug(`Drawing map in bbox: ${JSON.stringify(bbox)}`);
+  // logger.debug(`Drawing map in bbox: ${JSON.stringify(bbox)}`);
 
   // Set default paint for features
   canvas.setPaint({
@@ -203,22 +242,22 @@ export function drawMap(geojson, canvas, center, zoom) {
   });
 
   // Iterate through features in GeoJSON
-  geojson.features.forEach((feature) => {
-    logger.debug("Iterating through features.");
+  geojson.forEach((feature) => {
+    // logger.debug("Processing feature: ", feature.geometry.type);
 
     if (featureIntersects(feature, bbox)) {
-      logger.debug("Feature intersects with current viewport.");
+      // logger.debug("Feature intersects with current viewport.");
 
       switch (feature.geometry.type) {
         case "Point":
-          logger.debug("Drawing point.");
+          // logger.debug("Drawing point.");
           const coord = feature.geometry.coordinates;
           const pointPixel = lonLatToPixel(lonlat(coord), zoom, origin);
           canvas.drawPixel({ ...pointPixel, color: 0xffffff });
           break;
 
         case "MultiPoint":
-          logger.debug("Drawing MultiPoint.");
+          // logger.debug("Drawing MultiPoint.");
           feature.geometry.coordinates.forEach((coord) => {
             const pointPixel = lonLatToPixel(lonlat(coord), zoom);
             canvas.drawPixel({ ...pointPixel, color: 0xffffff });
@@ -226,31 +265,32 @@ export function drawMap(geojson, canvas, center, zoom) {
           break;
 
         case "LineString":
-          logger.debug("Drawing LineString.");
+          // logger.debug("Drawing LineString.");
           const lineCoords = feature.geometry.coordinates.map((coord) =>
             lonLatToPixel(lonlat(coord), zoom, origin)
           );
           canvas.strokePoly({
             data_array: lineCoords,
-            color: 0x00ffff,
+            color: 0x00ff00,
           });
+
           break;
 
         case "MultiLineString":
-          logger.debug("Drawing MultiLineString.");
+          // logger.debug("Drawing MultiLineString.");
           feature.geometry.coordinates.forEach((line) => {
             const lineCoords = line.map((coord) =>
               lonLatToPixel(lonlat(coord), zoom, origin)
             );
             canvas.strokePoly({
               data_array: lineCoords,
-              color: 0x00ffff,
+              color: 0x00ff00,
             });
           });
           break;
 
         case "Polygon":
-          logger.debug("Drawing Polygon.");
+          // logger.debug("Drawing Polygon.");
           // Draw only the outer ring for simplicity, but this can be expanded to handle holes.
           const outerRingCoords = feature.geometry.coordinates[0].map((coord) =>
             lonLatToPixel(lonlat(coord), zoom, origin)
@@ -262,7 +302,7 @@ export function drawMap(geojson, canvas, center, zoom) {
           break;
 
         case "MultiPolygon":
-          logger.debug("Drawing MultiPolygon.");
+          // logger.debug("Drawing MultiPolygon.");
 
           feature.geometry.coordinates.forEach((polygon) => {
             // Draw only the outer ring of each polygon for simplicity.
@@ -286,5 +326,5 @@ export function drawMap(geojson, canvas, center, zoom) {
     }
   });
 
-  logger.debug("Canvas update complete.");
+  // logger.debug("Canvas update complete.");
 }

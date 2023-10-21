@@ -1,6 +1,6 @@
 import * as ui from "@zos/ui";
-import { onDigitalCrown, offDigitalCrown, KEY_HOME } from "@zos/interaction";
-import { onGesture, offGesture, GESTURE_LEFT } from "@zos/interaction";
+import { offDigitalCrown } from "@zos/interaction";
+import { onGesture, offGesture, GESTURE_RIGHT } from "@zos/interaction";
 import { Geolocation } from "@zos/sensor";
 
 import {
@@ -8,22 +8,22 @@ import {
   CANVAS_STYLE,
 } from "zosLoader:./index.page.[pf].layout.js";
 
-import { drawMap, Map } from "../../../utils/mapzoom.js";
+import { Map } from "../../../utils/mapzoom.js";
 import { logger } from "../../../utils/logger.js";
-import { fetchGeojson } from "../../../utils/index.js";
+import { readAllFeatures } from "../../../utils/idx-map.js";
 
 const geolocation = new Geolocation();
 
 Page({
   onInit() {
-    logger.debug("page onInit invoked");
+    // logger.debug("page onInit invoked");
   },
   build() {
-    logger.debug("page build invoked");
+    // logger.debug("page build invoked");
 
     onGesture({
       callback: (e) => {
-        if (e == GESTURE_LEFT) return true;
+        if (e == GESTURE_RIGHT) return true; // Intercept swipes to the right
 
         return false;
       },
@@ -37,8 +37,13 @@ Page({
     const canvas = ui.createWidget(ui.widget.CANVAS, CANVAS_STYLE);
 
     // Load map resource
-    const mapPath = "./map/yp.geojson";
-    const geojson = fetchGeojson(mapPath);
+    // const mapPath = "./map/yp.geojson";
+    // const geojson = fetchGeojson(mapPath);
+
+    // Load map resource from idx and dat files
+    const idxPath = "map/yp.idx";
+    const datPath = "map/yp.dat";
+    const geojson = readAllFeatures(idxPath, datPath);
 
     const zoomMap = new Map(geojson, canvas, center, zoom);
     zoomMap.render();
@@ -64,7 +69,7 @@ Page({
     geolocation.onChange(callback);
   },
   onDestroy() {
-    logger.debug("page onDestroy invoked");
+    // logger.debug("page onDestroy invoked");
     // When not needed for use
     geolocation.offChange();
     geolocation.stop();
