@@ -10,16 +10,16 @@ import {
 
 import { Map } from "../../../utils/mapzoom.js";
 import { logger } from "../../../utils/logger.js";
-import { readAllFeatures } from "../../../utils/idx-map.js";
+import { lonLatToPixelCoordinates } from "../../../utils/index.js";
 
 const geolocation = new Geolocation();
 
 Page({
   onInit() {
-    // logger.debug("page onInit invoked");
+    logger.debug("page onInit invoked");
   },
   build() {
-    // logger.debug("page build invoked");
+    logger.debug("page build invoked");
 
     onGesture({
       callback: (e) => {
@@ -30,8 +30,8 @@ Page({
     });
 
     // Set default map center and zoom level
-    let center = { lon: 121.5, lat: 31.295 };
-    let zoom = 14;
+    let center = lonLatToPixelCoordinates({ lon: 121.5, lat: 31.295 }, 10);
+    let zoom = 10;
 
     // Create canvas
     const canvas = ui.createWidget(ui.widget.CANVAS, CANVAS_STYLE);
@@ -41,35 +41,35 @@ Page({
     // const geojson = fetchGeojson(mapPath);
 
     // Load map resource from idx and dat files
-    const idxPath = "map/yp.idx";
-    const datPath = "map/yp.dat";
-    const geojson = readAllFeatures(idxPath, datPath);
+    // const idxPath = "map/yp.idx";
+    // const datPath = "map/yp.dat";
+    // const geojson = readAllFeatures(idxPath, datPath);
 
-    const zoomMap = new Map(geojson, canvas, center, zoom);
+    const zoomMap = new Map(canvas, center, zoom);
     zoomMap.render();
 
     // Geolocation updates
-    const callback = () => {
-      if (geolocation.getStatus() === "A") {
-        lat = geolocation.getLatitude();
-        lon = geolocation.getLongitude();
+    // const callback = () => {
+    //   if (geolocation.getStatus() === "A") {
+    //     lat = geolocation.getLatitude();
+    //     lon = geolocation.getLongitude();
 
-        if (
-          zoomMap.followGPS &&
-          typeof lat === "number" &&
-          typeof lon === "number"
-        ) {
-          zoomMap.center = { lon, lat };
-          zoomMap.render();
-        }
-      }
-    };
+    //     if (
+    //       zoomMap.followGPS &&
+    //       typeof lat === "number" &&
+    //       typeof lon === "number"
+    //     ) {
+    //       zoomMap.center = { lon, lat };
+    //       zoomMap.render();
+    //     }
+    //   }
+    // };
 
-    geolocation.start();
-    geolocation.onChange(callback);
+    // geolocation.start();
+    // geolocation.onChange(callback);
   },
   onDestroy() {
-    // logger.debug("page onDestroy invoked");
+    logger.debug("page onDestroy invoked");
     // When not needed for use
     geolocation.offChange();
     geolocation.stop();

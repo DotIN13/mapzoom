@@ -2,6 +2,8 @@ import { openAssetsSync, O_RDONLY, readSync, statAssetsSync } from "@zos/fs";
 
 import { logger } from "./logger";
 
+const TILE_SIZE = 512;
+
 export function assets(type) {
   return (path) => type + "/" + path;
 }
@@ -85,7 +87,6 @@ export function featureIntersects(feature, bbox) {
  * @returns {Object} An object with 'lon' and 'lat' properties representing the geographical coordinates.
  */
 export function pixelToLonLat(x, y, zoom) {
-  const TILE_SIZE = 256;
   const scale = TILE_SIZE * Math.pow(2, zoom);
 
   const lon = (x / scale) * 360 - 180;
@@ -104,7 +105,6 @@ export function pixelToLonLat(x, y, zoom) {
  * @returns {Object} An object with 'x' and 'y' properties representing the canvas origin in pixel coordinates.
  */
 export function calculateCanvasOrigin(center, zoom, canvasW, canvasH) {
-  const TILE_SIZE = 256;
   const scale = TILE_SIZE * Math.pow(2, zoom);
 
   // Convert the center of the canvas to pixel coordinates
@@ -132,11 +132,9 @@ export function calculateCanvasOrigin(center, zoom, canvasW, canvasH) {
  * Convert a geographical [longitude, latitude] to a pixel's x and y coordinates based on a given zoom level and origin.
  * @param {Object} lonlat - An object with 'lon' and 'lat' properties representing the geographical coordinates.
  * @param {number} zoom - The current zoom level.
- * @param {Object} origin - An object with 'x' and 'y' properties representing the canvas origin in pixel coordinates.
  * @returns {Object} An object with 'x' and 'y' properties representing the pixel's coordinates within the canvas.
  */
-export function lonLatToPixel(lonlat, zoom, origin) {
-  const TILE_SIZE = 256;
+export function lonLatToPixelCoordinates(lonlat, zoom) {
   const scale = TILE_SIZE * Math.pow(2, zoom);
 
   const { lon, lat } = lonlat;
@@ -145,10 +143,9 @@ export function lonLatToPixel(lonlat, zoom, origin) {
   const mercatorY =
     (1 - Math.log(Math.tan(lat_rad) + 1 / Math.cos(lat_rad)) / Math.PI) / 2;
 
-  // Return the pixel's coordinates relative to the canvas origin
   return {
-    x: mercatorX * scale - origin.x,
-    y: mercatorY * scale - origin.y,
+    x: mercatorX * scale,
+    y: mercatorY * scale,
   };
 }
 
@@ -186,11 +183,11 @@ export function fetchGeojson(path) {
     return {};
   }
 
-  // logger.debug("readSync result: ", result);
+  logger.debug("readSync result: ", result);
 
   const jsonString = Buffer.from(buffer).toString(); // 128KB max
   const geojson = JSON.parse(jsonString);
 
-  // logger.debug("GeoJSON parsed.");
+  logger.debug("GeoJSON parsed.");
   return geojson;
 }

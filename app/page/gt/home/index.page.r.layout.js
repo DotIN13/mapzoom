@@ -19,8 +19,8 @@ export const TEXT_STYLE = {
 };
 
 export const CANVAS_STYLE = {
-  x: 0,
-  y: 0,
+  x: DEVICE_WIDTH / 2 - 640 / 2,
+  y: DEVICE_HEIGHT / 2 - 640 / 2,
   w: DEVICE_WIDTH,
   h: DEVICE_HEIGHT,
 };

@@ -20,7 +20,7 @@ function getOffsetByIndex(fdIdx, index) {
   const view = new DataView(offsetBuffer);
   const offset = view.getUint32(0, true); // Little-endian
 
-  // logger.debug("Read offset at index ", index, offset);
+  logger.debug("Read offset at index ", index, offset);
 
   return offset;
 }
@@ -36,11 +36,11 @@ function getFeatureByOffset(fdDat, start, length) {
   // Convert the ArrayBuffer back to a regular string and parse it as JSON
   const featureData = Buffer.from(featureBuffer).toString("utf8");
 
-  // logger.debug(featureData);
+  logger.debug(featureData);
 
   const geojson = JSON.parse(featureData.trim());
 
-  // logger.debug("Parsing success.");
+  logger.debug("Parsing success.");
 
   return geojson;
 }
@@ -72,7 +72,7 @@ function gatherFeaturesByIndex(idxPath, fdIdx, fdDat) {
           : idxStat.size - 1;
       const length = end - start; // If there's no 'end', then it means it's the last feature.
 
-      // logger.debug("Reading by ", start, end, length);
+      logger.debug("Reading by ", start, end, length);
 
       const feature = getFeatureByOffset(fdDat, start, length);
       allFeatures.push(feature);
@@ -103,7 +103,7 @@ export function readAllFeatures(idxPath, datPath) {
     logger.error(error.message);
   }
 
-  // logger.debug(Array.from(new Set(allFeatures.map((feature) => feature.geometry.type))));
+  logger.debug(Array.from(new Set(allFeatures.map((feature) => feature.geometry.type))));
 
   // Close the file descriptor
   closeSync({ fd: fdIdx });
