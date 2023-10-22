@@ -5,12 +5,16 @@ import { px } from "@zos/utils";
 
 export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo();
 
+export const CANVAS_HEIGHT = DEVICE_HEIGHT;
+export const CANVAS_WIDTH = DEVICE_WIDTH;
+
 export const TEXT_STYLE = {
   text: getText("appName"),
   x: px(42),
   y: px(200),
   w: DEVICE_WIDTH - px(42) * 2,
   h: px(100),
+
   color: 0xffffff,
   text_size: px(36),
   align_h: hmUI.align.CENTER_H,
@@ -19,8 +23,8 @@ export const TEXT_STYLE = {
 };
 
 export const CANVAS_STYLE = {
-  x: DEVICE_WIDTH / 2 - 640 / 2,
-  y: DEVICE_HEIGHT / 2 - 640 / 2,
+  x: DEVICE_WIDTH / 2 - CANVAS_WIDTH / 2,
+  y: DEVICE_HEIGHT / 2 - CANVAS_HEIGHT / 2,
   w: DEVICE_WIDTH,
   h: DEVICE_HEIGHT,
 };

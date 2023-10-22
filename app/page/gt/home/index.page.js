@@ -2,10 +2,15 @@ import * as ui from "@zos/ui";
 import { offDigitalCrown } from "@zos/interaction";
 import { onGesture, offGesture, GESTURE_RIGHT } from "@zos/interaction";
 import { Geolocation } from "@zos/sensor";
+import { setScrollLock } from "@zos/page";
 
 import {
   TEXT_STYLE,
   CANVAS_STYLE,
+  DEVICE_WIDTH,
+  DEVICE_HEIGHT,
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
 } from "zosLoader:./index.page.[pf].layout.js";
 
 import { Map } from "../../../utils/mapzoom.js";
@@ -17,6 +22,7 @@ const geolocation = new Geolocation();
 Page({
   onInit() {
     logger.debug("page onInit invoked");
+    setScrollLock({ lock: true });
   },
   build() {
     logger.debug("page build invoked");
@@ -45,7 +51,15 @@ Page({
     // const datPath = "map/yp.dat";
     // const geojson = readAllFeatures(idxPath, datPath);
 
-    const zoomMap = new Map(canvas, center, zoom);
+    const zoomMap = new Map(
+      canvas,
+      center,
+      zoom,
+      CANVAS_WIDTH,
+      CANVAS_HEIGHT,
+      DEVICE_WIDTH,
+      DEVICE_HEIGHT
+    );
     zoomMap.render();
 
     // Geolocation updates

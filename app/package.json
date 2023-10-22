@@ -12,6 +12,8 @@
     "@zeppos/device-types": "^3.0.0"
   },
   "dependencies": {
-    "@zeppos/zml": "^0.0.9"
+    "@zeppos/zml": "^0.0.9",
+    "pako": "^2.1.0",
+    "protobufjs": "^7.2.5"
   }
 }
