@@ -14,9 +14,11 @@ import {
   PAN_SPEED_FACTOR,
   ZOOM_SPEED_FACTOR,
   THROTTLING_DELAY,
+  PRECISION_FACTOR,
 } from "./globals";
 import { logger } from "./logger";
 import { TileCache } from "./mvt";
+import { roundToPrecision } from "./coordinates";
 
 export class ZoomMap {
   constructor(
@@ -223,7 +225,9 @@ export class ZoomMap {
    * @returns {Object} - The interpolated coordinates { x, y } in canvas space.
    */
   featureToCanvasCoordinates(coord, baseTileX, baseTileY) {
-    // Translate world coordinates to our canvas space, taking the canvas center into account
+    // Translate world coordinates to our canvas space, taking the canvas center into account.
+    // Always make sure the cached coordinates in this function are rounded
+    // to the precision defined in global constants to achieve better performance.
     return { x: baseTileX + coord[0], y: baseTileY + coord[1] };
   }
 
@@ -319,10 +323,13 @@ export class ZoomMap {
 
       if (!decodedTile) continue;
 
-      const baseTileX =
+      let baseTileX =
         tile.x * TILE_SIZE - (this.canvasCenter.x - this.canvasW / 2);
-      const baseTileY =
+      let baseTileY =
         tile.y * TILE_SIZE - (this.canvasCenter.y - this.canvasH / 2);
+
+      baseTileX = roundToPrecision(baseTileX, PRECISION_FACTOR);
+      baseTileY = roundToPrecision(baseTileY, PRECISION_FACTOR);
 
       // Iterate through features in the decoded tile and draw them
       for (const layer of decodedTile.layers) {

@@ -11,12 +11,15 @@ import pako from "pako";
 import {
   TILE_SIZE,
   TILE_EXTENT,
+  TILE_SCALE,
   CACHE_SIZE,
   PAN_SPEED_FACTOR,
   ZOOM_SPEED_FACTOR,
   THROTTLING_DELAY,
+  PRECISION_FACTOR,
 } from "./globals";
 import { logger } from "./logger";
+import { roundToPrecision } from "./coordinates";
 import { vector_tile } from "./vector_tile";
 
 // function getOffsetByIndex(fdIdx, index) {
@@ -243,7 +246,7 @@ function zigzagDecode(n) {
 }
 
 function projectTileExtent(x, y) {
-  return [(x / TILE_EXTENT) * TILE_SIZE, (y / TILE_EXTENT) * TILE_SIZE];
+  return [roundToPrecision(x * TILE_SCALE), roundToPrecision(y * TILE_SCALE)];
 }
 
 export function firstPass(decodedTile) {

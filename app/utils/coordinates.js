@@ -1,11 +1,14 @@
 import { openAssetsSync, O_RDONLY, readSync, statAssetsSync } from "@zos/fs";
 
+import { TILE_SIZE, PRECISION_FACTOR } from "./globals";
 import { logger } from "./logger";
-
-const TILE_SIZE = 512;
 
 export function assets(type) {
   return (path) => type + "/" + path;
+}
+
+export function roundToPrecision(number, precision = PRECISION_FACTOR) {
+  return Math.round(number * precision) / precision;
 }
 
 /**

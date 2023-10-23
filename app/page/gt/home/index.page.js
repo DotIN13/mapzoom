@@ -38,8 +38,8 @@ Page({
     });
 
     // Set default map center and zoom level
-    let center = lonLatToPixelCoordinates({ lon: 121.5, lat: 31.295 }, 10);
-    let zoom = 10;
+    const center = lonLatToPixelCoordinates({ lon: 121.5, lat: 31.295 }, 10);
+    const zoom = 10;
 
     // Create canvas
     const canvas = ui.createWidget(ui.widget.CANVAS, CANVAS_STYLE);
@@ -49,7 +49,7 @@ Page({
       FRAMETIME_COUNTER_STYLE
     );
 
-    const zoomMap = new ZoomMap(
+    this.zoomMap = new ZoomMap(
       canvas,
       trackpad,
       frametimeCounter,
@@ -60,7 +60,7 @@ Page({
       DEVICE_WIDTH,
       DEVICE_HEIGHT
     );
-    zoomMap.render();
+    this.zoomMap.render();
 
     // Geolocation updates
     // const callback = () => {
@@ -84,7 +84,9 @@ Page({
   },
   onDestroy() {
     logger.debug("page onDestroy invoked");
-    // When not needed for use
+
+    this.zoomMap = null;
+
     geolocation.offChange();
     geolocation.stop();
 
