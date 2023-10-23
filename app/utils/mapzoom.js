@@ -7,20 +7,22 @@ import {
   KEY_EVENT_CLICK,
 } from "@zos/interaction";
 
+import {
+  TILE_SIZE,
+  TILE_EXTENT,
+  CACHE_SIZE,
+  PAN_SPEED_FACTOR,
+  ZOOM_SPEED_FACTOR,
+  THROTTLING_DELAY,
+} from "./globals";
 import { logger } from "./logger";
-import { exampleMvt, transformFeature } from "./idx-map.js";
+import { TileCache } from "./mvt";
 
-const TILE_SIZE = 512;
-const TILE_EXTENT = 4096;
-
-const PAN_SPEED_FACTOR = 1.8; // adjust this value as needed
-const ZOOM_SPEED_FACTOR = 0.5; // adjust this value as needed
-
-const THROTTLING_DELAY = 40; // Throttle delay of 50ms
-
-export class Map {
+export class ZoomMap {
   constructor(
     canvas,
+    trackpad,
+    frametimeCounter,
     initialCenter,
     initialZoom,
     canvasW = 480,
@@ -29,6 +31,9 @@ export class Map {
     displayH = 480
   ) {
     this.canvas = canvas;
+    this.trackpad = trackpad;
+    this.frametimeCounter = frametimeCounter;
+
     this.center = initialCenter;
     this.zoom = initialZoom;
     this.canvasW = canvasW;
@@ -36,6 +41,8 @@ export class Map {
     this.displayW = displayW;
     this.displayH = displayH;
     this.canvasCenter = { ...initialCenter };
+
+    this.tileCache = new TileCache();
 
     this.isRendering = false;
 
@@ -64,16 +71,6 @@ export class Map {
   initListeners() {
     let isDragging = false;
     let lastPosition = null;
-
-    const fill_rect = ui.createWidget(ui.widget.FILL_RECT, {
-      x: 0,
-      y: 0,
-      w: this.displayW,
-      h: this.displayH,
-      radius: 0,
-      alpha: 0,
-      color: 0xffffff,
-    });
 
     onDigitalCrown({
       callback: (key, degree) => {
@@ -109,19 +106,19 @@ export class Map {
     //   },
     // });
 
-    fill_rect.addEventListener(ui.event.CLICK_DOWN, (e) => {
+    this.trackpad.addEventListener(ui.event.CLICK_DOWN, (e) => {
       isDragging = true;
       this.followGPS = false;
       lastPosition = { x: e.x, y: e.y };
     });
 
-    fill_rect.addEventListener(ui.event.CLICK_UP, (e) => {
+    this.trackpad.addEventListener(ui.event.CLICK_UP, (e) => {
       isDragging = false;
       lastPosition = null;
       this.updateCenter(this.center, { redraw: true });
     });
 
-    fill_rect.addEventListener(ui.event.MOVE, (e) => {
+    this.trackpad.addEventListener(ui.event.MOVE, (e) => {
       if (!isDragging || !lastPosition) return;
 
       // logger.debug("MOVE");
@@ -208,8 +205,6 @@ export class Map {
     const endTileX = Math.floor(endX / TILE_SIZE);
     const endTileY = Math.floor(endY / TILE_SIZE);
 
-    logger.debug(startTileX, startTileY, endTileX, endTileY);
-
     const tiles = [];
     for (let x = startTileX; x <= endTileX; x++) {
       for (let y = startTileY; y <= endTileY; y++) {
@@ -223,24 +218,13 @@ export class Map {
    * Interpolates the coordinates of a feature from tile space to canvas space.
    *
    * @param {Array} coord - The original coordinates of the feature in the tile [x, y].
-   * @param {number} baseWorldX - Base world X coordinate for the tile's top-left corner.
-   * @param {number} baseWorldY - Base world Y coordinate for the tile's top-left corner.
+   * @param {number} baseTileX - Base world X coordinate for the tile's top-left corner.
+   * @param {number} baseTileY - Base world Y coordinate for the tile's top-left corner.
    * @returns {Object} - The interpolated coordinates { x, y } in canvas space.
    */
-  featureToCanvasCoordinates(coord, baseWorldX, baseWorldY) {
-    if (coord.length !== 2) throw new Error("Invalid coordinate.");
-
+  featureToCanvasCoordinates(coord, baseTileX, baseTileY) {
     // Translate world coordinates to our canvas space, taking the canvas center into account
-    const canvasX =
-      baseWorldX +
-      (coord[0] / TILE_EXTENT) * TILE_SIZE -
-      (this.canvasCenter.x - this.canvasW / 2);
-    const canvasY =
-      baseWorldY +
-      (coord[1] / TILE_EXTENT) * TILE_SIZE -
-      (this.canvasCenter.y - this.canvasH / 2);
-
-    return { x: canvasX, y: canvasY };
+    return { x: baseTileX + coord[0], y: baseTileY + coord[1] };
   }
 
   /**
@@ -250,6 +234,7 @@ export class Map {
    * @returns {Array} - An array of {x, y} objects to be drawn on the canvas.
    */
   filterCanvasCoordinates(coordinates, geometryType) {
+    return coordinates;
 
     // Object to cache the results of canvas boundary checks
     const cache = {};
@@ -299,19 +284,18 @@ export class Map {
     if (this.isRendering) return; // Prevent multiple renders
 
     this.isRendering = true;
+    const startTime = Date.now();
 
     // First, calculate the tiles intersecting with the viewport
     const tiles = this.calculateViewportTiles();
-
     logger.debug(tiles.length, "tiles found.");
-
-    // Clear canvas before drawing
-    this.canvas.clear(this.defaultCanvasStyle);
 
     this.canvas.setPaint({
       color: 0xffff00,
       line_width: 2,
     });
+    // Clear canvas before drawing
+    this.canvas.clear(this.defaultCanvasStyle);
 
     // Background color for debugging purpose
     // this.canvas.drawRect({
@@ -323,24 +307,29 @@ export class Map {
     // });
 
     // For each tile, interpolate the pixel coordinates of the features and draw them on the canvas.
-    tiles.forEach((tile) => {
-      const range = getTileByteRange(tile); // Get the byte range of the tile in the PMTiles file
-
-      if (!range) return;
-
+    for (const tile of tiles) {
       logger.debug("Drawing tile: ", tile.x, tile.y);
 
       // Convert the byte range to decoded mvt json
-      const decodedTile = decodeMVT(range); // This is a placeholder. The actual decodeMVT function needs to be implemented.
+      const decodedTile = this.tileCache.getTile(
+        Math.floor(this.zoom),
+        tile.x,
+        tile.y
+      );
 
-      const baseWorldX = tile.x * TILE_SIZE;
-      const baseWorldY = tile.y * TILE_SIZE;
+      if (!decodedTile) continue;
+
+      const baseTileX =
+        tile.x * TILE_SIZE - (this.canvasCenter.x - this.canvasW / 2);
+      const baseTileY =
+        tile.y * TILE_SIZE - (this.canvasCenter.y - this.canvasH / 2);
 
       // Iterate through features in the decoded tile and draw them
-      decodedTile.layers.forEach((layer) => {
+      for (const layer of decodedTile.layers) {
         // logger.debug(layer.name);
-        layer.features.forEach((feature) => {
-          feature = transformFeature(feature, layer);
+
+        // Iterate through features in the layer
+        for (let feature of layer.features) {
           // logger.debug(JSON.stringify(feature.properties.name));
 
           const geoType = feature.geometry.type;
@@ -348,8 +337,8 @@ export class Map {
             case "Point":
               let pointCoord = this.featureToCanvasCoordinates(
                 feature.geometry.coordinates,
-                baseWorldX,
-                baseWorldY
+                baseTileX,
+                baseTileY
               );
               pointCoord = this.filterCanvasCoordinates(pointCoord, geoType);
               this.canvas.drawPixel({ ...pointCoord, color: 0xffffff });
@@ -359,8 +348,8 @@ export class Map {
               feature.geometry.coordinates.forEach((coord) => {
                 let pointCoord = this.featureToCanvasCoordinates(
                   coord,
-                  baseWorldX,
-                  baseWorldY
+                  baseTileX,
+                  baseTileY
                 );
                 pointCoord = this.filterCanvasCoordinates(pointCoord, geoType);
                 this.canvas.drawPixel({ ...pointCoord, color: 0xffffff });
@@ -369,7 +358,7 @@ export class Map {
 
             case "LineString":
               let lineCoords = feature.geometry.coordinates.map((coord) =>
-                this.featureToCanvasCoordinates(coord, baseWorldX, baseWorldY)
+                this.featureToCanvasCoordinates(coord, baseTileX, baseTileY)
               );
               lineCoords = this.filterCanvasCoordinates(lineCoords, geoType);
               this.canvas.strokePoly({
@@ -381,7 +370,7 @@ export class Map {
             case "MultiLineString":
               feature.geometry.coordinates.forEach((line) => {
                 let lineCoords = line.map((coord) =>
-                  this.featureToCanvasCoordinates(coord, baseWorldX, baseWorldY)
+                  this.featureToCanvasCoordinates(coord, baseTileX, baseTileY)
                 );
                 lineCoords = this.filterCanvasCoordinates(lineCoords, geoType);
                 this.canvas.strokePoly({
@@ -395,7 +384,7 @@ export class Map {
               // Only draw the outer ring. If inner rings (holes) are present, they need to be considered differently.
               let outerRingCoords = feature.geometry.coordinates[0].map(
                 (coord) =>
-                  this.featureToCanvasCoordinates(coord, baseWorldX, baseWorldY)
+                  this.featureToCanvasCoordinates(coord, baseTileX, baseTileY)
               );
               outerRingCoords = this.filterCanvasCoordinates(
                 outerRingCoords,
@@ -410,7 +399,7 @@ export class Map {
             case "MultiPolygon":
               feature.geometry.coordinates.forEach((polygon) => {
                 let outerRingCoords = polygon[0].map((coord) =>
-                  this.featureToCanvasCoordinates(coord, baseWorldX, baseWorldY)
+                  this.featureToCanvasCoordinates(coord, baseTileX, baseTileY)
                 );
                 outerRingCoords = this.filterCanvasCoordinates(
                   outerRingCoords,
@@ -428,35 +417,14 @@ export class Map {
                 `Unsupported feature type: ${feature.geometry.type}`
               );
           }
-        });
-      });
-    });
+        }
+      }
+    }
 
     this.isRendering = false;
+
+    const elapsedTime = Date.now() - startTime;
+    logger.debug("Render time: ", elapsedTime, "ms");
+    this.frametimeCounter.setProperty(ui.prop.TEXT, `${elapsedTime}ms`);
   }
-}
-
-/**
- * Map a tile to its byte range in a PMTiles file.
- * @param {Object} tile - Tile coordinates.
- * @returns {Object} - Tile with its byte range.
- */
-function getTileByteRange(tile) {
-  if (!(tile.x == 857 && tile.y == 418)) return null;
-
-  // Fetch or look up the byte range for the given tile in the PMTiles file.
-  // This function is a placeholder and will need actual logic to determine the byte range.
-  const byteRange = {}; // TODO: Placeholder for the byte range logic.
-
-  return {
-    ...tile,
-    byteRange: byteRange,
-  };
-}
-
-// Placeholder function for decoding MVT
-function decodeMVT(byteRange) {
-  // Convert the byte range to decoded mvt json.
-  // Placeholder function. Actual decoding needs to be done here.
-  return exampleMvt();
 }

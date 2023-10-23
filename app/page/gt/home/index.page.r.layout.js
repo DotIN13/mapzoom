@@ -1,4 +1,4 @@
-import * as hmUI from "@zos/ui";
+import * as ui from "@zos/ui";
 import { getText } from "@zos/i18n";
 import { getDeviceInfo } from "@zos/device";
 import { px } from "@zos/utils";
@@ -17,9 +17,30 @@ export const TEXT_STYLE = {
 
   color: 0xffffff,
   text_size: px(36),
-  align_h: hmUI.align.CENTER_H,
-  align_v: hmUI.align.CENTER_V,
-  text_style: hmUI.text_style.WRAP,
+  align_h: ui.align.CENTER_H,
+  align_v: ui.align.CENTER_V,
+  text_style: ui.text_style.WRAP,
+};
+
+export const TRACKPAD_STYLE = {
+  x: 0,
+  y: 0,
+  w: DEVICE_WIDTH,
+  h: DEVICE_HEIGHT,
+  radius: 0,
+  alpha: 0,
+  color: 0xffffff,
+};
+
+export const FRAMETIME_COUNTER_STYLE = {
+  x: 0,
+  y: DEVICE_HEIGHT - 50,
+  w: DEVICE_WIDTH,
+  h: 20,
+  align_h: ui.align.CENTER_H,
+  align_v: ui.align.CENTER_V,
+  text_size: 20,
+  color: 0xffffff,
 };
 
 export const CANVAS_STYLE = {

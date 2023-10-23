@@ -7,15 +7,17 @@ import { setScrollLock } from "@zos/page";
 import {
   TEXT_STYLE,
   CANVAS_STYLE,
+  TRACKPAD_STYLE,
+  FRAMETIME_COUNTER_STYLE,
   DEVICE_WIDTH,
   DEVICE_HEIGHT,
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
 } from "zosLoader:./index.page.[pf].layout.js";
 
-import { Map } from "../../../utils/mapzoom.js";
+import { ZoomMap } from "../../../utils/mapzoom.js";
 import { logger } from "../../../utils/logger.js";
-import { lonLatToPixelCoordinates } from "../../../utils/index.js";
+import { lonLatToPixelCoordinates } from "../../../utils/coordinates.js";
 
 const geolocation = new Geolocation();
 
@@ -41,9 +43,16 @@ Page({
 
     // Create canvas
     const canvas = ui.createWidget(ui.widget.CANVAS, CANVAS_STYLE);
+    const trackpad = ui.createWidget(ui.widget.FILL_RECT, TRACKPAD_STYLE);
+    const frametimeCounter = ui.createWidget(
+      ui.widget.TEXT,
+      FRAMETIME_COUNTER_STYLE
+    );
 
-    const zoomMap = new Map(
+    const zoomMap = new ZoomMap(
       canvas,
+      trackpad,
+      frametimeCounter,
       center,
       zoom,
       CANVAS_WIDTH,
@@ -60,12 +69,12 @@ Page({
     //     lon = geolocation.getLongitude();
 
     //     if (
-    //       zoomMap.followGPS &&
+    //       zoomZoomMap.followGPS &&
     //       typeof lat === "number" &&
     //       typeof lon === "number"
     //     ) {
-    //       zoomMap.center = { lon, lat };
-    //       zoomMap.render();
+    //       zoomZoomMap.center = { lon, lat };
+    //       zoomZoomMap.render();
     //     }
     //   }
     // };
