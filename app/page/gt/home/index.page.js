@@ -42,15 +42,6 @@ Page({
     // Create canvas
     const canvas = ui.createWidget(ui.widget.CANVAS, CANVAS_STYLE);
 
-    // Load map resource
-    // const mapPath = "./map/yp.geojson";
-    // const geojson = fetchGeojson(mapPath);
-
-    // Load map resource from idx and dat files
-    // const idxPath = "map/yp.idx";
-    // const datPath = "map/yp.dat";
-    // const geojson = readAllFeatures(idxPath, datPath);
-
     const zoomMap = new Map(
       canvas,
       center,

@@ -243,6 +243,58 @@ export class Map {
     return { x: canvasX, y: canvasY };
   }
 
+  /**
+   * Filters out coordinates based on their relation to the canvas.
+   * @param {Array} coordinates - An array of {x, y} objects representing coordinates.
+   * @param {string} geometryType - Type of the feature ('Point', 'MultiPoint', 'LineString', etc.).
+   * @returns {Array} - An array of {x, y} objects to be drawn on the canvas.
+   */
+  filterCanvasCoordinates(coordinates, geometryType) {
+
+    // Object to cache the results of canvas boundary checks
+    const cache = {};
+
+    // Check if a point is within the canvas boundaries and cache the result
+    const isInsideCanvas = (arr, index) => {
+      // Return cached result if available
+      if (index in cache) return cache[index];
+
+      const point = arr[index];
+      const result =
+        point.x >= 0 &&
+        point.x <= this.canvasW &&
+        point.y >= 0 &&
+        point.y <= this.canvasH;
+
+      // Store the result in the cache
+      cache[index] = result;
+
+      return result;
+    };
+
+    // If it's Point/MultiPoint, simply return coordinates inside the canvas
+    if (geometryType === "Point" || geometryType === "MultiPoint") {
+      return coordinates.filter((coord, index) =>
+        isInsideCanvas(coordinates, index)
+      );
+    }
+
+    // For other feature types
+    return coordinates.filter((_, index, arr) => {
+      // Always keep the coordinate if it's inside the canvas
+      if (isInsideCanvas(arr, index)) return true;
+
+      // If it's the first coordinate, only check the next one
+      if (index === 0) return isInsideCanvas(arr, index + 1);
+
+      // If it's the last coordinate, only check the previous one
+      if (index === arr.length - 1) return isInsideCanvas(arr, index - 1);
+
+      // For coordinates in between, if both neighbors are outside the canvas, drop the coordinate
+      return isInsideCanvas(arr, index - 1) || isInsideCanvas(arr, index + 1);
+    });
+  }
+
   render() {
     if (this.isRendering) return; // Prevent multiple renders
 
@@ -291,31 +343,35 @@ export class Map {
           feature = transformFeature(feature, layer);
           // logger.debug(JSON.stringify(feature.properties.name));
 
-          switch (feature.geometry.type) {
+          const geoType = feature.geometry.type;
+          switch (geoType) {
             case "Point":
-              const pointCoord = this.featureToCanvasCoordinates(
+              let pointCoord = this.featureToCanvasCoordinates(
                 feature.geometry.coordinates,
                 baseWorldX,
                 baseWorldY
               );
+              pointCoord = this.filterCanvasCoordinates(pointCoord, geoType);
               this.canvas.drawPixel({ ...pointCoord, color: 0xffffff });
               break;
 
             case "MultiPoint":
               feature.geometry.coordinates.forEach((coord) => {
-                const pointCoord = this.featureToCanvasCoordinates(
+                let pointCoord = this.featureToCanvasCoordinates(
                   coord,
                   baseWorldX,
                   baseWorldY
                 );
+                pointCoord = this.filterCanvasCoordinates(pointCoord, geoType);
                 this.canvas.drawPixel({ ...pointCoord, color: 0xffffff });
               });
               break;
 
             case "LineString":
-              const lineCoords = feature.geometry.coordinates.map((coord) =>
+              let lineCoords = feature.geometry.coordinates.map((coord) =>
                 this.featureToCanvasCoordinates(coord, baseWorldX, baseWorldY)
               );
+              lineCoords = this.filterCanvasCoordinates(lineCoords, geoType);
               this.canvas.strokePoly({
                 data_array: lineCoords,
                 color: 0x00ff22,
@@ -324,9 +380,10 @@ export class Map {
 
             case "MultiLineString":
               feature.geometry.coordinates.forEach((line) => {
-                const lineCoords = line.map((coord) =>
+                let lineCoords = line.map((coord) =>
                   this.featureToCanvasCoordinates(coord, baseWorldX, baseWorldY)
                 );
+                lineCoords = this.filterCanvasCoordinates(lineCoords, geoType);
                 this.canvas.strokePoly({
                   data_array: lineCoords,
                   color: 0x444444,
@@ -336,9 +393,13 @@ export class Map {
 
             case "Polygon":
               // Only draw the outer ring. If inner rings (holes) are present, they need to be considered differently.
-              const outerRingCoords = feature.geometry.coordinates[0].map(
+              let outerRingCoords = feature.geometry.coordinates[0].map(
                 (coord) =>
                   this.featureToCanvasCoordinates(coord, baseWorldX, baseWorldY)
+              );
+              outerRingCoords = this.filterCanvasCoordinates(
+                outerRingCoords,
+                geoType
               );
               this.canvas.strokePoly({
                 data_array: outerRingCoords,
@@ -348,8 +409,12 @@ export class Map {
 
             case "MultiPolygon":
               feature.geometry.coordinates.forEach((polygon) => {
-                const outerRingCoords = polygon[0].map((coord) =>
+                let outerRingCoords = polygon[0].map((coord) =>
                   this.featureToCanvasCoordinates(coord, baseWorldX, baseWorldY)
+                );
+                outerRingCoords = this.filterCanvasCoordinates(
+                  outerRingCoords,
+                  geoType
                 );
                 this.canvas.strokePoly({
                   data_array: outerRingCoords,
