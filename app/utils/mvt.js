@@ -13,10 +13,6 @@ import {
   TILE_EXTENT,
   TILE_SCALE,
   CACHE_SIZE,
-  PAN_SPEED_FACTOR,
-  ZOOM_SPEED_FACTOR,
-  THROTTLING_DELAY,
-  PRECISION_FACTOR,
 } from "./globals";
 import { logger } from "./logger";
 import { roundToPrecision } from "./coordinates";
@@ -246,7 +242,7 @@ function zigzagDecode(n) {
 }
 
 function projectTileExtent(x, y) {
-  return [roundToPrecision(x * TILE_SCALE), roundToPrecision(y * TILE_SCALE)];
+  return [x / TILE_EXTENT, y / TILE_EXTENT];
 }
 
 export function firstPass(decodedTile) {

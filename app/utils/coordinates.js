@@ -137,7 +137,7 @@ export function calculateCanvasOrigin(center, zoom, canvasW, canvasH) {
  * @param {number} zoom - The current zoom level.
  * @returns {Object} An object with 'x' and 'y' properties representing the pixel's coordinates within the canvas.
  */
-export function lonLatToPixelCoordinates(lonlat, zoom) {
+export function lonLatToPixelCoordinates(lonlat, zoom = 0) {
   const scale = TILE_SIZE * Math.pow(2, zoom);
 
   const { lon, lat } = lonlat;

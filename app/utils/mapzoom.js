@@ -13,12 +13,22 @@ import {
   CACHE_SIZE,
   PAN_SPEED_FACTOR,
   ZOOM_SPEED_FACTOR,
-  THROTTLING_DELAY,
+  PAN_THROTTLING_DELAY,
+  ZOOM_THROTTLING_DELAY,
   PRECISION_FACTOR,
+  CENTER_STORAGE_SCALE,
 } from "./globals";
 import { logger } from "./logger";
 import { TileCache } from "./mvt";
 import { roundToPrecision } from "./coordinates";
+import { lonLatToPixelCoordinates } from "./coordinates.js";
+
+function scaleCoordinates(coord, fromZoom, toZoom) {
+  return {
+    x: coord.x * Math.pow(2, toZoom - fromZoom),
+    y: coord.y * Math.pow(2, toZoom - fromZoom),
+  };
+}
 
 export class ZoomMap {
   constructor(
@@ -36,15 +46,18 @@ export class ZoomMap {
     this.trackpad = trackpad;
     this.frametimeCounter = frametimeCounter;
 
-    this.center = initialCenter;
+    // Set up initial center and zoom level
+    this.center = lonLatToPixelCoordinates(initialCenter, CENTER_STORAGE_SCALE);
+    this.canvasCenter = { ...this.center };
+
+    this.tileCache = new TileCache();
+    this.renderCache = new Map();
+
     this.zoom = initialZoom;
     this.canvasW = canvasW;
     this.canvasH = canvasH;
     this.displayW = displayW;
     this.displayH = displayH;
-    this.canvasCenter = { ...initialCenter };
-
-    this.tileCache = new TileCache();
 
     this.isRendering = false;
 
@@ -65,14 +78,39 @@ export class ZoomMap {
   }
 
   set zoom(level) {
+    if (this._zoom == level) return;
+
     level = Math.max(0, level);
     level = Math.min(20, level);
     this._zoom = level;
+
+    this.renderCache.clear();
+  }
+
+  getRenderCache(key) {
+    if (this.renderCache.has(key)) return this.renderCache.get(key);
+
+    let val = null;
+    if (key == "currentCanvasCenter")
+      val = scaleCoordinates(
+        this.canvasCenter,
+        CENTER_STORAGE_SCALE,
+        this.zoom
+      );
+    if (key == "currentTileSize")
+      val = TILE_SIZE * Math.pow(2, this.zoom - Math.floor(this.zoom));
+
+    if (val === null) throw new Error(`Invalid cache key: ${key}`);
+
+    this.renderCache.set(key, val);
+    return val;
   }
 
   initListeners() {
     let isDragging = false;
     let lastPosition = null;
+
+    let lastZoomUpdate = null;
 
     onDigitalCrown({
       callback: (key, degree) => {
@@ -80,14 +118,18 @@ export class ZoomMap {
         if (key == KEY_HOME) {
           const currentTime = Date.now();
           // Throttle updates to 25 times per second
-          if (currentTime - this.lastZoomUpdate < THROTTLING_DELAY) return;
+          if (
+            lastZoomUpdate &&
+            currentTime - lastZoomUpdate < ZOOM_THROTTLING_DELAY
+          )
+            return;
 
           // KEY_HOME is the Crown wheel
           logger.debug("Crown wheel: ", key, degree);
           this.zoom += (degree / Math.abs(degree)) * ZOOM_SPEED_FACTOR;
           this.render();
 
-          this.lastZoomUpdate = currentTime;
+          lastZoomUpdate = currentTime;
         }
       },
     });
@@ -116,32 +158,34 @@ export class ZoomMap {
 
     this.trackpad.addEventListener(ui.event.CLICK_UP, (e) => {
       isDragging = false;
-      lastPosition = null;
       this.updateCenter(this.center, { redraw: true });
+      lastPosition = null;
     });
 
     this.trackpad.addEventListener(ui.event.MOVE, (e) => {
       if (!isDragging || !lastPosition) return;
 
-      // logger.debug("MOVE");
-
       const currentTime = Date.now();
-      // Throttle updates to 25 times per second
-      if (currentTime - this.lastCenterUpdate < THROTTLING_DELAY) return;
+      if (currentTime - this.lastCenterUpdate < PAN_THROTTLING_DELAY) return;
 
-      const deltaX = e.x - lastPosition.x;
-      const deltaY = e.y - lastPosition.y;
-
-      const newCenter = {
-        x: this.center.x - deltaX,
-        y: this.center.y - deltaY,
-      };
-      this.updateCenter(newCenter, { redraw: false }); // Update center without immediate rendering
-
-      lastPosition = { x: e.x, y: e.y };
+      this.updateCenter(this.newCenter(e, lastPosition), { redraw: false }); // Update center without immediate rendering
 
       this.lastCenterUpdate = currentTime;
+      lastPosition = { x: e.x, y: e.y };
     });
+  }
+
+  newCenter(moveEvent, lastPosition) {
+    let delta = {
+      x: moveEvent.x - lastPosition.x,
+      y: moveEvent.y - lastPosition.y,
+    };
+    delta = scaleCoordinates(delta, this.zoom, CENTER_STORAGE_SCALE);
+
+    return {
+      x: this.center.x - delta.x,
+      y: this.center.y - delta.y,
+    };
   }
 
   /**
@@ -151,10 +195,14 @@ export class ZoomMap {
   updateCenter(newCenter, opts = { redraw: false }) {
     this.center = newCenter;
 
-    const offset = this.calculateOffset();
-    if (!opts.redraw) return this.moveCanvas(offset);
+    if (!opts.redraw) {
+      let offset = this.calculateOffset();
+      offset = scaleCoordinates(offset, CENTER_STORAGE_SCALE, this.zoom);
+      return this.moveCanvas(offset);
+    }
 
     this.canvasCenter = { ...newCenter };
+    this.renderCache.delete("currentCanvasCenter");
     this.render();
     this.moveCanvas({ x: 0, y: 0 });
   }
@@ -187,25 +235,23 @@ export class ZoomMap {
    * @returns {Array} - An array of tiles covering the viewport.
    */
   calculateViewportTiles() {
-    logger.debug(
-      "Calculating viewport tiles, center: ",
-      this.center,
-      this.canvasCenter
-    );
-
     const halfCanvasW = this.canvasW / 2;
     const halfCanvasH = this.canvasH / 2;
 
-    const startX = this.canvasCenter.x - halfCanvasW;
-    const startY = this.canvasCenter.y - halfCanvasH;
+    const currentCanvasCenter = this.getRenderCache("currentCanvasCenter");
 
-    const endX = this.canvasCenter.x + halfCanvasW;
-    const endY = this.canvasCenter.y + halfCanvasH;
+    const startX = currentCanvasCenter.x - halfCanvasW;
+    const startY = currentCanvasCenter.y - halfCanvasH;
 
-    const startTileX = Math.floor(startX / TILE_SIZE);
-    const startTileY = Math.floor(startY / TILE_SIZE);
-    const endTileX = Math.floor(endX / TILE_SIZE);
-    const endTileY = Math.floor(endY / TILE_SIZE);
+    const endX = currentCanvasCenter.x + halfCanvasW;
+    const endY = currentCanvasCenter.y + halfCanvasH;
+
+    const currentTileSize = this.getRenderCache("currentTileSize");
+
+    const startTileX = Math.floor(startX / currentTileSize);
+    const startTileY = Math.floor(startY / currentTileSize);
+    const endTileX = Math.floor(endX / currentTileSize);
+    const endTileY = Math.floor(endY / currentTileSize);
 
     const tiles = [];
     for (let x = startTileX; x <= endTileX; x++) {
@@ -224,11 +270,14 @@ export class ZoomMap {
    * @param {number} baseTileY - Base world Y coordinate for the tile's top-left corner.
    * @returns {Object} - The interpolated coordinates { x, y } in canvas space.
    */
-  featureToCanvasCoordinates(coord, baseTileX, baseTileY) {
+  featureToCanvasCoordinates(coord, baseTileX, baseTileY, currentTileSize) {
     // Translate world coordinates to our canvas space, taking the canvas center into account.
     // Always make sure the cached coordinates in this function are rounded
     // to the precision defined in global constants to achieve better performance.
-    return { x: baseTileX + coord[0], y: baseTileY + coord[1] };
+    return {
+      x: roundToPrecision(baseTileX + coord[0] * currentTileSize),
+      y: roundToPrecision(baseTileY + coord[1] * currentTileSize),
+    };
   }
 
   /**
@@ -312,7 +361,7 @@ export class ZoomMap {
 
     // For each tile, interpolate the pixel coordinates of the features and draw them on the canvas.
     for (const tile of tiles) {
-      logger.debug("Drawing tile: ", tile.x, tile.y);
+      // logger.debug("Processing tile: ", tile.x, tile.y);
 
       // Convert the byte range to decoded mvt json
       const decodedTile = this.tileCache.getTile(
@@ -323,13 +372,16 @@ export class ZoomMap {
 
       if (!decodedTile) continue;
 
-      let baseTileX =
-        tile.x * TILE_SIZE - (this.canvasCenter.x - this.canvasW / 2);
-      let baseTileY =
-        tile.y * TILE_SIZE - (this.canvasCenter.y - this.canvasH / 2);
+      logger.debug("Drawing tile: ", tile.x, tile.y);
 
-      baseTileX = roundToPrecision(baseTileX, PRECISION_FACTOR);
-      baseTileY = roundToPrecision(baseTileY, PRECISION_FACTOR);
+      const currentTileSize = this.getRenderCache("currentTileSize");
+      const currentCanvasCenter = this.getRenderCache("currentCanvasCenter");
+
+      let baseTileX =
+        tile.x * currentTileSize - (currentCanvasCenter.x - this.canvasW / 2);
+
+      let baseTileY =
+        tile.y * currentTileSize - (currentCanvasCenter.y - this.canvasH / 2);
 
       // Iterate through features in the decoded tile and draw them
       for (const layer of decodedTile.layers) {
@@ -345,7 +397,8 @@ export class ZoomMap {
               let pointCoord = this.featureToCanvasCoordinates(
                 feature.geometry.coordinates,
                 baseTileX,
-                baseTileY
+                baseTileY,
+                currentTileSize
               );
               pointCoord = this.filterCanvasCoordinates(pointCoord, geoType);
               this.canvas.drawPixel({ ...pointCoord, color: 0xffffff });
@@ -356,7 +409,8 @@ export class ZoomMap {
                 let pointCoord = this.featureToCanvasCoordinates(
                   coord,
                   baseTileX,
-                  baseTileY
+                  baseTileY,
+                  currentTileSize
                 );
                 pointCoord = this.filterCanvasCoordinates(pointCoord, geoType);
                 this.canvas.drawPixel({ ...pointCoord, color: 0xffffff });
@@ -365,7 +419,12 @@ export class ZoomMap {
 
             case "LineString":
               let lineCoords = feature.geometry.coordinates.map((coord) =>
-                this.featureToCanvasCoordinates(coord, baseTileX, baseTileY)
+                this.featureToCanvasCoordinates(
+                  coord,
+                  baseTileX,
+                  baseTileY,
+                  currentTileSize
+                )
               );
               lineCoords = this.filterCanvasCoordinates(lineCoords, geoType);
               this.canvas.strokePoly({
@@ -377,7 +436,12 @@ export class ZoomMap {
             case "MultiLineString":
               feature.geometry.coordinates.forEach((line) => {
                 let lineCoords = line.map((coord) =>
-                  this.featureToCanvasCoordinates(coord, baseTileX, baseTileY)
+                  this.featureToCanvasCoordinates(
+                    coord,
+                    baseTileX,
+                    baseTileY,
+                    currentTileSize
+                  )
                 );
                 lineCoords = this.filterCanvasCoordinates(lineCoords, geoType);
                 this.canvas.strokePoly({
@@ -391,7 +455,12 @@ export class ZoomMap {
               // Only draw the outer ring. If inner rings (holes) are present, they need to be considered differently.
               let outerRingCoords = feature.geometry.coordinates[0].map(
                 (coord) =>
-                  this.featureToCanvasCoordinates(coord, baseTileX, baseTileY)
+                  this.featureToCanvasCoordinates(
+                    coord,
+                    baseTileX,
+                    baseTileY,
+                    currentTileSize
+                  )
               );
               outerRingCoords = this.filterCanvasCoordinates(
                 outerRingCoords,
@@ -406,7 +475,12 @@ export class ZoomMap {
             case "MultiPolygon":
               feature.geometry.coordinates.forEach((polygon) => {
                 let outerRingCoords = polygon[0].map((coord) =>
-                  this.featureToCanvasCoordinates(coord, baseTileX, baseTileY)
+                  this.featureToCanvasCoordinates(
+                    coord,
+                    baseTileX,
+                    baseTileY,
+                    currentTileSize
+                  )
                 );
                 outerRingCoords = this.filterCanvasCoordinates(
                   outerRingCoords,

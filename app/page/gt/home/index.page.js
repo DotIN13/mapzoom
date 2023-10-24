@@ -17,7 +17,6 @@ import {
 
 import { ZoomMap } from "../../../utils/mapzoom.js";
 import { logger } from "../../../utils/logger.js";
-import { lonLatToPixelCoordinates } from "../../../utils/coordinates.js";
 
 const geolocation = new Geolocation();
 
@@ -38,7 +37,7 @@ Page({
     });
 
     // Set default map center and zoom level
-    const center = lonLatToPixelCoordinates({ lon: 121.5, lat: 31.295 }, 10);
+    const center = { lon: 121.5, lat: 31.295 };
     const zoom = 10;
 
     // Create canvas
