@@ -18,183 +18,40 @@ import { logger } from "./logger";
 import { roundToPrecision } from "./coordinates";
 import { vector_tile } from "./vector_tile";
 
-// function getOffsetByIndex(fdIdx, index) {
-//   // Pass fdIdx to avoid reading the file multiple times
-//   const offsetBuffer = new ArrayBuffer(4); // 4-byte integer for offset
-//   readSync({
-//     fd: fdIdx,
-//     buffer: offsetBuffer,
-//     options: { offset: 0, length: 4, position: index * 4 },
-//   });
 
-//   const view = new DataView(offsetBuffer);
-//   const offset = view.getUint32(0, true); // Little-endian
+function readByte(fd, position) {
+  const buffer = new ArrayBuffer(1); // Since we're reading just one byte
+  const view = new Uint8Array(buffer);
 
-//   logger.debug("Read offset at index ", index, offset);
+  readSync({
+    fd: fd,
+    buffer: buffer,
+    options: {
+      offset: 0,       // We're always writing to the start of this small buffer
+      length: 1,       // Just one byte
+      position: position
+    },
+  });
 
-//   return offset;
-// }
+  return view[0];     // Return the byte
+}
 
-// function getFeatureByOffset(fdDat, start, length) {
-//   const featureBuffer = new ArrayBuffer(length);
-//   readSync({
-//     fd: fdDat,
-//     buffer: featureBuffer,
-//     options: { offset: 0, length: length, position: start },
-//   });
+function readVarInt(fd, x) {
+  let shift = 0;
+  let result = 0;
+  let byte;
 
-//   // Convert the ArrayBuffer back to a regular string and parse it as JSON
-//   const featureData = Buffer.from(featureBuffer).toString("utf8");
+  do {
+    byte = readByte(fd, x++);
 
-//   logger.debug(featureData);
+    result |= (byte & 0x7F) << shift;
+    shift += 7;
+  } while (byte >= 0x80);
 
-//   const geojson = JSON.parse(featureData.trim());
+  return result;
+}
 
-//   logger.debug("Parsing success.");
 
-//   return geojson;
-// }
-
-// function gatherFeaturesByIndex(idxPath, fdIdx, fdDat) {
-//   const allFeatures = [];
-
-//   // Assuming we can determine the size of the index file:
-//   const idxStat = statAssetsSync({ path: idxPath });
-//   if (idxStat === undefined) {
-//     throw new Error(
-//       `Index file fsStat is undefined. It's probably corrupted or empty.`
-//     );
-//   }
-//   if (idxStat.size % 4 !== 0) {
-//     throw new Error(
-//       `Index file size is not a multiple of 4. It's probably corrupted.`
-//     );
-//   }
-
-//   const numberOfIndexes = idxStat.size / 4; // Each offset is 4 bytes
-
-//   for (let i = 0; i < 200; i++) {
-//     try {
-//       const start = getOffsetByIndex(fdIdx, i);
-//       const end =
-//         i < numberOfIndexes - 1
-//           ? getOffsetByIndex(fdIdx, i + 1) - 1 // Minus 1 to get the end of the current feature
-//           : idxStat.size - 1;
-//       const length = end - start; // If there's no 'end', then it means it's the last feature.
-
-//       logger.debug("Reading by ", start, end, length);
-
-//       const feature = getFeatureByOffset(fdDat, start, length);
-//       allFeatures.push(feature);
-//     } catch (error) {
-//       logger.error(`Error reading feature at index ${i}: ${error.message}`);
-//     }
-//   }
-
-//   return allFeatures;
-// }
-
-// export function readAllFeatures(idxPath, datPath) {
-//   const fdIdx = openAssetsSync({
-//     path: idxPath,
-//     flag: O_RDONLY,
-//   });
-
-//   const fdDat = openAssetsSync({
-//     path: datPath,
-//     flag: O_RDONLY,
-//   });
-
-//   let allFeatures = null;
-
-//   try {
-//     allFeatures = gatherFeaturesByIndex(idxPath, fdIdx, fdDat);
-//   } catch (error) {
-//     logger.error(error.message);
-//   }
-
-//   logger.debug(
-//     Array.from(new Set(allFeatures.map((feature) => feature.geometry.type)))
-//   );
-
-//   // Close the file descriptor
-//   closeSync({ fd: fdIdx });
-//   closeSync({ fd: fdDat });
-
-//   return allFeatures;
-// }
-
-// // For each rawFeature of each layer,
-// // replace rawFeature geometry property
-// // with coordinates relative to real tile size
-// // stored in ArrayBuffer.
-// function precompileTile(decodedTile, tileSize) {
-//   decodedTile.layers.forEach((layer) => {
-//     layer.features.forEach((feature) => {
-//       const geometry = feature.geometry;
-//       const type = geometry.type;
-//       const coords = geometry.coordinates;
-
-//       switch (type) {
-//         case 1: // Point
-//           geometry.coordinates = [
-//             (coords[0] * tileSize) / 4096,
-//             (coords[1] * tileSize) / 4096,
-//           ];
-//           break;
-//         case 2: // LineString
-//         case 3: // Polygon
-//           coords.forEach((ring, i) => {
-//             ring.forEach((coord, j) => {
-//               coords[i][j] = [
-//                 (coord[0] * tileSize) / 4096,
-//                 (coord[1] * tileSize) / 4096,
-//               ];
-//             });
-//           });
-//           break;
-//         default:
-//           break;
-//       }
-//     });
-//   });
-// }
-
-// export function extractGeometries(decodedTile) {
-//   // For each rawFeature, extract geometry and collect them in a single ArrayBuffer.
-//   // Keep the start and end offsets of geometries in its geometry property.
-//   const geometries = [];
-//   decodedTile.layers.forEach((layer) => {
-//     layer.features.forEach((feature) => {
-//       const geometry = feature.geometry;
-//       const type = geometry.type;
-//       const coords = geometry.coordinates;
-
-//       let geometryStart = geometries.length;
-//       switch (type) {
-//         case 1: // Point
-//           geometries.push(coords[0], coords[1]);
-//           break;
-//         case 2: // LineString
-//         case 3: // Polygon
-//           coords.forEach((ring) => {
-//             ring.forEach((coord) => {
-//               geometries.push(coord[0], coord[1]);
-//             });
-//           });
-//           break;
-//         default:
-//           break;
-//       }
-//       feature.geometry = {
-//         type,
-//         start: geometryStart,
-//         end: geometries.length,
-//       };
-//     });
-//   });
-//   return new Float32Array(geometries);
-// }
 
 export function exampleMvt() {
   // Open and stat file outside the loop as we only need to do it once
@@ -350,7 +207,6 @@ export function parseGeometry(rawFeature) {
 
 export class TileCache {
   constructor() {
-    logger.debug("Create");
     this.cache = new Map();
   }
 
