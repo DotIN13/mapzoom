@@ -8,9 +8,11 @@ import {
 } from "@zos/interaction";
 
 import {
+  DEVICE_HEIGHT,
+  DEVICE_WIDTH,
   TILE_SIZE,
   TILE_EXTENT,
-  CACHE_SIZE,
+  TILE_CACHE_SIZE,
   PAN_SPEED_FACTOR,
   ZOOM_SPEED_FACTOR,
   PAN_THROTTLING_DELAY,
@@ -87,6 +89,11 @@ export class ZoomMap {
     level = Math.min(20, level);
     this._zoom = level;
 
+    this.zoomIndicator?.setProperty(
+      ui.prop.TEXT,
+      `z${roundToPrecision(level)}`
+    );
+
     this.renderCache.clear();
   }
 
@@ -150,6 +157,22 @@ export class ZoomMap {
     let wheelDegrees = 0;
     let zoomTimeout = null;
 
+    this.zoomIndicatorProps = {
+      x: 0,
+      y: DEVICE_HEIGHT - 80,
+      w: DEVICE_WIDTH,
+      h: 20,
+      align_h: ui.align.CENTER_H,
+      align_v: ui.align.CENTER_V,
+      text_size: 20,
+      text: `z${roundToPrecision(this.zoom)}`,
+      color: 0xffffff,
+    };
+    this.zoomIndicator = ui.createWidget(
+      ui.widget.TEXT,
+      this.zoomIndicatorProps
+    );
+
     // Create user location marker
     this.userMarkerProps = {
       center_x: 240,
@@ -166,18 +189,18 @@ export class ZoomMap {
         logger.debug(`Digital crown callback: ${key}, ${degree}`);
         if (key == KEY_HOME) {
           const currentTime = Date.now();
-          // Throttle crown wheel updates
-          if (
-            lastZoomUpdate &&
-            currentTime - lastZoomUpdate < ZOOM_THROTTLING_DELAY
-          )
-            return;
 
           lastZoomUpdate = currentTime;
 
           // KEY_HOME is the Crown wheel
           logger.debug("Crown wheel: ", key, degree);
-          wheelDegrees -= degree;
+          wheelDegrees -= degree; // degree is negative when rolling up
+
+          const newZoom = this.zoom + wheelDegrees * ZOOM_SPEED_FACTOR;
+          this.zoomIndicator.setProperty(
+            ui.prop.TEXT,
+            `z${roundToPrecision(newZoom)}`
+          );
 
           if (zoomTimeout) clearTimeout(zoomTimeout);
           zoomTimeout = setTimeout(() => {
@@ -192,7 +215,7 @@ export class ZoomMap {
             wheelDegrees = 0;
 
             this.render();
-          }, ZOOM_THROTTLING_DELAY * 1.2);
+          }, ZOOM_THROTTLING_DELAY + 1);
         }
       },
     });
@@ -397,7 +420,10 @@ export class ZoomMap {
   render() {
     if (this.isRendering) return; // Prevent multiple renders
 
+    // Set render indicators
     this.isRendering = true;
+    this.frametimeCounter.setProperty(ui.prop.TEXT, "Rendering...");
+
     const startTime = Date.now();
 
     // First, calculate the tiles intersecting with the viewport
@@ -422,8 +448,6 @@ export class ZoomMap {
 
     // For each tile, interpolate the pixel coordinates of the features and draw them on the canvas.
     for (const tile of tiles) {
-      logger.debug("Fetching tile: ", tile.x, tile.y);
-
       // Convert the byte range to decoded mvt json
       const decodedTile = this.tileCache.getTile(
         Math.floor(this.zoom),
@@ -587,10 +611,7 @@ export class ZoomMap {
     this.isRendering = false;
 
     const elapsedTime = Date.now() - startTime;
-    logger.debug("Render time: ", elapsedTime, "ms");
-    this.frametimeCounter.setProperty(
-      ui.prop.TEXT,
-      `z${roundToPrecision(this.zoom)} ${elapsedTime}ms`
-    );
+    logger.info("Render time: ", elapsedTime, "ms");
+    this.frametimeCounter.setProperty(ui.prop.TEXT, `${elapsedTime}ms`);
   }
 }

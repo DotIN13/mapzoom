@@ -3,7 +3,7 @@ import { getText } from "@zos/i18n";
 import { getDeviceInfo } from "@zos/device";
 import { px } from "@zos/utils";
 
-export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo();
+import { DEVICE_WIDTH, DEVICE_HEIGHT } from "../../../utils/globals";
 
 export const CANVAS_HEIGHT = DEVICE_HEIGHT;
 export const CANVAS_WIDTH = DEVICE_WIDTH;

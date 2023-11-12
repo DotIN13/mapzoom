@@ -1,22 +1,13 @@
-import { TILE_SIZE, TILE_EXTENT, TILE_SCALE, CACHE_SIZE } from "./globals";
+import { TILE_SIZE, TILE_EXTENT, TILE_SCALE, TILE_CACHE_SIZE } from "./globals";
 import { logger } from "./logger";
-import { roundToPrecision } from "./coordinates";
 import { vector_tile } from "./vector_tile";
-import { pmtilesFd, getZxy } from "./pmtiles";
+import { PMTiles } from "./pmtiles";
 
 // Decode a decompressed mvt tile
 function decodeTile(decompressed) {
-  // Benchmark start time
-  const startTime = Date.now();
-
   // Decode
   const decodedTile = vector_tile.Tile.decode(decompressed);
   firstPass(decodedTile);
-
-  // Benchmark end time
-  const endTime = Date.now();
-  const elapsedTime = endTime - startTime; // in seconds
-  logger.debug(`Decoded MVT in ${elapsedTime.toFixed(2)}ms.`);
 
   return decodedTile;
 }
@@ -31,7 +22,7 @@ function projectTileExtent(x, y) {
   return [x / TILE_EXTENT, y / TILE_EXTENT];
 }
 
-export function firstPass(decodedTile) {
+function firstPass(decodedTile) {
   for (const layer of decodedTile.layers) {
     for (const rawFeature of layer.features) {
       parseGeometry(rawFeature);
@@ -137,7 +128,7 @@ export function parseGeometry(rawFeature) {
 export class TileCache {
   constructor() {
     this.cache = new Map();
-    this.fd = pmtilesFd("map/shanghai-20231024-mini.pmtiles");
+    this.pmtiles = new PMTiles("map/shanghai-20231024-mini.pmtiles");
   }
 
   getTile(z, x, y) {
@@ -151,7 +142,7 @@ export class TileCache {
   }
 
   setTile(z, x, y, tile) {
-    if (this.cache.size > CACHE_SIZE) {
+    if (this.cache.size > TILE_CACHE_SIZE) {
       // Evict the first tile in the cache
       const firstKey = this.cache.keys().next().value;
       this.cache.delete(firstKey);
@@ -162,7 +153,7 @@ export class TileCache {
   }
 
   fetchTile(z, x, y) {
-    decompressed = getZxy(this.fd, z, x, y);
+    decompressed = this.pmtiles.getZxy(z, x, y);
     if (!decompressed) return null;
 
     decoded = decodeTile(decompressed);

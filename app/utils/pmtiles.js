@@ -9,6 +9,7 @@ import {
 import pako from "pako";
 
 import { logger } from "./logger";
+import { DIR_CACHE_SIZE } from "./globals";
 
 const HEADER_SIZE_BYTES = 127; // Or the appropriate header size for PMTiles
 
@@ -156,19 +157,22 @@ function getHeader(fd) {
     buffer,
     options: { offset: 0, length: HEADER_SIZE_BYTES, position: 0 },
   });
-  return bytesToHeader(buffer);
+
+  const header = bytesToHeader(buffer);
+
+  if (header.specVersion < 3) {
+    logger.warn(
+      `PMTiles spec version ${header.specVersion} has been deprecated; please see github.com/protomaps/PMTiles for tools to upgrade`
+    );
+  }
+
+  return header;
 }
 
 export function getHeaderAndRoot(fd) {
   const header = getHeader(fd);
 
-  if (header.specVersion < 3) {
-    console.warn(
-      `PMTiles spec version ${header.specVersion} has been deprecated; please see github.com/protomaps/PMTiles for tools to upgrade`
-    );
-  }
-
-  const rootDir = getDirectory(
+  const rootDir = parseDirectory(
     fd,
     header.rootDirectoryOffset,
     header.rootDirectoryLength,
@@ -211,7 +215,7 @@ function deserializeIndex(buffer) {
   return entries;
 }
 
-function getDirectory(fd, offset, length, header) {
+function parseDirectory(fd, offset, length, header) {
   const buffer = new ArrayBuffer(length);
   readSync({
     fd: fd,
@@ -223,7 +227,7 @@ function getDirectory(fd, offset, length, header) {
 
   const directory = deserializeIndex(data);
   if (directory.length === 0) {
-    throw new Error("Empty directory is invalid");
+    throw new Error("Empty directory.");
   }
 
   // logger.debug("Read directory complete, length", directory.length);
@@ -260,64 +264,114 @@ function findTile(entries, tileId) {
   return null;
 }
 
-export function getZxy(fd, z, x, y) {
-  // Benchmark start time
-  const startTime = Date.now();
-
-  const tileId = zxyToTileId(z, x, y);
-  const header = getHeader(fd);
-
-  // Ensure tile zoom is within the limits defined in the header
-  if (z < header.minZoom || z > header.maxZoom) {
-    return undefined;
-  }
-
-  let directoryOffset = header.rootDirectoryOffset;
-  let directoryLength = header.rootDirectoryLength;
-
-  for (let depth = 0; depth <= 3; depth++) {
-    const directory = getDirectory(
-      fd,
-      directoryOffset,
-      directoryLength,
-      header
-    );
-    const entry = findTile(directory, tileId);
-
-    if (entry) {
-      if (entry.runLength > 0) {
-        const tileBuffer = new ArrayBuffer(entry.length);
-        readSync({
-          fd,
-          buffer: tileBuffer,
-          options: {
-            offset: 0,
-            length: entry.length,
-            position: header.tileDataOffset + entry.offset,
-          },
-        });
-
-        // Benchmark end time
-        const endTime = Date.now();
-        const elapsedTime = endTime - startTime; // in seconds
-        logger.debug(`Retrieved tile in ${elapsedTime.toFixed(2)}ms.`);
-
-        return decompress(tileBuffer, header.tileCompression);
-      } else {
-        directoryOffset = header.leafDirectoryOffset + entry.offset;
-        directoryLength = entry.length;
-      }
-    } else {
-      return undefined;
-    }
-  }
-
-  throw Error("Maximum directory depth exceeded.");
-}
-
 export function pmtilesFd(input) {
   return openAssetsSync({
     path: input,
     flag: O_RDONLY,
   });
+}
+
+export class PMTiles {
+  constructor(input) {
+    this.fd = pmtilesFd(input);
+    this.dirCache = new Map();
+    this.dirCacheHits = new Map();
+
+    this.header = getHeader(this.fd);
+    this.rootDir = this.getDirectory(
+      this.header.rootDirectoryOffset,
+      this.header.rootDirectoryLength
+    );
+  }
+
+  getDirectory(offset, length) {
+    const key = `${offset}-${length}`;
+
+    // Set counter
+    let counter = 0;
+    if (this.dirCacheHits.has(key)) {
+      counter = this.dirCacheHits.get(key) + 1;
+    }
+    this.dirCacheHits.set(key, counter);
+
+    // Early return if cache found
+    if (this.dirCache.has(key)) {
+      return this.dirCache.get(key);
+    }
+
+    const directory = parseDirectory(this.fd, offset, length, this.header);
+
+    // Prune cache if necessary
+    if (this.dirCache.size > DIR_CACHE_SIZE) {
+      keyToPrune = this.pruneDirCache();
+      if (keyToPrune === key) return directory; // If the current key has lowest hits, do nothing
+
+      if (keyToPrune) this.dirCache.delete(keyToPrune);
+    }
+
+    this.dirCache.set(key, directory);
+    return directory;
+  }
+
+  pruneDirCache() {
+    let minHits = Infinity;
+    let minHitsKey = null;
+    [...this.dirCache.keys(), key].forEach((key) => {
+      const hits = this.dirCacheHits.get(key);
+      if (hits < minHits) {
+        minHits = hits;
+        minHitsKey = key;
+      }
+    });
+
+    if (!minHitsKey) return false;
+
+    return minHitsKey;
+  }
+
+  getZxy(z, x, y) {
+    const tileId = zxyToTileId(z, x, y);
+
+    logger.debug("Getting tile: ", tileId);
+
+    // Ensure tile zoom is within the limits defined in the header
+    if (z < this.header.minZoom || z > this.header.maxZoom) {
+      return undefined;
+    }
+
+    let directoryOffset = this.header.rootDirectoryOffset;
+    let directoryLength = this.header.rootDirectoryLength;
+
+    for (let depth = 0; depth <= 3; depth++) {
+      const directory = this.getDirectory(directoryOffset, directoryLength);
+      const entry = findTile(directory, tileId);
+
+      if (!entry || entry.length === 0) return undefined;
+
+      if (entry.runLength > 0) {
+        const tileBuffer = new ArrayBuffer(entry.length);
+        readSync({
+          fd: this.fd,
+          buffer: tileBuffer,
+          options: {
+            offset: 0,
+            length: entry.length,
+            position: this.header.tileDataOffset + entry.offset,
+          },
+        });
+
+        return decompress(tileBuffer, this.header.tileCompression);
+      } else {
+        directoryOffset = this.header.leafDirectoryOffset + entry.offset;
+        directoryLength = entry.length;
+      }
+    }
+
+    logger.warn("Maximum directory depth exceeded.");
+    return undefined;
+  }
+
+  close() {
+    closeSync({ fd: this.fd });
+  }
 }

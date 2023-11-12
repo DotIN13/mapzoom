@@ -62,7 +62,7 @@ export function featureIntersects(feature, bbox) {
       coords = [].concat(...feature.geometry.coordinates.flat());
       break;
     default:
-      console.warn("Unsupported feature type:", feature.geometry.type);
+      logger.warn("Unsupported feature type:", feature.geometry.type);
       return false;
   }
 

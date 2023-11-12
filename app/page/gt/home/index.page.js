@@ -9,14 +9,13 @@ import {
   CANVAS_STYLE,
   TRACKPAD_STYLE,
   FRAMETIME_COUNTER_STYLE,
-  DEVICE_WIDTH,
-  DEVICE_HEIGHT,
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
 } from "zosLoader:./index.page.[pf].layout.js";
 
-import { ZoomMap } from "../../../utils/mapzoom.js";
-import { logger } from "../../../utils/logger.js";
+import { ZoomMap } from "../../../utils/mapzoom";
+import { logger } from "../../../utils/logger";
+import { DEVICE_WIDTH, DEVICE_HEIGHT } from "../../../utils/globals";
 
 const geolocation = new Geolocation();
 
