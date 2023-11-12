@@ -62,24 +62,20 @@ Page({
     this.zoomMap.render();
 
     // Geolocation updates
-    // const callback = () => {
-    //   if (geolocation.getStatus() === "A") {
-    //     lat = geolocation.getLatitude();
-    //     lon = geolocation.getLongitude();
+    const callback = () => {
+      logger.debug(geolocation.getStatus());
 
-    //     if (
-    //       zoomZoomMap.followGPS &&
-    //       typeof lat === "number" &&
-    //       typeof lon === "number"
-    //     ) {
-    //       zoomZoomMap.center = { lon, lat };
-    //       zoomZoomMap.render();
-    //     }
-    //   }
-    // };
+      if (geolocation.getStatus() === "A") {
+        lat = geolocation.getLatitude();
+        lon = geolocation.getLongitude();
+        if (typeof lat != "number" || typeof lon != "number") return;
 
-    // geolocation.start();
-    // geolocation.onChange(callback);
+        this.zoomMap.geoLocation = { lon, lat };
+      }
+    };
+
+    geolocation.start();
+    geolocation.onChange(callback);
   },
   onDestroy() {
     logger.debug("page onDestroy invoked");

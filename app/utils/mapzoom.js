@@ -46,6 +46,9 @@ export class ZoomMap {
     this.trackpad = trackpad;
     this.frametimeCounter = frametimeCounter;
 
+    this.followGPS = false;
+    this.geoLocation = null;
+
     // Set up initial center and zoom level
     this.center = lonLatToPixelCoordinates(initialCenter, CENTER_STORAGE_SCALE);
     this.canvasCenter = { ...this.center };
@@ -61,7 +64,7 @@ export class ZoomMap {
 
     this.isRendering = false;
 
-    this.initListeners();
+    this.bindWidgets();
   }
 
   get defaultCanvasStyle() {
@@ -78,6 +81,7 @@ export class ZoomMap {
   }
 
   set zoom(level) {
+    if (typeof level !== "number") throw new Error("Invalid zoom level.");
     if (this._zoom == level) return;
 
     level = Math.max(0, level);
@@ -85,6 +89,39 @@ export class ZoomMap {
     this._zoom = level;
 
     this.renderCache.clear();
+  }
+
+  get geoLocation() {
+    return this._geoLocation;
+  }
+
+  /**
+   * @param {Object} lonlat longitude and latitude
+   */
+  set geoLocation(lonlat) {
+    if (!lonlat) return;
+
+    this._geoLocation = lonlat;
+    const newCenter = lonLatToPixelCoordinates(lonlat, this.zoom);
+
+    // Update canvas center if following GPS
+    if (this.followGPS) this.updateCenter(newCenter, { redraw: true });
+
+    // Update user location marker
+    const canvasCenter = this.getRenderCache("currentCanvasCenter");
+    markerX = newCenter.x - (canvasCenter.x - this.canvasW / 2);
+    markerY = newCenter.y - (canvasCenter.y - this.canvasH / 2);
+
+    // logger.debug(lonlat.lon, lonlat.lat, markerX, markerY);
+    halfMarker = this.userMarkerProps.radius / 2;
+    if (markerX < -halfMarker || markerX > this.canvasW + halfMarker) return;
+
+    this.userMarker.setProperty(ui.prop.MORE, {
+      ...this.userMarkerProps,
+      center_x: markerX,
+      center_y: markerY,
+      alpha: 240,
+    });
   }
 
   getRenderCache(key) {
@@ -106,30 +143,57 @@ export class ZoomMap {
     return val;
   }
 
-  initListeners() {
+  bindWidgets() {
     let isDragging = false;
     let lastPosition = null;
 
     let lastZoomUpdate = null;
+    let wheelDegrees = 0;
+    let zoomTimeout = null;
+
+    // Create user location marker
+    this.userMarkerProps = {
+      center_x: 240,
+      center_y: 240,
+      radius: 10,
+      color: 0xea4335,
+      alpha: 0,
+    };
+    this.userMarker = ui.createWidget(ui.widget.CIRCLE, this.userMarkerProps);
+    this.userMarker.setEnable(false); // Disable marker interactions
 
     onDigitalCrown({
       callback: (key, degree) => {
         logger.debug(`Digital crown callback: ${key}, ${degree}`);
         if (key == KEY_HOME) {
           const currentTime = Date.now();
-          // Throttle updates to 25 times per second
+          // Throttle crown wheel updates
           if (
             lastZoomUpdate &&
             currentTime - lastZoomUpdate < ZOOM_THROTTLING_DELAY
           )
             return;
-          
+
           lastZoomUpdate = currentTime;
 
           // KEY_HOME is the Crown wheel
           logger.debug("Crown wheel: ", key, degree);
-          this.zoom -= (degree / Math.abs(degree)) * ZOOM_SPEED_FACTOR;
-          this.render();
+          wheelDegrees -= degree;
+
+          if (zoomTimeout) clearTimeout(zoomTimeout);
+          zoomTimeout = setTimeout(() => {
+            // If the wheel is still spinning, don't update the zoom level
+            if (wheelDegrees == 0) return;
+
+            const currentTime = Date.now();
+            if (currentTime - lastZoomUpdate < ZOOM_THROTTLING_DELAY) return;
+
+            // Update zoom level
+            this.zoom += wheelDegrees * ZOOM_SPEED_FACTOR;
+            wheelDegrees = 0;
+
+            this.render();
+          }, ZOOM_THROTTLING_DELAY * 1.2);
         }
       },
     });
@@ -280,58 +344,56 @@ export class ZoomMap {
     };
   }
 
-  /**
-   * Filters out coordinates based on their relation to the canvas.
-   * @param {Array} coordinates - An array of {x, y} objects representing coordinates.
-   * @param {string} geometryType - Type of the feature ('Point', 'MultiPoint', 'LineString', etc.).
-   * @returns {Array} - An array of {x, y} objects to be drawn on the canvas.
-   */
-  filterCanvasCoordinates(coordinates, geometryType) {
-    return coordinates;
+  // /**
+  //  * Filters out coordinates based on their relation to the canvas.
+  //  * @param {Array} coordinates - An array of {x, y} objects representing coordinates.
+  //  * @param {string} geometryType - Type of the feature ('Point', 'MultiPoint', 'LineString', etc.).
+  //  * @returns {Array} - An array of {x, y} objects to be drawn on the canvas.
+  //  */
+  // filterCanvasCoordinates(coordinates, geometryType) {
+  //   // Object to cache the results of canvas boundary checks
+  //   const cache = {};
 
-    // Object to cache the results of canvas boundary checks
-    const cache = {};
+  //   // Check if a point is within the canvas boundaries and cache the result
+  //   const isInsideCanvas = (arr, index) => {
+  //     // Return cached result if available
+  //     if (index in cache) return cache[index];
 
-    // Check if a point is within the canvas boundaries and cache the result
-    const isInsideCanvas = (arr, index) => {
-      // Return cached result if available
-      if (index in cache) return cache[index];
+  //     const point = arr[index];
+  //     const result =
+  //       point.x >= 0 &&
+  //       point.x <= this.canvasW &&
+  //       point.y >= 0 &&
+  //       point.y <= this.canvasH;
 
-      const point = arr[index];
-      const result =
-        point.x >= 0 &&
-        point.x <= this.canvasW &&
-        point.y >= 0 &&
-        point.y <= this.canvasH;
+  //     // Store the result in the cache
+  //     cache[index] = result;
 
-      // Store the result in the cache
-      cache[index] = result;
+  //     return result;
+  //   };
 
-      return result;
-    };
+  //   // If it's Point/MultiPoint, simply return coordinates inside the canvas
+  //   if (geometryType === "Point" || geometryType === "MultiPoint") {
+  //     return coordinates.filter((coord, index) =>
+  //       isInsideCanvas(coordinates, index)
+  //     );
+  //   }
 
-    // If it's Point/MultiPoint, simply return coordinates inside the canvas
-    if (geometryType === "Point" || geometryType === "MultiPoint") {
-      return coordinates.filter((coord, index) =>
-        isInsideCanvas(coordinates, index)
-      );
-    }
+  //   // For other feature types
+  //   return coordinates.filter((_, index, arr) => {
+  //     // Always keep the coordinate if it's inside the canvas
+  //     if (isInsideCanvas(arr, index)) return true;
 
-    // For other feature types
-    return coordinates.filter((_, index, arr) => {
-      // Always keep the coordinate if it's inside the canvas
-      if (isInsideCanvas(arr, index)) return true;
+  //     // If it's the first coordinate, only check the next one
+  //     if (index === 0) return isInsideCanvas(arr, index + 1);
 
-      // If it's the first coordinate, only check the next one
-      if (index === 0) return isInsideCanvas(arr, index + 1);
+  //     // If it's the last coordinate, only check the previous one
+  //     if (index === arr.length - 1) return isInsideCanvas(arr, index - 1);
 
-      // If it's the last coordinate, only check the previous one
-      if (index === arr.length - 1) return isInsideCanvas(arr, index - 1);
-
-      // For coordinates in between, if both neighbors are outside the canvas, drop the coordinate
-      return isInsideCanvas(arr, index - 1) || isInsideCanvas(arr, index + 1);
-    });
-  }
+  //     // For coordinates in between, if both neighbors are outside the canvas, drop the coordinate
+  //     return isInsideCanvas(arr, index - 1) || isInsideCanvas(arr, index + 1);
+  //   });
+  // }
 
   render() {
     if (this.isRendering) return; // Prevent multiple renders
@@ -400,7 +462,6 @@ export class ZoomMap {
               baseTileY,
               currentTileSize
             );
-            pointCoord = this.filterCanvasCoordinates(pointCoord, geoType);
             this.canvas.drawPixel({ ...pointCoord, color: 0xffffff });
             continue;
           }
@@ -413,7 +474,6 @@ export class ZoomMap {
                 baseTileY,
                 currentTileSize
               );
-              pointCoord = this.filterCanvasCoordinates(pointCoord, geoType);
               this.canvas.drawPixel({ ...pointCoord, color: 0xffffff });
             }
             continue;
@@ -428,7 +488,6 @@ export class ZoomMap {
                 currentTileSize
               )
             );
-            lineCoords = this.filterCanvasCoordinates(lineCoords, geoType);
             this.canvas.strokePoly({
               data_array: lineCoords,
               color: 0x00ff22,
@@ -446,7 +505,6 @@ export class ZoomMap {
                   currentTileSize
                 )
               );
-              lineCoords = this.filterCanvasCoordinates(lineCoords, geoType);
               this.canvas.strokePoly({
                 data_array: lineCoords,
                 color: 0x444444,
@@ -465,10 +523,6 @@ export class ZoomMap {
                 currentTileSize
               )
             );
-            outerRingCoords = this.filterCanvasCoordinates(
-              outerRingCoords,
-              geoType
-            );
             this.canvas.strokePoly({
               data_array: outerRingCoords,
               color: 0x3499ff,
@@ -484,10 +538,6 @@ export class ZoomMap {
                     baseTileY,
                     currentTileSize
                   )
-              );
-              innerRingCoords = this.filterCanvasCoordinates(
-                innerRingCoords,
-                geoType
               );
               this.canvas.strokePoly({
                 data_array: innerRingCoords,
@@ -508,10 +558,6 @@ export class ZoomMap {
                   currentTileSize
                 )
               );
-              outerRingCoords = this.filterCanvasCoordinates(
-                outerRingCoords,
-                geoType
-              );
               this.canvas.strokePoly({
                 data_array: outerRingCoords,
                 color: 0x00ff99,
@@ -526,10 +572,6 @@ export class ZoomMap {
                     baseTileY,
                     currentTileSize
                   )
-                );
-                innerRingCoords = this.filterCanvasCoordinates(
-                  innerRingCoords,
-                  geoType
                 );
                 this.canvas.strokePoly({
                   data_array: innerRingCoords,
@@ -549,6 +591,9 @@ export class ZoomMap {
 
     const elapsedTime = Date.now() - startTime;
     logger.debug("Render time: ", elapsedTime, "ms");
-    this.frametimeCounter.setProperty(ui.prop.TEXT, `z${roundToPrecision(this.zoom)} ${elapsedTime}ms`);
+    this.frametimeCounter.setProperty(
+      ui.prop.TEXT,
+      `z${roundToPrecision(this.zoom)} ${elapsedTime}ms`
+    );
   }
 }
