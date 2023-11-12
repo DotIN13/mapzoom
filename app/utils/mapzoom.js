@@ -20,8 +20,7 @@ import {
 } from "./globals";
 import { logger } from "./logger";
 import { TileCache } from "./mvt";
-import { roundToPrecision } from "./coordinates";
-import { lonLatToPixelCoordinates } from "./coordinates.js";
+import { roundToPrecision, lonLatToPixelCoordinates } from "./coordinates";
 
 function scaleCoordinates(coord, fromZoom, toZoom) {
   return {
@@ -423,7 +422,7 @@ export class ZoomMap {
 
     // For each tile, interpolate the pixel coordinates of the features and draw them on the canvas.
     for (const tile of tiles) {
-      // logger.debug("Processing tile: ", tile.x, tile.y);
+      logger.debug("Fetching tile: ", tile.x, tile.y);
 
       // Convert the byte range to decoded mvt json
       const decodedTile = this.tileCache.getTile(
@@ -433,8 +432,6 @@ export class ZoomMap {
       );
 
       if (!decodedTile) continue;
-
-      logger.debug("Drawing tile: ", tile.x, tile.y);
 
       const currentTileSize = this.getRenderCache("currentTileSize");
       const currentCanvasCenter = this.getRenderCache("currentCanvasCenter");

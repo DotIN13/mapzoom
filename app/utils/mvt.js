@@ -1,91 +1,20 @@
-import {
-  openAssetsSync,
-  readSync,
-  statAssetsSync,
-  O_RDONLY,
-  closeSync,
-} from "@zos/fs";
-
-import pako from "pako";
-
-import {
-  TILE_SIZE,
-  TILE_EXTENT,
-  TILE_SCALE,
-  CACHE_SIZE,
-} from "./globals";
+import { TILE_SIZE, TILE_EXTENT, TILE_SCALE, CACHE_SIZE } from "./globals";
 import { logger } from "./logger";
 import { roundToPrecision } from "./coordinates";
 import { vector_tile } from "./vector_tile";
+import { pmtilesFd, getZxy } from "./pmtiles";
 
-
-function readByte(fd, position) {
-  const buffer = new ArrayBuffer(1); // Since we're reading just one byte
-  const view = new Uint8Array(buffer);
-
-  readSync({
-    fd: fd,
-    buffer: buffer,
-    options: {
-      offset: 0,       // We're always writing to the start of this small buffer
-      length: 1,       // Just one byte
-      position: position
-    },
-  });
-
-  return view[0];     // Return the byte
-}
-
-function readVarInt(fd, x) {
-  let shift = 0;
-  let result = 0;
-  let byte;
-
-  do {
-    byte = readByte(fd, x++);
-
-    result |= (byte & 0x7F) << shift;
-    shift += 7;
-  } while (byte >= 0x80);
-
-  return result;
-}
-
-
-
-export function exampleMvt() {
-  // Open and stat file outside the loop as we only need to do it once
-  const fd = openAssetsSync({
-    path: "map/shanghai_10_857_418_minify.mvt",
-    flag: O_RDONLY,
-  });
-
-  const stat = statAssetsSync({
-    path: "map/shanghai_10_857_418_minify.mvt",
-  });
-
-  const buffer = new ArrayBuffer(stat.size);
-
+// Decode a decompressed mvt tile
+function decodeTile(decompressed) {
   // Benchmark start time
   const startTime = Date.now();
 
-  // Read the file
-  readSync({ fd, buffer });
-  closeSync({ fd });
-  // logger.debug("readSync done");
-
-  // Decompress
-  const inflated = pako.inflate(Buffer.from(buffer));
-  // logger.debug("Inflate done");
-
   // Decode
-  const decodedTile = vector_tile.Tile.decode(inflated);
+  const decodedTile = vector_tile.Tile.decode(decompressed);
   firstPass(decodedTile);
-  // logger.debug(mvtData.layers[0].name);
 
   // Benchmark end time
   const endTime = Date.now();
-
   const elapsedTime = endTime - startTime; // in seconds
   logger.debug(`Decoded MVT in ${elapsedTime.toFixed(2)}ms.`);
 
@@ -208,6 +137,7 @@ export function parseGeometry(rawFeature) {
 export class TileCache {
   constructor() {
     this.cache = new Map();
+    this.fd = pmtilesFd("map/shanghai-20231024-mini.pmtiles");
   }
 
   getTile(z, x, y) {
@@ -232,8 +162,10 @@ export class TileCache {
   }
 
   fetchTile(z, x, y) {
-    if (!(z == 10 && x == 857 && y == 418)) return null;
+    decompressed = getZxy(this.fd, z, x, y);
+    if (!decompressed) return null;
 
-    return exampleMvt(); // TODO: Implement tile retrieval from PMTiles file
+    decoded = decodeTile(decompressed);
+    return decoded;
   }
 }

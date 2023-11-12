@@ -63,8 +63,6 @@ Page({
 
     // Geolocation updates
     const callback = () => {
-      logger.debug(geolocation.getStatus());
-
       if (geolocation.getStatus() === "A") {
         lat = geolocation.getLatitude();
         lon = geolocation.getLongitude();

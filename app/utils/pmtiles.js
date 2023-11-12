@@ -8,48 +8,28 @@ import {
 
 import pako from "pako";
 
-import { TILE_SIZE, TILE_EXTENT, TILE_SCALE, CACHE_SIZE } from "./globals";
 import { logger } from "./logger";
-import { roundToPrecision } from "./coordinates";
-import { vector_tile } from "./vector_tile";
 
 const HEADER_SIZE_BYTES = 127; // Or the appropriate header size for PMTiles
 
-function readByte(fd, position) {
-  const buffer = new ArrayBuffer(1); // Since we're reading just one byte
-  const view = new Uint8Array(buffer);
-
-  readSync({
-    fd: fd,
-    buffer: buffer,
-    options: {
-      offset: 0, // We're always writing to the start of this small buffer
-      length: 1, // Just one byte
-      position: position,
-    },
-  });
-
-  return view[0]; // Return the byte
-}
-
-function readVarInt(fd, x) {
+function readVarInt(p) {
   let shift = 0;
   let result = 0;
   let byte;
 
   do {
-    byte = readByte(fd, x++);
+    byte = p.buf[p.pos++]; // Use the updated readByte function
 
     result |= (byte & 0x7f) << shift;
     shift += 7;
   } while (byte >= 0x80);
 
-  return result;
+  return result; // Return the result and the number of bytes read
 }
 
 function decompress(compressed, compression_type) {
   if (compression_type == 0x05) return snappyJS?.uncompress(compressed);
-  if (compression_type == 0x02) return pako?.decompress(compressed);
+  if (compression_type == 0x02) return pako?.inflate(compressed);
   if (compression_type == 0x01) return compressed;
 }
 
@@ -136,7 +116,7 @@ function bytesToHeader(bytes) {
   const spec_version = v.getUint8(7);
   if (spec_version > 3) {
     throw Error(
-      `Archive is spec version ${spec_version} but this library supports up to spec version 3`
+      `Archive is spec version ${spec_version} but this library supports up to spec version 3.`
     );
   }
 
@@ -179,7 +159,7 @@ function getHeader(fd) {
   return bytesToHeader(buffer);
 }
 
-function getHeaderAndRoot(fd) {
+export function getHeaderAndRoot(fd) {
   const header = getHeader(fd);
 
   if (header.specVersion < 3) {
@@ -188,23 +168,12 @@ function getHeaderAndRoot(fd) {
     );
   }
 
-  const rootDirDataLength = header.rootDirectoryLength;
-  const rootDirData = new ArrayBuffer(rootDirDataLength);
-  readSync({
+  const rootDir = getDirectory(
     fd,
-    buffer: rootDirData,
-    options: {
-      offset: 0,
-      length: rootDirDataLength,
-      position: header.rootDirectoryOffset,
-    },
-  });
-
-  const decompressedRootDirData = decompress(
-    rootDirData,
-    header.internalCompression
+    header.rootDirectoryOffset,
+    header.rootDirectoryLength,
+    header
   );
-  const rootDir = deserializeIndex(decompressedRootDirData); // Assuming you have a function `deserializeIndex` that parses the decompressed data
 
   return [header, rootDir];
 }
@@ -251,11 +220,13 @@ function getDirectory(fd, offset, length, header) {
   });
 
   const data = decompress(buffer, header.internalCompression);
+
   const directory = deserializeIndex(data);
   if (directory.length === 0) {
     throw new Error("Empty directory is invalid");
   }
 
+  // logger.debug("Read directory complete, length", directory.length);
   return directory;
 }
 
@@ -290,6 +261,9 @@ function findTile(entries, tileId) {
 }
 
 export function getZxy(fd, z, x, y) {
+  // Benchmark start time
+  const startTime = Date.now();
+
   const tileId = zxyToTileId(z, x, y);
   const header = getHeader(fd);
 
@@ -322,6 +296,12 @@ export function getZxy(fd, z, x, y) {
             position: header.tileDataOffset + entry.offset,
           },
         });
+
+        // Benchmark end time
+        const endTime = Date.now();
+        const elapsedTime = endTime - startTime; // in seconds
+        logger.debug(`Retrieved tile in ${elapsedTime.toFixed(2)}ms.`);
+
         return decompress(tileBuffer, header.tileCompression);
       } else {
         directoryOffset = header.leafDirectoryOffset + entry.offset;
@@ -332,7 +312,7 @@ export function getZxy(fd, z, x, y) {
     }
   }
 
-  throw Error("Maximum directory depth exceeded");
+  throw Error("Maximum directory depth exceeded.");
 }
 
 export function pmtilesFd(input) {
