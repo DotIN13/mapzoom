@@ -186,7 +186,8 @@ export class ZoomMap {
 
     onDigitalCrown({
       callback: (key, degree) => {
-        logger.debug(`Digital crown callback: ${key}, ${degree}`);
+        // logger.debug(`Digital crown callback: ${key}, ${degree}`);
+
         if (key == KEY_HOME) {
           const currentTime = Date.now();
 
@@ -422,13 +423,12 @@ export class ZoomMap {
 
     // Set render indicators
     this.isRendering = true;
-    this.frametimeCounter.setProperty(ui.prop.TEXT, "Rendering...");
 
     const startTime = Date.now();
 
     // First, calculate the tiles intersecting with the viewport
     const tiles = this.calculateViewportTiles();
-    logger.debug(tiles.length, "tiles found.");
+    logger.info(tiles.length, "tiles to render.");
 
     this.canvas.setPaint({
       color: 0xffff00,
@@ -483,7 +483,12 @@ export class ZoomMap {
               baseTileY,
               currentTileSize
             );
-            this.canvas.drawPixel({ ...pointCoord, color: 0xffffff });
+            this.canvas.drawCircle({
+              center_x: pointCoord.x,
+              center_y: pointCoord.y,
+              radius: 4,
+              color: 0xf2f233,
+            });
             continue;
           }
 
@@ -495,7 +500,12 @@ export class ZoomMap {
                 baseTileY,
                 currentTileSize
               );
-              this.canvas.drawPixel({ ...pointCoord, color: 0xffffff });
+              this.canvas.drawCircle({
+                center_x: pointCoord.x,
+                center_y: pointCoord.y,
+                radius: 4,
+                color: 0xf2f233,
+              });
             }
             continue;
           }

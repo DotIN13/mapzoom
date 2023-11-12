@@ -332,7 +332,7 @@ export class PMTiles {
   getZxy(z, x, y) {
     const tileId = zxyToTileId(z, x, y);
 
-    logger.debug("Getting tile: ", tileId);
+    // logger.debug("Getting tile: ", tileId);
 
     // Ensure tile zoom is within the limits defined in the header
     if (z < this.header.minZoom || z > this.header.maxZoom) {
