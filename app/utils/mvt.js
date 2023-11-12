@@ -199,12 +199,12 @@ import { vector_tile } from "./vector_tile";
 export function exampleMvt() {
   // Open and stat file outside the loop as we only need to do it once
   const fd = openAssetsSync({
-    path: "map/shanghai_10_857_418.mvt",
+    path: "map/shanghai_10_857_418_minify.mvt",
     flag: O_RDONLY,
   });
 
   const stat = statAssetsSync({
-    path: "map/shanghai_10_857_418.mvt",
+    path: "map/shanghai_10_857_418_minify.mvt",
   });
 
   const buffer = new ArrayBuffer(stat.size);

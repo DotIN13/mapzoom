@@ -11,6 +11,6 @@ export const PAN_SPEED_FACTOR = 1.8; // adjust this value as needed
 export const ZOOM_SPEED_FACTOR = 0.1; // adjust this value as needed
 
 export const PAN_THROTTLING_DELAY = 20; // Throttle delay of 50ms
-export const ZOOM_THROTTLING_DELAY = 200; // Throttle delay of 100ms
+export const ZOOM_THROTTLING_DELAY = 500; // Throttle delay of 500ms
 
 export const CENTER_STORAGE_SCALE = 10; // Scale factor for center coordinates storage

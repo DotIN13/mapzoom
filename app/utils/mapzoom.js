@@ -123,13 +123,13 @@ export class ZoomMap {
             currentTime - lastZoomUpdate < ZOOM_THROTTLING_DELAY
           )
             return;
+          
+          lastZoomUpdate = currentTime;
 
           // KEY_HOME is the Crown wheel
           logger.debug("Crown wheel: ", key, degree);
-          this.zoom += (degree / Math.abs(degree)) * ZOOM_SPEED_FACTOR;
+          this.zoom -= (degree / Math.abs(degree)) * ZOOM_SPEED_FACTOR;
           this.render();
-
-          lastZoomUpdate = currentTime;
         }
       },
     });
@@ -275,8 +275,8 @@ export class ZoomMap {
     // Always make sure the cached coordinates in this function are rounded
     // to the precision defined in global constants to achieve better performance.
     return {
-      x: roundToPrecision(baseTileX + coord[0] * currentTileSize),
-      y: roundToPrecision(baseTileY + coord[1] * currentTileSize),
+      x: baseTileX + coord[0] * currentTileSize,
+      y: baseTileY + coord[1] * currentTileSize,
     };
   }
 
@@ -392,33 +392,53 @@ export class ZoomMap {
           // logger.debug(JSON.stringify(feature.properties.name));
 
           const geoType = feature.geometry.type;
-          switch (geoType) {
-            case "Point":
+
+          if (geoType === "Point") {
+            let pointCoord = this.featureToCanvasCoordinates(
+              feature.geometry.coordinates,
+              baseTileX,
+              baseTileY,
+              currentTileSize
+            );
+            pointCoord = this.filterCanvasCoordinates(pointCoord, geoType);
+            this.canvas.drawPixel({ ...pointCoord, color: 0xffffff });
+            continue;
+          }
+
+          if (geoType === "MultiPoint") {
+            for (const coord of feature.geometry.coordinates) {
               let pointCoord = this.featureToCanvasCoordinates(
-                feature.geometry.coordinates,
+                coord,
                 baseTileX,
                 baseTileY,
                 currentTileSize
               );
               pointCoord = this.filterCanvasCoordinates(pointCoord, geoType);
               this.canvas.drawPixel({ ...pointCoord, color: 0xffffff });
-              break;
+            }
+            continue;
+          }
 
-            case "MultiPoint":
-              feature.geometry.coordinates.forEach((coord) => {
-                let pointCoord = this.featureToCanvasCoordinates(
-                  coord,
-                  baseTileX,
-                  baseTileY,
-                  currentTileSize
-                );
-                pointCoord = this.filterCanvasCoordinates(pointCoord, geoType);
-                this.canvas.drawPixel({ ...pointCoord, color: 0xffffff });
-              });
-              break;
+          if (geoType === "LineString") {
+            let lineCoords = feature.geometry.coordinates.map((coord) =>
+              this.featureToCanvasCoordinates(
+                coord,
+                baseTileX,
+                baseTileY,
+                currentTileSize
+              )
+            );
+            lineCoords = this.filterCanvasCoordinates(lineCoords, geoType);
+            this.canvas.strokePoly({
+              data_array: lineCoords,
+              color: 0x00ff22,
+            });
+            continue;
+          }
 
-            case "LineString":
-              let lineCoords = feature.geometry.coordinates.map((coord) =>
+          if (geoType === "MultiLineString") {
+            for (const line of feature.geometry.coordinates) {
+              let lineCoords = line.map((coord) =>
                 this.featureToCanvasCoordinates(
                   coord,
                   baseTileX,
@@ -429,31 +449,34 @@ export class ZoomMap {
               lineCoords = this.filterCanvasCoordinates(lineCoords, geoType);
               this.canvas.strokePoly({
                 data_array: lineCoords,
-                color: 0x00ff22,
+                color: 0x444444,
               });
-              break;
+            }
+            continue;
+          }
 
-            case "MultiLineString":
-              feature.geometry.coordinates.forEach((line) => {
-                let lineCoords = line.map((coord) =>
-                  this.featureToCanvasCoordinates(
-                    coord,
-                    baseTileX,
-                    baseTileY,
-                    currentTileSize
-                  )
-                );
-                lineCoords = this.filterCanvasCoordinates(lineCoords, geoType);
-                this.canvas.strokePoly({
-                  data_array: lineCoords,
-                  color: 0x444444,
-                });
-              });
-              break;
+          if (geoType === "Polygon") {
+            // Draw the outer ring
+            let outerRingCoords = feature.geometry.coordinates[0].map((coord) =>
+              this.featureToCanvasCoordinates(
+                coord,
+                baseTileX,
+                baseTileY,
+                currentTileSize
+              )
+            );
+            outerRingCoords = this.filterCanvasCoordinates(
+              outerRingCoords,
+              geoType
+            );
+            this.canvas.strokePoly({
+              data_array: outerRingCoords,
+              color: 0x3499ff,
+            }); // Or fillPoly if you want filled polygons
 
-            case "Polygon":
-              // Only draw the outer ring. If inner rings (holes) are present, they need to be considered differently.
-              let outerRingCoords = feature.geometry.coordinates[0].map(
+            // Draw inner rings (holes) if present
+            for (let i = 1; i < feature.geometry.coordinates.length; i++) {
+              let innerRingCoords = feature.geometry.coordinates[i].map(
                 (coord) =>
                   this.featureToCanvasCoordinates(
                     coord,
@@ -462,19 +485,41 @@ export class ZoomMap {
                     currentTileSize
                   )
               );
+              innerRingCoords = this.filterCanvasCoordinates(
+                innerRingCoords,
+                geoType
+              );
+              this.canvas.strokePoly({
+                data_array: innerRingCoords,
+                color: 0x3499ff,
+              }); // Use a different color if you want to distinguish holes
+            }
+            continue;
+          }
+
+          if (geoType === "MultiPolygon") {
+            for (const polygon of feature.geometry.coordinates) {
+              // Draw the outer ring of each polygon
+              let outerRingCoords = polygon[0].map((coord) =>
+                this.featureToCanvasCoordinates(
+                  coord,
+                  baseTileX,
+                  baseTileY,
+                  currentTileSize
+                )
+              );
               outerRingCoords = this.filterCanvasCoordinates(
                 outerRingCoords,
                 geoType
               );
               this.canvas.strokePoly({
                 data_array: outerRingCoords,
-                color: 0x3499ff,
-              }); // Or fillPoly if you want filled polygons
-              break;
+                color: 0x00ff99,
+              }); // Or fillPoly for filled polygons
 
-            case "MultiPolygon":
-              feature.geometry.coordinates.forEach((polygon) => {
-                let outerRingCoords = polygon[0].map((coord) =>
+              // Draw inner rings (holes) of each polygon if present
+              for (let i = 1; i < polygon.length; i++) {
+                let innerRingCoords = polygon[i].map((coord) =>
                   this.featureToCanvasCoordinates(
                     coord,
                     baseTileX,
@@ -482,22 +527,20 @@ export class ZoomMap {
                     currentTileSize
                   )
                 );
-                outerRingCoords = this.filterCanvasCoordinates(
-                  outerRingCoords,
+                innerRingCoords = this.filterCanvasCoordinates(
+                  innerRingCoords,
                   geoType
                 );
                 this.canvas.strokePoly({
-                  data_array: outerRingCoords,
+                  data_array: innerRingCoords,
                   color: 0x00ff99,
-                }); // Or fillPoly for filled polygons
-              });
-              break;
-
-            default:
-              console.warn(
-                `Unsupported feature type: ${feature.geometry.type}`
-              );
+                }); // Use a different color for holes if desired
+              }
+            }
+            continue;
           }
+
+          logger.warn(`Unsupported feature type: ${feature.geometry.type}`);
         }
       }
     }
@@ -506,6 +549,6 @@ export class ZoomMap {
 
     const elapsedTime = Date.now() - startTime;
     logger.debug("Render time: ", elapsedTime, "ms");
-    this.frametimeCounter.setProperty(ui.prop.TEXT, `${elapsedTime}ms`);
+    this.frametimeCounter.setProperty(ui.prop.TEXT, `z${roundToPrecision(this.zoom)} ${elapsedTime}ms`);
   }
 }
