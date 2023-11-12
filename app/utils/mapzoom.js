@@ -194,7 +194,6 @@ export class ZoomMap {
           lastZoomUpdate = currentTime;
 
           // KEY_HOME is the Crown wheel
-          logger.debug("Crown wheel: ", key, degree);
           wheelDegrees -= degree; // degree is negative when rolling up
 
           const newZoom = this.zoom + wheelDegrees * ZOOM_SPEED_FACTOR;
@@ -423,9 +422,22 @@ export class ZoomMap {
 
     // Set render indicators
     this.isRendering = true;
-
     const startTime = Date.now();
 
+    try {
+      this.commitRender();
+    } catch (e) {
+      logger.error("Render error: ", e);
+    }
+
+    this.isRendering = false;
+
+    const elapsedTime = Date.now() - startTime;
+    logger.info("Render time: ", elapsedTime, "ms");
+    this.frametimeCounter.setProperty(ui.prop.TEXT, `${elapsedTime}ms`);
+  }
+
+  commitRender() {
     // First, calculate the tiles intersecting with the viewport
     const tiles = this.calculateViewportTiles();
     logger.info(tiles.length, "tiles to render.");
@@ -487,7 +499,7 @@ export class ZoomMap {
               center_x: pointCoord.x,
               center_y: pointCoord.y,
               radius: 4,
-              color: 0xf2f233,
+              color: 0xefefef,
             });
             continue;
           }
@@ -504,7 +516,7 @@ export class ZoomMap {
                 center_x: pointCoord.x,
                 center_y: pointCoord.y,
                 radius: 4,
-                color: 0xf2f233,
+                color: 0xefefef,
               });
             }
             continue;
@@ -617,11 +629,5 @@ export class ZoomMap {
         }
       }
     }
-
-    this.isRendering = false;
-
-    const elapsedTime = Date.now() - startTime;
-    logger.info("Render time: ", elapsedTime, "ms");
-    this.frametimeCounter.setProperty(ui.prop.TEXT, `${elapsedTime}ms`);
   }
 }
