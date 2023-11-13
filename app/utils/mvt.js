@@ -11,7 +11,6 @@ import { vector_tile } from "./vector_tile";
 import { PMTiles } from "./pmtiles";
 
 const localStorage = new LocalStorage();
-localStorage.clear();
 
 // Decode a decompressed mvt tile
 function decodeTile(decompressed) {
