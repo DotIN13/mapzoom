@@ -1,6 +1,7 @@
 import { getDeviceInfo } from "@zos/device";
 
 export const DEBUG = false;
+export const VERSION = "1";
 
 export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo();
 
@@ -19,7 +20,8 @@ export const TILE_SCALE = TILE_SIZE / TILE_EXTENT;
 export const PRECISION_FACTOR = 10;
 
 export const DIR_CACHE_SIZE = 5;
-export const TILE_CACHE_SIZE = 4;
+export const MEM_TILE_CACHE_SIZE = 4;
+export const LOCAL_TILE_CACHE_SIZE = 50;
 
 export const PAN_SPEED_FACTOR = 1.8; // adjust this value as needed
 export const ZOOM_SPEED_FACTOR = 0.1; // adjust this value as needed

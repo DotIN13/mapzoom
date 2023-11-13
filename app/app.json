@@ -14,7 +14,8 @@
   },
   "permissions": [
     "data:os.device.info",
-    "device:os.geolocation"
+    "device:os.geolocation",
+    "device:os.local_storage"
   ],
   "runtime": {
     "apiVersion": {

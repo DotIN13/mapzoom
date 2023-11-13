@@ -1,7 +1,17 @@
-import { DEBUG, TILE_CACHE_SIZE } from "./globals";
+import { LocalStorage } from "@zos/storage";
+
+import {
+  DEBUG,
+  VERSION,
+  MEM_TILE_CACHE_SIZE,
+  LOCAL_TILE_CACHE_SIZE,
+} from "./globals";
 import { logger, timer } from "./logger";
 import { vector_tile } from "./vector_tile";
 import { PMTiles } from "./pmtiles";
+
+const localStorage = new LocalStorage();
+localStorage.clear();
 
 // Decode a decompressed mvt tile
 function decodeTile(decompressed) {
@@ -122,36 +132,75 @@ export function parseGeometry(rawFeature) {
 //   return feature;
 // }
 
+const MEMORY_CACHE_SIZE = 50;
+const STORAGE_CACHE_SIZE = 100;
+
 export class TileCache {
   constructor() {
-    this.cache = new Map();
+    this.mapId = `shanghai-20231024-mini-v${VERSION}`;
+    this.memoryCache = new Map();
+    this.localStorageKeys = localStorage.getItem(this.mapId, []);
     this.pmtiles = new PMTiles("map/shanghai-20231024-mini.pmtiles");
   }
 
   getTile(z, x, y) {
-    const key = `${z}-${x}-${y}`;
-    if (this.cache.has(key)) return this.cache.get(key);
+    const key = `${this.mapId}-${z}-${x}-${y}`;
+    let tile = this.getTileFromCache(key);
 
-    // Fetch tile from PMTiles file
-    const tile = this.fetchTile(z, x, y);
-    if (tile) this.setTile(z, x, y, tile);
+    if (!tile) {
+      tile = this.getTileFromFile(z, x, y);
+      this.updateCaches(key, tile);
+    }
+
     return tile;
   }
 
-  setTile(z, x, y, tile) {
-    if (this.cache.size > TILE_CACHE_SIZE) {
-      // Evict the first tile in the cache
-      const firstKey = this.cache.keys().next().value;
-      this.cache.delete(firstKey);
+  getTileFromCache(key) {
+    let tile = this.memoryCache.get(key);
+    if (tile) return tile;
 
-      logger.debug("Tile cache pruned: ", firstKey);
+    tile = this.getTileFromLocalStorage(key);
+    if (tile) {
+      this.updateMemoryCache(key, tile); // Update memory cache with the recently used item
     }
 
-    const key = `${z}-${x}-${y}`;
-    this.cache.set(key, tile);
+    return tile;
   }
 
-  fetchTile(z, x, y) {
+  updateCaches(key, tile) {
+    this.updateMemoryCache(key, tile);
+    this.updateLocalStorage(key, tile);
+  }
+
+  getTileFromLocalStorage(key) {
+    const tile = localStorage.getItem(key);
+    if (tile) {
+      this.localStorageKeys = this.localStorageKeys.filter((k) => k !== key);
+      this.localStorageKeys.push(key);
+      localStorage.getItem(this.mapId, this.localStorageKeys);
+    }
+    return tile;
+  }
+
+  updateMemoryCache(key, tile) {
+    if (this.memoryCache.size >= MEM_TILE_CACHE_SIZE) {
+      const oldestKey = this.memoryCache.keys().next().value;
+      this.memoryCache.delete(oldestKey);
+    }
+    this.memoryCache.set(key, tile);
+  }
+
+  updateLocalStorage(key, tile) {
+    if (this.localStorageKeys.length >= LOCAL_TILE_CACHE_SIZE) {
+      const oldestKey = this.localStorageKeys.shift();
+      localStorage.removeItem(oldestKey);
+    }
+    localStorage.setItem(key, tile);
+    this.localStorageKeys.push(key);
+    localStorage.getItem(this.mapId, this.localStorageKeys);
+  }
+
+  getTileFromFile(z, x, y) {
     let decompressed, decoded;
 
     if (DEBUG)
