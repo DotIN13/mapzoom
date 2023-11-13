@@ -3,6 +3,7 @@ import { offDigitalCrown } from "@zos/interaction";
 import { onGesture, offGesture, GESTURE_RIGHT } from "@zos/interaction";
 import { Geolocation } from "@zos/sensor";
 import { setScrollLock } from "@zos/page";
+import { pauseDropWristScreenOff, resetDropWristScreenOff } from "@zos/display";
 
 import {
   TEXT_STYLE,
@@ -23,6 +24,7 @@ Page({
   onInit() {
     logger.debug("page onInit invoked");
     setScrollLock({ lock: true });
+    pauseDropWristScreenOff({ duration: 0 });
   },
   build() {
     logger.debug("page build invoked");
@@ -84,5 +86,7 @@ Page({
 
     offDigitalCrown();
     offGesture();
+
+    resetDropWristScreenOff();
   },
 });

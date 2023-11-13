@@ -3,6 +3,7 @@ import {
   onDigitalCrown,
   onKey,
   KEY_DOWN,
+  KEY_SHORTCUT,
   KEY_HOME,
   KEY_EVENT_CLICK,
 } from "@zos/interaction";
@@ -86,6 +87,7 @@ export class ZoomMap {
 
     // Set up initial center and zoom level
     this.center = lonLatToPixelCoordinates(initialCenter, CENTER_STORAGE_SCALE);
+    this.initialCenter = { ...this.center };
     this.canvasCenter = { ...this.center };
 
     this.tileCache = new TileCache();
@@ -220,7 +222,9 @@ export class ZoomMap {
 
     onDigitalCrown({
       callback: (key, degree) => {
-        // logger.debug(`Digital crown callback: ${key}, ${degree}`);
+        if (this.isRendering) return;
+
+        // logger.debug(`Digital crown callback: ${key}, ${degree}.`);
 
         if (key == KEY_HOME) {
           const currentTime = Date.now();
@@ -254,35 +258,37 @@ export class ZoomMap {
       },
     });
 
-    // onKey({
-    //   callback: (key, keyEvent) => {
-    //     logger.debug(`Key callback: ${key}`);
-    //     if (key == KEY_DOWN && keyEvent === KEY_EVENT_CLICK) {
-    //       // Debugging only
-    //       this.center = { lon: 121.5, lat: 31.295 };
-    //       this.zoom = 14;
-    //       this.followGPS = false;
-    //       this.render();
-    //       return true;
-    //     }
+    onKey({
+      callback: (key, keyEvent) => {
+        // logger.debug(`Key callback: ${key}`);
 
-    //     return false;
-    //   },
-    // });
+        if (key == KEY_SHORTCUT && keyEvent === KEY_EVENT_CLICK) {
+          this.updateCenter(this.initialCenter, { redraw: true });
+          return true;
+        }
+
+        return false;
+      },
+    });
 
     this.trackpad.addEventListener(ui.event.CLICK_DOWN, (e) => {
+      if (this.isRendering) return;
+
       isDragging = true;
       this.followGPS = false;
       lastPosition = { x: e.x, y: e.y };
     });
 
     this.trackpad.addEventListener(ui.event.CLICK_UP, (e) => {
+      if (this.isRendering) return;
+
       isDragging = false;
       this.updateCenter(this.center, { redraw: true });
       lastPosition = null;
     });
 
     this.trackpad.addEventListener(ui.event.MOVE, (e) => {
+      if (this.isRendering) return;
       if (!isDragging || !lastPosition) return;
 
       const currentTime = Date.now();
@@ -398,7 +404,6 @@ export class ZoomMap {
     this.isRendering = false;
 
     const elapsedTime = Date.now() - startTime;
-    logger.info("Render time: ", elapsedTime, "ms");
     this.frametimeCounter.setProperty(ui.prop.TEXT, `${elapsedTime}ms`);
   }
 

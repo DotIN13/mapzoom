@@ -1,5 +1,3 @@
-import { LocalStorage } from "@zos/storage";
-
 import {
   DEBUG,
   VERSION,
@@ -9,8 +7,6 @@ import {
 import { logger, timer } from "./logger";
 import { vector_tile } from "./vector_tile";
 import { PMTiles } from "./pmtiles";
-
-const localStorage = new LocalStorage();
 
 // Decode a decompressed mvt tile
 function decodeTile(decompressed) {
@@ -133,48 +129,20 @@ export function parseGeometry(rawFeature) {
 
 export class TileCache {
   constructor() {
-    this.mapId = `shanghai-20231024-mini-v${VERSION}`;
     this.memoryCache = new Map();
-    this.localStorageKeys = localStorage.getItem(this.mapId, []);
+    this.mapId = `shanghai-20231024-mini-v${VERSION}`;
     this.pmtiles = new PMTiles("map/shanghai-20231024-mini.pmtiles");
   }
 
   getTile(z, x, y) {
     const key = `${this.mapId}-${z}-${x}-${y}`;
-    let tile = this.getTileFromCache(key);
+    let tile = this.memoryCache.get(key);
 
     if (!tile) {
       tile = this.getTileFromFile(z, x, y);
-      this.updateCaches(key, tile);
+      this.updateMemoryCache(key, tile);
     }
 
-    return tile;
-  }
-
-  getTileFromCache(key) {
-    let tile = this.memoryCache.get(key);
-    if (tile) return tile;
-
-    tile = this.getTileFromLocalStorage(key);
-    if (tile) {
-      this.updateMemoryCache(key, tile); // Update memory cache with the recently used item
-    }
-
-    return tile;
-  }
-
-  updateCaches(key, tile) {
-    this.updateMemoryCache(key, tile);
-    this.updateLocalStorage(key, tile);
-  }
-
-  getTileFromLocalStorage(key) {
-    const tile = localStorage.getItem(key);
-    if (tile) {
-      this.localStorageKeys = this.localStorageKeys.filter((k) => k !== key);
-      this.localStorageKeys.push(key);
-      localStorage.setItem(this.mapId, this.localStorageKeys);
-    }
     return tile;
   }
 
@@ -184,16 +152,6 @@ export class TileCache {
       this.memoryCache.delete(oldestKey);
     }
     this.memoryCache.set(key, tile);
-  }
-
-  updateLocalStorage(key, tile) {
-    if (this.localStorageKeys.length >= LOCAL_TILE_CACHE_SIZE) {
-      const oldestKey = this.localStorageKeys.shift();
-      localStorage.removeItem(oldestKey);
-    }
-    localStorage.setItem(key, tile);
-    this.localStorageKeys.push(key);
-    localStorage.setItem(this.mapId, this.localStorageKeys);
   }
 
   getTileFromFile(z, x, y) {
