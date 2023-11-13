@@ -1,9 +1,18 @@
 import { getDeviceInfo } from "@zos/device";
 
+export const DEBUG = false;
+
 export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo();
 
 export const TILE_SIZE = 512;
 export const TILE_EXTENT = 4096;
+
+// Create a precomputed tile projection from TILE_EXTENT to 0..1
+export const TILE_PROJECTION = new Float32Array(TILE_EXTENT + 256);
+
+for (let i = 0; i < TILE_EXTENT + 256; i++) {
+  TILE_PROJECTION[i] = (i - 128) / TILE_EXTENT;
+}
 
 export const TILE_SCALE = TILE_SIZE / TILE_EXTENT;
 

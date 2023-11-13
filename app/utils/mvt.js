@@ -1,5 +1,5 @@
-import { TILE_SIZE, TILE_EXTENT, TILE_SCALE, TILE_CACHE_SIZE } from "./globals";
-import { logger } from "./logger";
+import { DEBUG, TILE_CACHE_SIZE } from "./globals";
+import { logger, timer } from "./logger";
 import { vector_tile } from "./vector_tile";
 import { PMTiles } from "./pmtiles";
 
@@ -7,7 +7,8 @@ import { PMTiles } from "./pmtiles";
 function decodeTile(decompressed) {
   // Decode
   const decodedTile = vector_tile.Tile.decode(decompressed);
-  firstPass(decodedTile);
+  if (DEBUG) timer(firstPass, "parseMvt", undefined, decodedTile);
+  if (!DEBUG) firstPass(decodedTile);
 
   return decodedTile;
 }
@@ -16,10 +17,6 @@ function decodeTile(decompressed) {
 
 function zigzagDecode(n) {
   return (n >> 1) ^ -(n & 1);
-}
-
-function projectTileExtent(x, y) {
-  return [x / TILE_EXTENT, y / TILE_EXTENT];
 }
 
 function firstPass(decodedTile) {
@@ -51,7 +48,7 @@ export function parseGeometry(rawFeature) {
         for (let j = 0; j < cmdCount; j++) {
           x += zigzagDecode(rawFeature.geometry[i++]);
           y += zigzagDecode(rawFeature.geometry[i++]);
-          ring.push(projectTileExtent(x, y));
+          ring.push([x, y]);
         }
         break;
 
@@ -59,7 +56,7 @@ export function parseGeometry(rawFeature) {
         for (let j = 0; j < cmdCount; j++) {
           x += zigzagDecode(rawFeature.geometry[i++]);
           y += zigzagDecode(rawFeature.geometry[i++]);
-          ring.push(projectTileExtent(x, y));
+          ring.push([x, y]);
         }
         break;
 
@@ -146,6 +143,8 @@ export class TileCache {
       // Evict the first tile in the cache
       const firstKey = this.cache.keys().next().value;
       this.cache.delete(firstKey);
+
+      logger.debug("Tile cache pruned: ", firstKey);
     }
 
     const key = `${z}-${x}-${y}`;
@@ -153,10 +152,26 @@ export class TileCache {
   }
 
   fetchTile(z, x, y) {
-    decompressed = this.pmtiles.getZxy(z, x, y);
+    let decompressed, decoded;
+
+    if (DEBUG)
+      decompressed = timer(
+        () => this.pmtiles.getZxy(z, x, y),
+        "getZxy",
+        `fetch tile ${z} ${x} ${y}`
+      );
+    else decompressed = this.pmtiles.getZxy(z, x, y);
     if (!decompressed) return null;
 
-    decoded = decodeTile(decompressed);
+    if (DEBUG)
+      decoded = timer(
+        decodeTile,
+        "decodeTile",
+        `decode tile ${z} ${x} ${y}`,
+        decompressed
+      );
+    else decoded = decodeTile(decompressed);
+
     return decoded;
   }
 }

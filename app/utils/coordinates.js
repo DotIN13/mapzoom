@@ -100,6 +100,21 @@ export function pixelToLonLat(x, y, zoom) {
 }
 
 /**
+ * Convert a geographical [longitude, latitude] to a pixel's x and y coordinates based on a given zoom level.
+ * @param {Object} lonlat - An object with 'lon' and 'lat' properties representing the geographical coordinates.
+ * @param {number} zoom - The current zoom level.
+ * @returns {Object} An object with 'x' and 'y' properties representing the pixel's coordinates within the canvas.
+ */
+export function zxyToLonLat(z, x, y) {
+  var n = Math.pow(2, z);
+  var lon_deg = (x / n) * 360.0 - 180.0;
+  var lat_rad = Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / n)));
+  var lat_deg = (lat_rad * 180.0) / Math.PI;
+
+  return { lon: lon_deg, lat: lat_deg };
+}
+
+/**
  * Calculate the top-left corner (origin) of the canvas in pixel coordinates.
  * @param {Object} center - An object with 'lon' and 'lat' properties representing the geographical center of the canvas.
  * @param {number} zoom - The current zoom level.

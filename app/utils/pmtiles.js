@@ -303,7 +303,7 @@ export class PMTiles {
 
     // Prune cache if necessary
     if (this.dirCache.size > DIR_CACHE_SIZE) {
-      keyToPrune = this.pruneDirCache();
+      const keyToPrune = this.pruneDirCache();
       if (keyToPrune === key) return directory; // If the current key has lowest hits, do nothing
 
       if (keyToPrune) this.dirCache.delete(keyToPrune);
@@ -325,6 +325,8 @@ export class PMTiles {
     });
 
     if (!minHitsKey) return false;
+
+    logger.debug("Dir cache pruned: ", minHitsKey);
 
     return minHitsKey;
   }

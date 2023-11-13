@@ -12,6 +12,7 @@ import {
   DEVICE_WIDTH,
   TILE_SIZE,
   TILE_EXTENT,
+  TILE_PROJECTION,
   TILE_CACHE_SIZE,
   PAN_SPEED_FACTOR,
   ZOOM_SPEED_FACTOR,
@@ -29,6 +30,40 @@ function scaleCoordinates(coord, fromZoom, toZoom) {
     x: coord.x * Math.pow(2, toZoom - fromZoom),
     y: coord.y * Math.pow(2, toZoom - fromZoom),
   };
+}
+
+/**
+ * Build a coordinate cache for a given tile size.
+ * @param {Number} tileSize - Tile size in pixels.
+ * @returns {Object} - A coordinate cache object.
+ */
+function buildCoordCache(tileSize) {
+  const cache = new Float32Array(TILE_EXTENT + 256);
+  cache.set(TILE_PROJECTION);
+
+  for (let i = 0; i < TILE_EXTENT + 256; i++) {
+    cache[i] *= tileSize;
+  }
+  return { cache, tileSize };
+}
+
+/**
+ * Get the pixel coordinates of a given MVT tile coordinates pair.
+ * @param {Array} xy - A MVT tile coordinates pair, usually in [0, 4096].
+ * @param {Object} coordCache - A coordinate cache object.
+ * @returns {Object} - Pixel coordinates {x, y}.
+ */
+function getCoordCache(xy, coordCache) {
+  let x = coordCache.cache[xy[0] + 128] + coordCache.baseTileX;
+  let y = coordCache.cache[xy[1] + 128] + coordCache.baseTileY;
+
+  if (!(isNaN(x) || isNaN(y))) return { x, y };
+
+  // logger.debug("Coordinates cache missed.");
+
+  x = (xy[0] / TILE_EXTENT) * coordCache.tileSize + coordCache.baseTileX;
+  y = (xy[1] / TILE_EXTENT) * coordCache.tileSize + coordCache.baseTileY;
+  return { x, y };
 }
 
 export class ZoomMap {
@@ -348,75 +383,6 @@ export class ZoomMap {
     return tiles;
   }
 
-  /**
-   * Interpolates the coordinates of a feature from tile space to canvas space.
-   *
-   * @param {Array} coord - The original coordinates of the feature in the tile [x, y].
-   * @param {number} baseTileX - Base world X coordinate for the tile's top-left corner.
-   * @param {number} baseTileY - Base world Y coordinate for the tile's top-left corner.
-   * @returns {Object} - The interpolated coordinates { x, y } in canvas space.
-   */
-  featureToCanvasCoordinates(coord, baseTileX, baseTileY, currentTileSize) {
-    // Translate world coordinates to our canvas space, taking the canvas center into account.
-    // Always make sure the cached coordinates in this function are rounded
-    // to the precision defined in global constants to achieve better performance.
-    return {
-      x: baseTileX + coord[0] * currentTileSize,
-      y: baseTileY + coord[1] * currentTileSize,
-    };
-  }
-
-  // /**
-  //  * Filters out coordinates based on their relation to the canvas.
-  //  * @param {Array} coordinates - An array of {x, y} objects representing coordinates.
-  //  * @param {string} geometryType - Type of the feature ('Point', 'MultiPoint', 'LineString', etc.).
-  //  * @returns {Array} - An array of {x, y} objects to be drawn on the canvas.
-  //  */
-  // filterCanvasCoordinates(coordinates, geometryType) {
-  //   // Object to cache the results of canvas boundary checks
-  //   const cache = {};
-
-  //   // Check if a point is within the canvas boundaries and cache the result
-  //   const isInsideCanvas = (arr, index) => {
-  //     // Return cached result if available
-  //     if (index in cache) return cache[index];
-
-  //     const point = arr[index];
-  //     const result =
-  //       point.x >= 0 &&
-  //       point.x <= this.canvasW &&
-  //       point.y >= 0 &&
-  //       point.y <= this.canvasH;
-
-  //     // Store the result in the cache
-  //     cache[index] = result;
-
-  //     return result;
-  //   };
-
-  //   // If it's Point/MultiPoint, simply return coordinates inside the canvas
-  //   if (geometryType === "Point" || geometryType === "MultiPoint") {
-  //     return coordinates.filter((coord, index) =>
-  //       isInsideCanvas(coordinates, index)
-  //     );
-  //   }
-
-  //   // For other feature types
-  //   return coordinates.filter((_, index, arr) => {
-  //     // Always keep the coordinate if it's inside the canvas
-  //     if (isInsideCanvas(arr, index)) return true;
-
-  //     // If it's the first coordinate, only check the next one
-  //     if (index === 0) return isInsideCanvas(arr, index + 1);
-
-  //     // If it's the last coordinate, only check the previous one
-  //     if (index === arr.length - 1) return isInsideCanvas(arr, index - 1);
-
-  //     // For coordinates in between, if both neighbors are outside the canvas, drop the coordinate
-  //     return isInsideCanvas(arr, index - 1) || isInsideCanvas(arr, index + 1);
-  //   });
-  // }
-
   render() {
     if (this.isRendering) return; // Prevent multiple renders
 
@@ -458,6 +424,11 @@ export class ZoomMap {
     //   color: 0x292900,
     // });
 
+    const currentTileSize = this.getRenderCache("currentTileSize");
+    const currentCanvasCenter = this.getRenderCache("currentCanvasCenter");
+
+    const coordCache = buildCoordCache(currentTileSize);
+
     // For each tile, interpolate the pixel coordinates of the features and draw them on the canvas.
     for (const tile of tiles) {
       // Convert the byte range to decoded mvt json
@@ -469,13 +440,10 @@ export class ZoomMap {
 
       if (!decodedTile) continue;
 
-      const currentTileSize = this.getRenderCache("currentTileSize");
-      const currentCanvasCenter = this.getRenderCache("currentCanvasCenter");
-
-      let baseTileX =
+      coordCache.baseTileX =
         tile.x * currentTileSize - (currentCanvasCenter.x - this.canvasW / 2);
 
-      let baseTileY =
+      coordCache.baseTileY =
         tile.y * currentTileSize - (currentCanvasCenter.y - this.canvasH / 2);
 
       // Iterate through features in the decoded tile and draw them
@@ -486,50 +454,35 @@ export class ZoomMap {
         for (let feature of layer.features) {
           // logger.debug(JSON.stringify(feature.properties.name));
 
-          const geoType = feature.geometry.type;
+          const { type: geoType, coordinates: featCoords } = feature.geometry;
 
           if (geoType === "Point") {
-            let pointCoord = this.featureToCanvasCoordinates(
-              feature.geometry.coordinates,
-              baseTileX,
-              baseTileY,
-              currentTileSize
-            );
+            let pointCoord = getCoordCache(featCoords, coordCache);
             this.canvas.drawCircle({
               center_x: pointCoord.x,
               center_y: pointCoord.y,
               radius: 4,
-              color: 0xefefef,
+              color: 0xdedede,
             });
             continue;
           }
 
           if (geoType === "MultiPoint") {
-            for (const coord of feature.geometry.coordinates) {
-              let pointCoord = this.featureToCanvasCoordinates(
-                coord,
-                baseTileX,
-                baseTileY,
-                currentTileSize
-              );
+            for (const coord of featCoords) {
+              let pointCoord = getCoordCache(coord, coordCache);
               this.canvas.drawCircle({
                 center_x: pointCoord.x,
                 center_y: pointCoord.y,
                 radius: 4,
-                color: 0xefefef,
+                color: 0xdedede,
               });
             }
             continue;
           }
 
           if (geoType === "LineString") {
-            let lineCoords = feature.geometry.coordinates.map((coord) =>
-              this.featureToCanvasCoordinates(
-                coord,
-                baseTileX,
-                baseTileY,
-                currentTileSize
-              )
+            let lineCoords = featCoords.map((coord) =>
+              getCoordCache(coord, coordCache)
             );
             this.canvas.strokePoly({
               data_array: lineCoords,
@@ -539,14 +492,9 @@ export class ZoomMap {
           }
 
           if (geoType === "MultiLineString") {
-            for (const line of feature.geometry.coordinates) {
+            for (const line of featCoords) {
               let lineCoords = line.map((coord) =>
-                this.featureToCanvasCoordinates(
-                  coord,
-                  baseTileX,
-                  baseTileY,
-                  currentTileSize
-                )
+                getCoordCache(coord, coordCache)
               );
               this.canvas.strokePoly({
                 data_array: lineCoords,
@@ -558,13 +506,8 @@ export class ZoomMap {
 
           if (geoType === "Polygon") {
             // Draw the outer ring
-            let outerRingCoords = feature.geometry.coordinates[0].map((coord) =>
-              this.featureToCanvasCoordinates(
-                coord,
-                baseTileX,
-                baseTileY,
-                currentTileSize
-              )
+            let outerRingCoords = featCoords[0].map((coord) =>
+              getCoordCache(coord, coordCache)
             );
             this.canvas.strokePoly({
               data_array: outerRingCoords,
@@ -572,15 +515,9 @@ export class ZoomMap {
             }); // Or fillPoly if you want filled polygons
 
             // Draw inner rings (holes) if present
-            for (let i = 1; i < feature.geometry.coordinates.length; i++) {
-              let innerRingCoords = feature.geometry.coordinates[i].map(
-                (coord) =>
-                  this.featureToCanvasCoordinates(
-                    coord,
-                    baseTileX,
-                    baseTileY,
-                    currentTileSize
-                  )
+            for (let i = 1; i < featCoords.length; i++) {
+              let innerRingCoords = featCoords[i].map((coord) =>
+                getCoordCache(coord, coordCache)
               );
               this.canvas.strokePoly({
                 data_array: innerRingCoords,
@@ -591,15 +528,10 @@ export class ZoomMap {
           }
 
           if (geoType === "MultiPolygon") {
-            for (const polygon of feature.geometry.coordinates) {
+            for (const polygon of featCoords) {
               // Draw the outer ring of each polygon
               let outerRingCoords = polygon[0].map((coord) =>
-                this.featureToCanvasCoordinates(
-                  coord,
-                  baseTileX,
-                  baseTileY,
-                  currentTileSize
-                )
+                getCoordCache(coord, coordCache)
               );
               this.canvas.strokePoly({
                 data_array: outerRingCoords,
@@ -609,12 +541,7 @@ export class ZoomMap {
               // Draw inner rings (holes) of each polygon if present
               for (let i = 1; i < polygon.length; i++) {
                 let innerRingCoords = polygon[i].map((coord) =>
-                  this.featureToCanvasCoordinates(
-                    coord,
-                    baseTileX,
-                    baseTileY,
-                    currentTileSize
-                  )
+                  getCoordCache(coord, coordCache)
                 );
                 this.canvas.strokePoly({
                   data_array: innerRingCoords,
