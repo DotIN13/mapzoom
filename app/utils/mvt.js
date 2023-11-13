@@ -131,9 +131,6 @@ export function parseGeometry(rawFeature) {
 //   return feature;
 // }
 
-const MEMORY_CACHE_SIZE = 50;
-const STORAGE_CACHE_SIZE = 100;
-
 export class TileCache {
   constructor() {
     this.mapId = `shanghai-20231024-mini-v${VERSION}`;
@@ -176,7 +173,7 @@ export class TileCache {
     if (tile) {
       this.localStorageKeys = this.localStorageKeys.filter((k) => k !== key);
       this.localStorageKeys.push(key);
-      localStorage.getItem(this.mapId, this.localStorageKeys);
+      localStorage.setItem(this.mapId, this.localStorageKeys);
     }
     return tile;
   }
@@ -196,7 +193,7 @@ export class TileCache {
     }
     localStorage.setItem(key, tile);
     this.localStorageKeys.push(key);
-    localStorage.getItem(this.mapId, this.localStorageKeys);
+    localStorage.setItem(this.mapId, this.localStorageKeys);
   }
 
   getTileFromFile(z, x, y) {
