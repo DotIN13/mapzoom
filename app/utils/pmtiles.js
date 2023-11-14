@@ -7,6 +7,7 @@ import {
 } from "@zos/fs";
 
 import pako from "pako";
+import snappyJS from "snappyjs";
 
 import { logger } from "./logger";
 import { DIR_CACHE_SIZE } from "./globals";
@@ -29,8 +30,8 @@ function readVarInt(p) {
 }
 
 function decompress(compressed, compression_type) {
-  if (compression_type == 0x05) return snappyJS?.uncompress(compressed);
-  if (compression_type == 0x02) return pako?.inflate(compressed);
+  if (compression_type == 0x05) return snappyJS.uncompress(compressed);
+  if (compression_type == 0x02) return pako.inflate(compressed);
   if (compression_type == 0x01) return compressed;
 }
 

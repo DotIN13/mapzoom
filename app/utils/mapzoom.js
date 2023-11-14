@@ -398,7 +398,7 @@ export class ZoomMap {
     try {
       this.commitRender();
     } catch (e) {
-      logger.error("Render error: ", e);
+      logger.error(e);
     }
 
     this.isRendering = false;
@@ -436,13 +436,13 @@ export class ZoomMap {
     // For each tile, interpolate the pixel coordinates of the features and draw them on the canvas.
     for (const tile of tiles) {
       // Convert the byte range to decoded mvt json
-      const decodedTile = this.tileCache.getTile(
+      const tileObj = this.tileCache.getTile(
         Math.floor(this.zoom),
         tile.x,
         tile.y
       );
 
-      if (!decodedTile) continue;
+      if (!tileObj) continue;
 
       coordCache.baseTileX =
         tile.x * currentTileSize - (currentCanvasCenter.x - this.canvasW / 2);
@@ -451,8 +451,7 @@ export class ZoomMap {
         tile.y * currentTileSize - (currentCanvasCenter.y - this.canvasH / 2);
 
       // Iterate through features in the decoded tile and draw them
-      for (const layer of decodedTile.layers) {
-        // logger.debug(layer.name);
+      for (const layer of tileObj.layers) {
 
         // Iterate through features in the layer
         for (let feature of layer.features) {

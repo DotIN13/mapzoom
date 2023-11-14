@@ -1,6 +1,6 @@
 import { getDeviceInfo } from "@zos/device";
 
-export const DEBUG = false;
+export const DEBUG = true;
 export const VERSION = "1";
 
 export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo();

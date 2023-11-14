@@ -1,3 +1,5 @@
+import * as flatbuffers from "flatbuffers";
+
 import {
   DEBUG,
   VERSION,
@@ -6,16 +8,18 @@ import {
 } from "./globals";
 import { logger, timer } from "./logger";
 import { PMTiles } from "./pmtiles";
-import { exampleMvt } from "./example_mvt";
+import { vector_tile } from "./vector-tile-js/vector_tile";
 
 // Decode a decompressed mvt tile
 function decodeTile(decompressed) {
-  // Decode
-  const decodedTile = vector_tile.Tile.decode(decompressed);
-  if (DEBUG) timer(firstPass, "parseMvt", undefined, decodedTile);
-  if (!DEBUG) firstPass(decodedTile);
+  const buf = new flatbuffers.ByteBuffer(new Uint8Array(decompressed));
+  const decodedTile = vector_tile.Tile.getRootAsTile(buf);
 
-  return decodedTile;
+  const tileObj = DEBUG
+    ? timer(firstPass, "parseMvt", undefined, decodedTile)
+    : firstPass(decodedTile);
+
+  return tileObj;
 }
 
 /******************* Tiles *********************/
@@ -25,22 +29,36 @@ function zigzagDecode(n) {
 }
 
 export function firstPass(decodedTile) {
-  for (const layer of decodedTile.layers) {
-    for (const rawFeature of layer.features) {
-      parseGeometry(rawFeature);
+  const layers = []; // Create layers
+
+  for (let i = 0; i < decodedTile.layersLength(); i++) {
+    const layer = decodedTile.layers(i);
+    const features = []; // Create feature list of each layer
+    const featureTemp = new vector_tile.Feature();
+
+    for (let j = 0; j < layer.featuresLength(); j++) {
+      const geometry = parseGeometry(layer.features(j, featureTemp));
+      if (geometry) features.push({ geometry });
     }
+
+    if (features.length === 0) continue; // Skip layers with no features
+
+    layers.push({ name: layer.name(), features });
   }
+  return { tile: decodeTile, layers };
 }
 
-function parseGeometry(rawFeature) {
+function parseGeometry(feature) {
   let x = 0;
   let y = 0;
   let i = 0;
   let rings = [];
   let ring = [];
 
-  while (i < rawFeature.geometry.length) {
-    const cmdInt = rawFeature.geometry[i++];
+  const geometry = feature.geometryArray();
+
+  while (i < feature.geometryLength()) {
+    const cmdInt = geometry[i++];
     const cmdId = cmdInt & 0x7;
     const cmdCount = cmdInt >> 3;
 
@@ -51,16 +69,16 @@ function parseGeometry(rawFeature) {
           ring = [];
         }
         for (let j = 0; j < cmdCount; j++) {
-          x += zigzagDecode(rawFeature.geometry[i++]);
-          y += zigzagDecode(rawFeature.geometry[i++]);
+          x += zigzagDecode(geometry[i++]);
+          y += zigzagDecode(geometry[i++]);
           ring.push([x, y]);
         }
         break;
 
       case 2: // LineTo
         for (let j = 0; j < cmdCount; j++) {
-          x += zigzagDecode(rawFeature.geometry[i++]);
-          y += zigzagDecode(rawFeature.geometry[i++]);
+          x += zigzagDecode(geometry[i++]);
+          y += zigzagDecode(geometry[i++]);
           ring.push([x, y]);
         }
         break;
@@ -77,50 +95,50 @@ function parseGeometry(rawFeature) {
 
   if (ring.length) rings.push(ring);
 
-  switch (rawFeature.type) {
+  // Return null if no coordinates are found
+  if (rings.length === 0) return null;
+
+  switch (feature.type()) {
     case 1: // POINT
-      rawFeature.geometry = {
+      return {
         type: rings[0].length === 1 ? "Point" : "MultiPoint",
         coordinates: rings[0].length === 1 ? rings[0][0] : rings[0],
       };
-      break;
     case 2: // LINESTRING
-      rawFeature.geometry = {
+      return {
         type: rings.length === 1 ? "LineString" : "MultiLineString",
         coordinates: rings.length === 1 ? rings[0] : rings,
       };
-      break;
     case 3: // POLYGON
       // TODO: Handle polygon/multipolygon distinction based on winding order and nested rings.
       // Simplified here for brevity.
-      rawFeature.geometry = {
+      return {
         type: "Polygon",
         coordinates: rings,
       };
-      break;
     default:
       // Type UNKNOWN or any other types can be handled here, if necessary.
-      break;
+      return null;
   }
 }
 
-// export function transformFeature(rawFeature, layer) {
-//   parseGeometry(rawFeature);
+// export function transformFeature(feature, layer) {
+//   parseGeometry(feature);
 
 //   const keys = layer.keys;
 //   const values = layer.values;
 
 //   const feature = {
 //     type: "Feature",
-//     id: rawFeature.id,
+//     id: feature.id,
 //     properties: {},
-//     geometry: rawFeature.geometry,
+//     geometry: feature.geometry,
 //   };
 
 //   // Parse tags to properties
-//   for (let i = 0; i < rawFeature.tags.length; i += 2) {
-//     const keyIndex = rawFeature.tags[i];
-//     const valueIndex = rawFeature.tags[i + 1];
+//   for (let i = 0; i < feature.tags.length; i += 2) {
+//     const keyIndex = feature.tags[i];
+//     const valueIndex = feature.tags[i + 1];
 //     feature.properties[keys[keyIndex]] = values[valueIndex];
 //   }
 
@@ -131,7 +149,7 @@ export class TileCache {
   constructor() {
     this.memoryCache = new Map();
     this.mapId = `shanghai-20231024-mini-v${VERSION}`;
-    // this.pmtiles = new PMTiles("map/shanghai-20231024-mini.pmtiles");
+    this.pmtiles = new PMTiles("map/shanghai-20231024-mini-fbs.pmtiles");
   }
 
   getTile(z, x, y) {
@@ -155,28 +173,26 @@ export class TileCache {
   }
 
   getTileFromFile(z, x, y) {
-    // let decompressed, decoded;
+    let decompressed, decoded;
 
-    // if (DEBUG)
-    //   decompressed = timer(
-    //     () => this.pmtiles.getZxy(z, x, y),
-    //     "getZxy",
-    //     `fetch tile ${z} ${x} ${y}`
-    //   );
-    // else decompressed = this.pmtiles.getZxy(z, x, y);
-    // if (!decompressed) return null;
+    if (DEBUG)
+      decompressed = timer(
+        () => this.pmtiles.getZxy(z, x, y),
+        "getZxy",
+        `fetch tile ${z} ${x} ${y}`
+      );
+    else decompressed = this.pmtiles.getZxy(z, x, y);
+    if (!decompressed) return null;
 
-    // if (DEBUG)
-    //   decoded = timer(
-    //     decodeTile,
-    //     "decodeTile",
-    //     `decode tile ${z} ${x} ${y}`,
-    //     decompressed
-    //   );
-    // else decoded = decodeTile(decompressed);
+    if (DEBUG)
+      decoded = timer(
+        decodeTile,
+        "decodeTile",
+        `decode tile ${z} ${x} ${y}`,
+        decompressed
+      );
+    else decoded = decodeTile(decompressed);
 
-    // return decoded;
-
-    return exampleMvt();
+    return decoded;
   }
 }

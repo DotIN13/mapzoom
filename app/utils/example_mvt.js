@@ -13,14 +13,16 @@ import { vector_tile } from "./vector-tile-js/vector_tile";
 import { firstPass } from "./mvt";
 
 export function exampleMvt() {
+  const mvtFilePath = "map/shanghai_15_27437_13396_fbs.mvt";
+
   // Open and stat file outside the loop as we only need to do it once
   const fd = openAssetsSync({
-    path: "map/shanghai_10_857_418_fbs.mvt",
+    path: mvtFilePath,
     flag: O_RDONLY,
   });
 
   const stat = statAssetsSync({
-    path: "map/shanghai_10_857_418_fbs.mvt",
+    path: mvtFilePath,
   });
 
   let buffer = new ArrayBuffer(stat.size);
@@ -36,14 +38,9 @@ export function exampleMvt() {
 
   const buf = new flatbuffers.ByteBuffer(new Uint8Array(buffer));
 
-  logger.debug("Created buffer.");
-
   // Decode
-  const decodedTile = vector_tile.Tile.getRootAsTile(buf).unpack();
-
-  // logger.debug("firstPass...");
-
-  firstPass(decodedTile);
+  const decodedTile = vector_tile.Tile.getRootAsTile(buf);
+  const tileObj = firstPass(decodedTile);
 
   // Benchmark end time
   const endTime = Date.now();
@@ -51,5 +48,5 @@ export function exampleMvt() {
   const elapsedTime = endTime - startTime; // in seconds
   logger.debug(`Decoded MVT in ${elapsedTime.toFixed(2)}ms.`);
 
-  return decodedTile;
+  return tileObj;
 }
