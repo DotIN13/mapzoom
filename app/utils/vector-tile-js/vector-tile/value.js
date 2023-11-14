@@ -31,15 +31,15 @@ export class Value {
     }
     intValue() {
         const offset = this.bb.__offset(this.bb_pos, 10);
-        return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
+        return offset ? this.bb.readInt32(this.bb_pos + offset) : 0;
     }
     uintValue() {
         const offset = this.bb.__offset(this.bb_pos, 12);
-        return offset ? this.bb.readUint64(this.bb_pos + offset) : BigInt('0');
+        return offset ? this.bb.readUint32(this.bb_pos + offset) : 0;
     }
     sintValue() {
         const offset = this.bb.__offset(this.bb_pos, 14);
-        return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt('0');
+        return offset ? this.bb.readInt32(this.bb_pos + offset) : 0;
     }
     boolValue() {
         const offset = this.bb.__offset(this.bb_pos, 16);
@@ -58,13 +58,13 @@ export class Value {
         builder.addFieldFloat64(2, doubleValue, 0.0);
     }
     static addIntValue(builder, intValue) {
-        builder.addFieldInt64(3, intValue, BigInt('0'));
+        builder.addFieldInt32(3, intValue, 0);
     }
     static addUintValue(builder, uintValue) {
-        builder.addFieldInt64(4, uintValue, BigInt('0'));
+        builder.addFieldInt32(4, uintValue, 0);
     }
     static addSintValue(builder, sintValue) {
-        builder.addFieldInt64(5, sintValue, BigInt('0'));
+        builder.addFieldInt32(5, sintValue, 0);
     }
     static addBoolValue(builder, boolValue) {
         builder.addFieldInt8(6, +boolValue, +false);
@@ -83,5 +83,32 @@ export class Value {
         Value.addSintValue(builder, sintValue);
         Value.addBoolValue(builder, boolValue);
         return Value.endValue(builder);
+    }
+    unpack() {
+        return new ValueT(this.stringValue(), this.floatValue(), this.doubleValue(), this.intValue(), this.uintValue(), this.sintValue(), this.boolValue());
+    }
+    unpackTo(_o) {
+        _o.stringValue = this.stringValue();
+        _o.floatValue = this.floatValue();
+        _o.doubleValue = this.doubleValue();
+        _o.intValue = this.intValue();
+        _o.uintValue = this.uintValue();
+        _o.sintValue = this.sintValue();
+        _o.boolValue = this.boolValue();
+    }
+}
+export class ValueT {
+    constructor(stringValue = null, floatValue = 0.0, doubleValue = 0.0, intValue = 0, uintValue = 0, sintValue = 0, boolValue = false) {
+        this.stringValue = stringValue;
+        this.floatValue = floatValue;
+        this.doubleValue = doubleValue;
+        this.intValue = intValue;
+        this.uintValue = uintValue;
+        this.sintValue = sintValue;
+        this.boolValue = boolValue;
+    }
+    pack(builder) {
+        const stringValue = (this.stringValue !== null ? builder.createString(this.stringValue) : 0);
+        return Value.createValue(builder, stringValue, this.floatValue, this.doubleValue, this.intValue, this.uintValue, this.sintValue, this.boolValue);
     }
 }

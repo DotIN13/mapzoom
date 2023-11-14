@@ -26,7 +26,6 @@ function zigzagDecode(n) {
 
 export function firstPass(decodedTile) {
   for (const layer of decodedTile.layers) {
-    logger.debug(layer.name)
     for (const rawFeature of layer.features) {
       parseGeometry(rawFeature);
     }

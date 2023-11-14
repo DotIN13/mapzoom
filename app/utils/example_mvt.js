@@ -6,11 +6,10 @@ import {
   closeSync,
 } from "@zos/fs";
 
-import pako from "pako";
 import * as flatbuffers from "flatbuffers";
 
 import { logger } from "./logger";
-import { vector_tile } from "./vector_tile";
+import { vector_tile } from "./vector-tile-js/vector_tile";
 import { firstPass } from "./mvt";
 
 export function exampleMvt() {
@@ -24,7 +23,7 @@ export function exampleMvt() {
     path: "map/shanghai_10_857_418_fbs.mvt",
   });
 
-  const buffer = new ArrayBuffer(stat.size);
+  let buffer = new ArrayBuffer(stat.size);
 
   // Benchmark start time
   const startTime = Date.now();
@@ -33,7 +32,7 @@ export function exampleMvt() {
   readSync({ fd, buffer });
   closeSync({ fd });
 
-  logger.debug("readSync done");
+  // logger.debug("readSync done");
 
   const buf = new flatbuffers.ByteBuffer(new Uint8Array(buffer));
 
@@ -42,8 +41,9 @@ export function exampleMvt() {
   // Decode
   const decodedTile = vector_tile.Tile.getRootAsTile(buf).unpack();
 
+  // logger.debug("firstPass...");
+
   firstPass(decodedTile);
-  // logger.debug(mvtData.layers[0].name);
 
   // Benchmark end time
   const endTime = Date.now();
