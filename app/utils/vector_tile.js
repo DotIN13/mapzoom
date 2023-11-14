@@ -1,783 +1,545 @@
-/*eslint-disable block-scoped-var, id-length, no-control-regex, no-magic-numbers, no-prototype-builtins, no-redeclare, no-shadow, no-var, sort-vars*/
-import * as $protobuf from "protobufjs/minimal";
+var __defProp = Object.defineProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
 
-const $Reader = $protobuf.Reader, $util = $protobuf.util;
+// utils/flatbuffers/vector-tile/vector-tile.ts
+var vector_tile_exports = {};
+__export(vector_tile_exports, {
+  Feature: () => Feature,
+  FeatureT: () => FeatureT,
+  GeomType: () => GeomType,
+  Layer: () => Layer,
+  LayerT: () => LayerT,
+  Tile: () => Tile,
+  TileT: () => TileT,
+  Value: () => Value,
+  ValueT: () => ValueT
+});
 
-const $root = $protobuf.roots["default"] || ($protobuf.roots["default"] = {});
+// utils/flatbuffers/vector-tile/vector-tile/feature.ts
+import * as flatbuffers from "flatbuffers";
 
-export const vector_tile = $root.vector_tile = (() => {
+// utils/flatbuffers/vector-tile/vector-tile/geom-type.ts
+var GeomType = /* @__PURE__ */ ((GeomType2) => {
+  GeomType2[GeomType2["UNKNOWN"] = 0] = "UNKNOWN";
+  GeomType2[GeomType2["POINT"] = 1] = "POINT";
+  GeomType2[GeomType2["LINESTRING"] = 2] = "LINESTRING";
+  GeomType2[GeomType2["POLYGON"] = 3] = "POLYGON";
+  return GeomType2;
+})(GeomType || {});
 
-    const vector_tile = {};
+// utils/flatbuffers/vector-tile/vector-tile/feature.ts
+var Feature = class _Feature {
+  constructor() {
+    this.bb = null;
+    this.bb_pos = 0;
+  }
+  __init(i, bb) {
+    this.bb_pos = i;
+    this.bb = bb;
+    return this;
+  }
+  static getRootAsFeature(bb, obj) {
+    return (obj || new _Feature()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  }
+  static getSizePrefixedRootAsFeature(bb, obj) {
+    bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
+    return (obj || new _Feature()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  }
+  id() {
+    const offset = this.bb.__offset(this.bb_pos, 4);
+    return offset ? this.bb.readUint64(this.bb_pos + offset) : BigInt("0");
+  }
+  tags(index) {
+    const offset = this.bb.__offset(this.bb_pos, 6);
+    return offset ? this.bb.readUint32(this.bb.__vector(this.bb_pos + offset) + index * 4) : 0;
+  }
+  tagsLength() {
+    const offset = this.bb.__offset(this.bb_pos, 6);
+    return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+  }
+  tagsArray() {
+    const offset = this.bb.__offset(this.bb_pos, 6);
+    return offset ? new Uint32Array(this.bb.bytes().buffer, this.bb.bytes().byteOffset + this.bb.__vector(this.bb_pos + offset), this.bb.__vector_len(this.bb_pos + offset)) : null;
+  }
+  type() {
+    const offset = this.bb.__offset(this.bb_pos, 8);
+    return offset ? this.bb.readInt8(this.bb_pos + offset) : 0 /* UNKNOWN */;
+  }
+  geometry(index) {
+    const offset = this.bb.__offset(this.bb_pos, 10);
+    return offset ? this.bb.readUint32(this.bb.__vector(this.bb_pos + offset) + index * 4) : 0;
+  }
+  geometryLength() {
+    const offset = this.bb.__offset(this.bb_pos, 10);
+    return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+  }
+  geometryArray() {
+    const offset = this.bb.__offset(this.bb_pos, 10);
+    return offset ? new Uint32Array(this.bb.bytes().buffer, this.bb.bytes().byteOffset + this.bb.__vector(this.bb_pos + offset), this.bb.__vector_len(this.bb_pos + offset)) : null;
+  }
+  static startFeature(builder) {
+    builder.startObject(4);
+  }
+  static addId(builder, id) {
+    builder.addFieldInt64(0, id, BigInt("0"));
+  }
+  static addTags(builder, tagsOffset) {
+    builder.addFieldOffset(1, tagsOffset, 0);
+  }
+  static createTagsVector(builder, data) {
+    builder.startVector(4, data.length, 4);
+    for (let i = data.length - 1; i >= 0; i--) {
+      builder.addInt32(data[i]);
+    }
+    return builder.endVector();
+  }
+  static startTagsVector(builder, numElems) {
+    builder.startVector(4, numElems, 4);
+  }
+  static addType(builder, type) {
+    builder.addFieldInt8(2, type, 0 /* UNKNOWN */);
+  }
+  static addGeometry(builder, geometryOffset) {
+    builder.addFieldOffset(3, geometryOffset, 0);
+  }
+  static createGeometryVector(builder, data) {
+    builder.startVector(4, data.length, 4);
+    for (let i = data.length - 1; i >= 0; i--) {
+      builder.addInt32(data[i]);
+    }
+    return builder.endVector();
+  }
+  static startGeometryVector(builder, numElems) {
+    builder.startVector(4, numElems, 4);
+  }
+  static endFeature(builder) {
+    const offset = builder.endObject();
+    return offset;
+  }
+  static createFeature(builder, id, tagsOffset, type, geometryOffset) {
+    _Feature.startFeature(builder);
+    _Feature.addId(builder, id);
+    _Feature.addTags(builder, tagsOffset);
+    _Feature.addType(builder, type);
+    _Feature.addGeometry(builder, geometryOffset);
+    return _Feature.endFeature(builder);
+  }
+  unpack() {
+    return new FeatureT(
+      this.id(),
+      this.bb.createScalarList(this.tags.bind(this), this.tagsLength()),
+      this.type(),
+      this.bb.createScalarList(this.geometry.bind(this), this.geometryLength())
+    );
+  }
+  unpackTo(_o) {
+    _o.id = this.id();
+    _o.tags = this.bb.createScalarList(this.tags.bind(this), this.tagsLength());
+    _o.type = this.type();
+    _o.geometry = this.bb.createScalarList(this.geometry.bind(this), this.geometryLength());
+  }
+};
+var FeatureT = class {
+  constructor(id = BigInt("0"), tags = [], type = 0 /* UNKNOWN */, geometry = []) {
+    this.id = id;
+    this.tags = tags;
+    this.type = type;
+    this.geometry = geometry;
+  }
+  pack(builder) {
+    const tags = Feature.createTagsVector(builder, this.tags);
+    const geometry = Feature.createGeometryVector(builder, this.geometry);
+    return Feature.createFeature(
+      builder,
+      this.id,
+      tags,
+      this.type,
+      geometry
+    );
+  }
+};
 
-    vector_tile.Tile = (function() {
+// utils/flatbuffers/vector-tile/vector-tile/layer.ts
+import * as flatbuffers3 from "flatbuffers";
 
-        function Tile(p) {
-            this.layers = [];
-            if (p)
-                for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
-                    if (p[ks[i]] != null)
-                        this[ks[i]] = p[ks[i]];
-        }
+// utils/flatbuffers/vector-tile/vector-tile/value.ts
+import * as flatbuffers2 from "flatbuffers";
+var Value = class _Value {
+  constructor() {
+    this.bb = null;
+    this.bb_pos = 0;
+  }
+  __init(i, bb) {
+    this.bb_pos = i;
+    this.bb = bb;
+    return this;
+  }
+  static getRootAsValue(bb, obj) {
+    return (obj || new _Value()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  }
+  static getSizePrefixedRootAsValue(bb, obj) {
+    bb.setPosition(bb.position() + flatbuffers2.SIZE_PREFIX_LENGTH);
+    return (obj || new _Value()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  }
+  stringValue(optionalEncoding) {
+    const offset = this.bb.__offset(this.bb_pos, 4);
+    return offset ? this.bb.__string(this.bb_pos + offset, optionalEncoding) : null;
+  }
+  floatValue() {
+    const offset = this.bb.__offset(this.bb_pos, 6);
+    return offset ? this.bb.readFloat32(this.bb_pos + offset) : 0;
+  }
+  doubleValue() {
+    const offset = this.bb.__offset(this.bb_pos, 8);
+    return offset ? this.bb.readFloat64(this.bb_pos + offset) : 0;
+  }
+  intValue() {
+    const offset = this.bb.__offset(this.bb_pos, 10);
+    return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt("0");
+  }
+  uintValue() {
+    const offset = this.bb.__offset(this.bb_pos, 12);
+    return offset ? this.bb.readUint64(this.bb_pos + offset) : BigInt("0");
+  }
+  sintValue() {
+    const offset = this.bb.__offset(this.bb_pos, 14);
+    return offset ? this.bb.readInt64(this.bb_pos + offset) : BigInt("0");
+  }
+  boolValue() {
+    const offset = this.bb.__offset(this.bb_pos, 16);
+    return offset ? !!this.bb.readInt8(this.bb_pos + offset) : false;
+  }
+  static startValue(builder) {
+    builder.startObject(7);
+  }
+  static addStringValue(builder, stringValueOffset) {
+    builder.addFieldOffset(0, stringValueOffset, 0);
+  }
+  static addFloatValue(builder, floatValue) {
+    builder.addFieldFloat32(1, floatValue, 0);
+  }
+  static addDoubleValue(builder, doubleValue) {
+    builder.addFieldFloat64(2, doubleValue, 0);
+  }
+  static addIntValue(builder, intValue) {
+    builder.addFieldInt64(3, intValue, BigInt("0"));
+  }
+  static addUintValue(builder, uintValue) {
+    builder.addFieldInt64(4, uintValue, BigInt("0"));
+  }
+  static addSintValue(builder, sintValue) {
+    builder.addFieldInt64(5, sintValue, BigInt("0"));
+  }
+  static addBoolValue(builder, boolValue) {
+    builder.addFieldInt8(6, +boolValue, 0);
+  }
+  static endValue(builder) {
+    const offset = builder.endObject();
+    return offset;
+  }
+  static createValue(builder, stringValueOffset, floatValue, doubleValue, intValue, uintValue, sintValue, boolValue) {
+    _Value.startValue(builder);
+    _Value.addStringValue(builder, stringValueOffset);
+    _Value.addFloatValue(builder, floatValue);
+    _Value.addDoubleValue(builder, doubleValue);
+    _Value.addIntValue(builder, intValue);
+    _Value.addUintValue(builder, uintValue);
+    _Value.addSintValue(builder, sintValue);
+    _Value.addBoolValue(builder, boolValue);
+    return _Value.endValue(builder);
+  }
+  unpack() {
+    return new ValueT(
+      this.stringValue(),
+      this.floatValue(),
+      this.doubleValue(),
+      this.intValue(),
+      this.uintValue(),
+      this.sintValue(),
+      this.boolValue()
+    );
+  }
+  unpackTo(_o) {
+    _o.stringValue = this.stringValue();
+    _o.floatValue = this.floatValue();
+    _o.doubleValue = this.doubleValue();
+    _o.intValue = this.intValue();
+    _o.uintValue = this.uintValue();
+    _o.sintValue = this.sintValue();
+    _o.boolValue = this.boolValue();
+  }
+};
+var ValueT = class {
+  constructor(stringValue = null, floatValue = 0, doubleValue = 0, intValue = BigInt("0"), uintValue = BigInt("0"), sintValue = BigInt("0"), boolValue = false) {
+    this.stringValue = stringValue;
+    this.floatValue = floatValue;
+    this.doubleValue = doubleValue;
+    this.intValue = intValue;
+    this.uintValue = uintValue;
+    this.sintValue = sintValue;
+    this.boolValue = boolValue;
+  }
+  pack(builder) {
+    const stringValue = this.stringValue !== null ? builder.createString(this.stringValue) : 0;
+    return Value.createValue(
+      builder,
+      stringValue,
+      this.floatValue,
+      this.doubleValue,
+      this.intValue,
+      this.uintValue,
+      this.sintValue,
+      this.boolValue
+    );
+  }
+};
 
-        Tile.prototype.layers = $util.emptyArray;
+// utils/flatbuffers/vector-tile/vector-tile/layer.ts
+var Layer = class _Layer {
+  constructor() {
+    this.bb = null;
+    this.bb_pos = 0;
+  }
+  __init(i, bb) {
+    this.bb_pos = i;
+    this.bb = bb;
+    return this;
+  }
+  static getRootAsLayer(bb, obj) {
+    return (obj || new _Layer()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  }
+  static getSizePrefixedRootAsLayer(bb, obj) {
+    bb.setPosition(bb.position() + flatbuffers3.SIZE_PREFIX_LENGTH);
+    return (obj || new _Layer()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  }
+  version() {
+    const offset = this.bb.__offset(this.bb_pos, 4);
+    return offset ? this.bb.readUint32(this.bb_pos + offset) : 1;
+  }
+  name(optionalEncoding) {
+    const offset = this.bb.__offset(this.bb_pos, 6);
+    return offset ? this.bb.__string(this.bb_pos + offset, optionalEncoding) : null;
+  }
+  features(index, obj) {
+    const offset = this.bb.__offset(this.bb_pos, 8);
+    return offset ? (obj || new Feature()).__init(this.bb.__indirect(this.bb.__vector(this.bb_pos + offset) + index * 4), this.bb) : null;
+  }
+  featuresLength() {
+    const offset = this.bb.__offset(this.bb_pos, 8);
+    return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+  }
+  keys(index, optionalEncoding) {
+    const offset = this.bb.__offset(this.bb_pos, 10);
+    return offset ? this.bb.__string(this.bb.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+  }
+  keysLength() {
+    const offset = this.bb.__offset(this.bb_pos, 10);
+    return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+  }
+  values(index, obj) {
+    const offset = this.bb.__offset(this.bb_pos, 12);
+    return offset ? (obj || new Value()).__init(this.bb.__indirect(this.bb.__vector(this.bb_pos + offset) + index * 4), this.bb) : null;
+  }
+  valuesLength() {
+    const offset = this.bb.__offset(this.bb_pos, 12);
+    return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+  }
+  extent() {
+    const offset = this.bb.__offset(this.bb_pos, 14);
+    return offset ? this.bb.readUint32(this.bb_pos + offset) : 4096;
+  }
+  static startLayer(builder) {
+    builder.startObject(6);
+  }
+  static addVersion(builder, version) {
+    builder.addFieldInt32(0, version, 1);
+  }
+  static addName(builder, nameOffset) {
+    builder.addFieldOffset(1, nameOffset, 0);
+  }
+  static addFeatures(builder, featuresOffset) {
+    builder.addFieldOffset(2, featuresOffset, 0);
+  }
+  static createFeaturesVector(builder, data) {
+    builder.startVector(4, data.length, 4);
+    for (let i = data.length - 1; i >= 0; i--) {
+      builder.addOffset(data[i]);
+    }
+    return builder.endVector();
+  }
+  static startFeaturesVector(builder, numElems) {
+    builder.startVector(4, numElems, 4);
+  }
+  static addKeys(builder, keysOffset) {
+    builder.addFieldOffset(3, keysOffset, 0);
+  }
+  static createKeysVector(builder, data) {
+    builder.startVector(4, data.length, 4);
+    for (let i = data.length - 1; i >= 0; i--) {
+      builder.addOffset(data[i]);
+    }
+    return builder.endVector();
+  }
+  static startKeysVector(builder, numElems) {
+    builder.startVector(4, numElems, 4);
+  }
+  static addValues(builder, valuesOffset) {
+    builder.addFieldOffset(4, valuesOffset, 0);
+  }
+  static createValuesVector(builder, data) {
+    builder.startVector(4, data.length, 4);
+    for (let i = data.length - 1; i >= 0; i--) {
+      builder.addOffset(data[i]);
+    }
+    return builder.endVector();
+  }
+  static startValuesVector(builder, numElems) {
+    builder.startVector(4, numElems, 4);
+  }
+  static addExtent(builder, extent) {
+    builder.addFieldInt32(5, extent, 4096);
+  }
+  static endLayer(builder) {
+    const offset = builder.endObject();
+    return offset;
+  }
+  static createLayer(builder, version, nameOffset, featuresOffset, keysOffset, valuesOffset, extent) {
+    _Layer.startLayer(builder);
+    _Layer.addVersion(builder, version);
+    _Layer.addName(builder, nameOffset);
+    _Layer.addFeatures(builder, featuresOffset);
+    _Layer.addKeys(builder, keysOffset);
+    _Layer.addValues(builder, valuesOffset);
+    _Layer.addExtent(builder, extent);
+    return _Layer.endLayer(builder);
+  }
+  unpack() {
+    return new LayerT(
+      this.version(),
+      this.name(),
+      this.bb.createObjList(this.features.bind(this), this.featuresLength()),
+      this.bb.createScalarList(this.keys.bind(this), this.keysLength()),
+      this.bb.createObjList(this.values.bind(this), this.valuesLength()),
+      this.extent()
+    );
+  }
+  unpackTo(_o) {
+    _o.version = this.version();
+    _o.name = this.name();
+    _o.features = this.bb.createObjList(this.features.bind(this), this.featuresLength());
+    _o.keys = this.bb.createScalarList(this.keys.bind(this), this.keysLength());
+    _o.values = this.bb.createObjList(this.values.bind(this), this.valuesLength());
+    _o.extent = this.extent();
+  }
+};
+var LayerT = class {
+  constructor(version = 1, name = null, features = [], keys = [], values = [], extent = 4096) {
+    this.version = version;
+    this.name = name;
+    this.features = features;
+    this.keys = keys;
+    this.values = values;
+    this.extent = extent;
+  }
+  pack(builder) {
+    const name = this.name !== null ? builder.createString(this.name) : 0;
+    const features = Layer.createFeaturesVector(builder, builder.createObjectOffsetList(this.features));
+    const keys = Layer.createKeysVector(builder, builder.createObjectOffsetList(this.keys));
+    const values = Layer.createValuesVector(builder, builder.createObjectOffsetList(this.values));
+    return Layer.createLayer(
+      builder,
+      this.version,
+      name,
+      features,
+      keys,
+      values,
+      this.extent
+    );
+  }
+};
 
-        Tile.decode = function decode(r, l) {
-            if (!(r instanceof $Reader))
-                r = $Reader.create(r);
-            var c = l === undefined ? r.len : r.pos + l, m = new $root.vector_tile.Tile();
-            while (r.pos < c) {
-                var t = r.uint32();
-                switch (t >>> 3) {
-                case 3: {
-                        if (!(m.layers && m.layers.length))
-                            m.layers = [];
-                        m.layers.push($root.vector_tile.Tile.Layer.decode(r, r.uint32()));
-                        break;
-                    }
-                default:
-                    r.skipType(t & 7);
-                    break;
-                }
-            }
-            return m;
-        };
-
-        Tile.decodeDelimited = function decodeDelimited(reader) {
-            if (!(reader instanceof $Reader))
-                reader = new $Reader(reader);
-            return this.decode(reader, reader.uint32());
-        };
-
-        Tile.verify = function verify(m) {
-            if (typeof m !== "object" || m === null)
-                return "object expected";
-            if (m.layers != null && m.hasOwnProperty("layers")) {
-                if (!Array.isArray(m.layers))
-                    return "layers: array expected";
-                for (var i = 0; i < m.layers.length; ++i) {
-                    {
-                        var e = $root.vector_tile.Tile.Layer.verify(m.layers[i]);
-                        if (e)
-                            return "layers." + e;
-                    }
-                }
-            }
-            return null;
-        };
-
-        Tile.fromObject = function fromObject(d) {
-            if (d instanceof $root.vector_tile.Tile)
-                return d;
-            var m = new $root.vector_tile.Tile();
-            if (d.layers) {
-                if (!Array.isArray(d.layers))
-                    throw TypeError(".vector_tile.Tile.layers: array expected");
-                m.layers = [];
-                for (var i = 0; i < d.layers.length; ++i) {
-                    if (typeof d.layers[i] !== "object")
-                        throw TypeError(".vector_tile.Tile.layers: object expected");
-                    m.layers[i] = $root.vector_tile.Tile.Layer.fromObject(d.layers[i]);
-                }
-            }
-            return m;
-        };
-
-        Tile.toObject = function toObject(m, o) {
-            if (!o)
-                o = {};
-            var d = {};
-            if (o.arrays || o.defaults) {
-                d.layers = [];
-            }
-            if (m.layers && m.layers.length) {
-                d.layers = [];
-                for (var j = 0; j < m.layers.length; ++j) {
-                    d.layers[j] = $root.vector_tile.Tile.Layer.toObject(m.layers[j], o);
-                }
-            }
-            return d;
-        };
-
-        Tile.prototype.toJSON = function toJSON() {
-            return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-        };
-
-        Tile.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
-            if (typeUrlPrefix === undefined) {
-                typeUrlPrefix = "type.googleapis.com";
-            }
-            return typeUrlPrefix + "/vector_tile.Tile";
-        };
-
-        Tile.GeomType = (function() {
-            const valuesById = {}, values = Object.create(valuesById);
-            values[valuesById[0] = "UNKNOWN"] = 0;
-            values[valuesById[1] = "POINT"] = 1;
-            values[valuesById[2] = "LINESTRING"] = 2;
-            values[valuesById[3] = "POLYGON"] = 3;
-            return values;
-        })();
-
-        Tile.Value = (function() {
-
-            function Value(p) {
-                if (p)
-                    for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
-                        if (p[ks[i]] != null)
-                            this[ks[i]] = p[ks[i]];
-            }
-
-            Value.prototype.stringValue = "";
-            Value.prototype.floatValue = 0;
-            Value.prototype.doubleValue = 0;
-            Value.prototype.intValue = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
-            Value.prototype.uintValue = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
-            Value.prototype.sintValue = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
-            Value.prototype.boolValue = false;
-
-            Value.decode = function decode(r, l) {
-                if (!(r instanceof $Reader))
-                    r = $Reader.create(r);
-                var c = l === undefined ? r.len : r.pos + l, m = new $root.vector_tile.Tile.Value();
-                while (r.pos < c) {
-                    var t = r.uint32();
-                    switch (t >>> 3) {
-                    case 1: {
-                            m.stringValue = r.string();
-                            break;
-                        }
-                    case 2: {
-                            m.floatValue = r.float();
-                            break;
-                        }
-                    case 3: {
-                            m.doubleValue = r.double();
-                            break;
-                        }
-                    case 4: {
-                            m.intValue = r.int64();
-                            break;
-                        }
-                    case 5: {
-                            m.uintValue = r.uint64();
-                            break;
-                        }
-                    case 6: {
-                            m.sintValue = r.sint64();
-                            break;
-                        }
-                    case 7: {
-                            m.boolValue = r.bool();
-                            break;
-                        }
-                    default:
-                        r.skipType(t & 7);
-                        break;
-                    }
-                }
-                return m;
-            };
-
-            Value.decodeDelimited = function decodeDelimited(reader) {
-                if (!(reader instanceof $Reader))
-                    reader = new $Reader(reader);
-                return this.decode(reader, reader.uint32());
-            };
-
-            Value.verify = function verify(m) {
-                if (typeof m !== "object" || m === null)
-                    return "object expected";
-                if (m.stringValue != null && m.hasOwnProperty("stringValue")) {
-                    if (!$util.isString(m.stringValue))
-                        return "stringValue: string expected";
-                }
-                if (m.floatValue != null && m.hasOwnProperty("floatValue")) {
-                    if (typeof m.floatValue !== "number")
-                        return "floatValue: number expected";
-                }
-                if (m.doubleValue != null && m.hasOwnProperty("doubleValue")) {
-                    if (typeof m.doubleValue !== "number")
-                        return "doubleValue: number expected";
-                }
-                if (m.intValue != null && m.hasOwnProperty("intValue")) {
-                    if (!$util.isInteger(m.intValue) && !(m.intValue && $util.isInteger(m.intValue.low) && $util.isInteger(m.intValue.high)))
-                        return "intValue: integer|Long expected";
-                }
-                if (m.uintValue != null && m.hasOwnProperty("uintValue")) {
-                    if (!$util.isInteger(m.uintValue) && !(m.uintValue && $util.isInteger(m.uintValue.low) && $util.isInteger(m.uintValue.high)))
-                        return "uintValue: integer|Long expected";
-                }
-                if (m.sintValue != null && m.hasOwnProperty("sintValue")) {
-                    if (!$util.isInteger(m.sintValue) && !(m.sintValue && $util.isInteger(m.sintValue.low) && $util.isInteger(m.sintValue.high)))
-                        return "sintValue: integer|Long expected";
-                }
-                if (m.boolValue != null && m.hasOwnProperty("boolValue")) {
-                    if (typeof m.boolValue !== "boolean")
-                        return "boolValue: boolean expected";
-                }
-                return null;
-            };
-
-            Value.fromObject = function fromObject(d) {
-                if (d instanceof $root.vector_tile.Tile.Value)
-                    return d;
-                var m = new $root.vector_tile.Tile.Value();
-                if (d.stringValue != null) {
-                    m.stringValue = String(d.stringValue);
-                }
-                if (d.floatValue != null) {
-                    m.floatValue = Number(d.floatValue);
-                }
-                if (d.doubleValue != null) {
-                    m.doubleValue = Number(d.doubleValue);
-                }
-                if (d.intValue != null) {
-                    if ($util.Long)
-                        (m.intValue = $util.Long.fromValue(d.intValue)).unsigned = false;
-                    else if (typeof d.intValue === "string")
-                        m.intValue = parseInt(d.intValue, 10);
-                    else if (typeof d.intValue === "number")
-                        m.intValue = d.intValue;
-                    else if (typeof d.intValue === "object")
-                        m.intValue = new $util.LongBits(d.intValue.low >>> 0, d.intValue.high >>> 0).toNumber();
-                }
-                if (d.uintValue != null) {
-                    if ($util.Long)
-                        (m.uintValue = $util.Long.fromValue(d.uintValue)).unsigned = true;
-                    else if (typeof d.uintValue === "string")
-                        m.uintValue = parseInt(d.uintValue, 10);
-                    else if (typeof d.uintValue === "number")
-                        m.uintValue = d.uintValue;
-                    else if (typeof d.uintValue === "object")
-                        m.uintValue = new $util.LongBits(d.uintValue.low >>> 0, d.uintValue.high >>> 0).toNumber(true);
-                }
-                if (d.sintValue != null) {
-                    if ($util.Long)
-                        (m.sintValue = $util.Long.fromValue(d.sintValue)).unsigned = false;
-                    else if (typeof d.sintValue === "string")
-                        m.sintValue = parseInt(d.sintValue, 10);
-                    else if (typeof d.sintValue === "number")
-                        m.sintValue = d.sintValue;
-                    else if (typeof d.sintValue === "object")
-                        m.sintValue = new $util.LongBits(d.sintValue.low >>> 0, d.sintValue.high >>> 0).toNumber();
-                }
-                if (d.boolValue != null) {
-                    m.boolValue = Boolean(d.boolValue);
-                }
-                return m;
-            };
-
-            Value.toObject = function toObject(m, o) {
-                if (!o)
-                    o = {};
-                var d = {};
-                if (o.defaults) {
-                    d.stringValue = "";
-                    d.floatValue = 0;
-                    d.doubleValue = 0;
-                    if ($util.Long) {
-                        var n = new $util.Long(0, 0, false);
-                        d.intValue = o.longs === String ? n.toString() : o.longs === Number ? n.toNumber() : n;
-                    } else
-                        d.intValue = o.longs === String ? "0" : 0;
-                    if ($util.Long) {
-                        var n = new $util.Long(0, 0, true);
-                        d.uintValue = o.longs === String ? n.toString() : o.longs === Number ? n.toNumber() : n;
-                    } else
-                        d.uintValue = o.longs === String ? "0" : 0;
-                    if ($util.Long) {
-                        var n = new $util.Long(0, 0, false);
-                        d.sintValue = o.longs === String ? n.toString() : o.longs === Number ? n.toNumber() : n;
-                    } else
-                        d.sintValue = o.longs === String ? "0" : 0;
-                    d.boolValue = false;
-                }
-                if (m.stringValue != null && m.hasOwnProperty("stringValue")) {
-                    d.stringValue = m.stringValue;
-                }
-                if (m.floatValue != null && m.hasOwnProperty("floatValue")) {
-                    d.floatValue = o.json && !isFinite(m.floatValue) ? String(m.floatValue) : m.floatValue;
-                }
-                if (m.doubleValue != null && m.hasOwnProperty("doubleValue")) {
-                    d.doubleValue = o.json && !isFinite(m.doubleValue) ? String(m.doubleValue) : m.doubleValue;
-                }
-                if (m.intValue != null && m.hasOwnProperty("intValue")) {
-                    if (typeof m.intValue === "number")
-                        d.intValue = o.longs === String ? String(m.intValue) : m.intValue;
-                    else
-                        d.intValue = o.longs === String ? $util.Long.prototype.toString.call(m.intValue) : o.longs === Number ? new $util.LongBits(m.intValue.low >>> 0, m.intValue.high >>> 0).toNumber() : m.intValue;
-                }
-                if (m.uintValue != null && m.hasOwnProperty("uintValue")) {
-                    if (typeof m.uintValue === "number")
-                        d.uintValue = o.longs === String ? String(m.uintValue) : m.uintValue;
-                    else
-                        d.uintValue = o.longs === String ? $util.Long.prototype.toString.call(m.uintValue) : o.longs === Number ? new $util.LongBits(m.uintValue.low >>> 0, m.uintValue.high >>> 0).toNumber(true) : m.uintValue;
-                }
-                if (m.sintValue != null && m.hasOwnProperty("sintValue")) {
-                    if (typeof m.sintValue === "number")
-                        d.sintValue = o.longs === String ? String(m.sintValue) : m.sintValue;
-                    else
-                        d.sintValue = o.longs === String ? $util.Long.prototype.toString.call(m.sintValue) : o.longs === Number ? new $util.LongBits(m.sintValue.low >>> 0, m.sintValue.high >>> 0).toNumber() : m.sintValue;
-                }
-                if (m.boolValue != null && m.hasOwnProperty("boolValue")) {
-                    d.boolValue = m.boolValue;
-                }
-                return d;
-            };
-
-            Value.prototype.toJSON = function toJSON() {
-                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-            };
-
-            Value.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
-                if (typeUrlPrefix === undefined) {
-                    typeUrlPrefix = "type.googleapis.com";
-                }
-                return typeUrlPrefix + "/vector_tile.Tile.Value";
-            };
-
-            return Value;
-        })();
-
-        Tile.Feature = (function() {
-
-            function Feature(p) {
-                this.tags = [];
-                this.geometry = [];
-                if (p)
-                    for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
-                        if (p[ks[i]] != null)
-                            this[ks[i]] = p[ks[i]];
-            }
-
-            Feature.prototype.id = $util.Long ? $util.Long.fromBits(0,0,true) : 0;
-            Feature.prototype.tags = $util.emptyArray;
-            Feature.prototype.type = 0;
-            Feature.prototype.geometry = $util.emptyArray;
-
-            Feature.decode = function decode(r, l) {
-                if (!(r instanceof $Reader))
-                    r = $Reader.create(r);
-                var c = l === undefined ? r.len : r.pos + l, m = new $root.vector_tile.Tile.Feature();
-                while (r.pos < c) {
-                    var t = r.uint32();
-                    switch (t >>> 3) {
-                    case 1: {
-                            m.id = r.uint64();
-                            break;
-                        }
-                    case 2: {
-                            if (!(m.tags && m.tags.length))
-                                m.tags = [];
-                            if ((t & 7) === 2) {
-                                var c2 = r.uint32() + r.pos;
-                                while (r.pos < c2)
-                                    m.tags.push(r.uint32());
-                            } else
-                                m.tags.push(r.uint32());
-                            break;
-                        }
-                    case 3: {
-                            m.type = r.int32();
-                            break;
-                        }
-                    case 4: {
-                            if (!(m.geometry && m.geometry.length))
-                                m.geometry = [];
-                            if ((t & 7) === 2) {
-                                var c2 = r.uint32() + r.pos;
-                                while (r.pos < c2)
-                                    m.geometry.push(r.uint32());
-                            } else
-                                m.geometry.push(r.uint32());
-                            break;
-                        }
-                    default:
-                        r.skipType(t & 7);
-                        break;
-                    }
-                }
-                return m;
-            };
-
-            Feature.decodeDelimited = function decodeDelimited(reader) {
-                if (!(reader instanceof $Reader))
-                    reader = new $Reader(reader);
-                return this.decode(reader, reader.uint32());
-            };
-
-            Feature.verify = function verify(m) {
-                if (typeof m !== "object" || m === null)
-                    return "object expected";
-                if (m.id != null && m.hasOwnProperty("id")) {
-                    if (!$util.isInteger(m.id) && !(m.id && $util.isInteger(m.id.low) && $util.isInteger(m.id.high)))
-                        return "id: integer|Long expected";
-                }
-                if (m.tags != null && m.hasOwnProperty("tags")) {
-                    if (!Array.isArray(m.tags))
-                        return "tags: array expected";
-                    for (var i = 0; i < m.tags.length; ++i) {
-                        if (!$util.isInteger(m.tags[i]))
-                            return "tags: integer[] expected";
-                    }
-                }
-                if (m.type != null && m.hasOwnProperty("type")) {
-                    switch (m.type) {
-                    default:
-                        return "type: enum value expected";
-                    case 0:
-                    case 1:
-                    case 2:
-                    case 3:
-                        break;
-                    }
-                }
-                if (m.geometry != null && m.hasOwnProperty("geometry")) {
-                    if (!Array.isArray(m.geometry))
-                        return "geometry: array expected";
-                    for (var i = 0; i < m.geometry.length; ++i) {
-                        if (!$util.isInteger(m.geometry[i]))
-                            return "geometry: integer[] expected";
-                    }
-                }
-                return null;
-            };
-
-            Feature.fromObject = function fromObject(d) {
-                if (d instanceof $root.vector_tile.Tile.Feature)
-                    return d;
-                var m = new $root.vector_tile.Tile.Feature();
-                if (d.id != null) {
-                    if ($util.Long)
-                        (m.id = $util.Long.fromValue(d.id)).unsigned = true;
-                    else if (typeof d.id === "string")
-                        m.id = parseInt(d.id, 10);
-                    else if (typeof d.id === "number")
-                        m.id = d.id;
-                    else if (typeof d.id === "object")
-                        m.id = new $util.LongBits(d.id.low >>> 0, d.id.high >>> 0).toNumber(true);
-                }
-                if (d.tags) {
-                    if (!Array.isArray(d.tags))
-                        throw TypeError(".vector_tile.Tile.Feature.tags: array expected");
-                    m.tags = [];
-                    for (var i = 0; i < d.tags.length; ++i) {
-                        m.tags[i] = d.tags[i] >>> 0;
-                    }
-                }
-                switch (d.type) {
-                default:
-                    if (typeof d.type === "number") {
-                        m.type = d.type;
-                        break;
-                    }
-                    break;
-                case "UNKNOWN":
-                case 0:
-                    m.type = 0;
-                    break;
-                case "POINT":
-                case 1:
-                    m.type = 1;
-                    break;
-                case "LINESTRING":
-                case 2:
-                    m.type = 2;
-                    break;
-                case "POLYGON":
-                case 3:
-                    m.type = 3;
-                    break;
-                }
-                if (d.geometry) {
-                    if (!Array.isArray(d.geometry))
-                        throw TypeError(".vector_tile.Tile.Feature.geometry: array expected");
-                    m.geometry = [];
-                    for (var i = 0; i < d.geometry.length; ++i) {
-                        m.geometry[i] = d.geometry[i] >>> 0;
-                    }
-                }
-                return m;
-            };
-
-            Feature.toObject = function toObject(m, o) {
-                if (!o)
-                    o = {};
-                var d = {};
-                if (o.arrays || o.defaults) {
-                    d.tags = [];
-                    d.geometry = [];
-                }
-                if (o.defaults) {
-                    if ($util.Long) {
-                        var n = new $util.Long(0, 0, true);
-                        d.id = o.longs === String ? n.toString() : o.longs === Number ? n.toNumber() : n;
-                    } else
-                        d.id = o.longs === String ? "0" : 0;
-                    d.type = o.enums === String ? "UNKNOWN" : 0;
-                }
-                if (m.id != null && m.hasOwnProperty("id")) {
-                    if (typeof m.id === "number")
-                        d.id = o.longs === String ? String(m.id) : m.id;
-                    else
-                        d.id = o.longs === String ? $util.Long.prototype.toString.call(m.id) : o.longs === Number ? new $util.LongBits(m.id.low >>> 0, m.id.high >>> 0).toNumber(true) : m.id;
-                }
-                if (m.tags && m.tags.length) {
-                    d.tags = [];
-                    for (var j = 0; j < m.tags.length; ++j) {
-                        d.tags[j] = m.tags[j];
-                    }
-                }
-                if (m.type != null && m.hasOwnProperty("type")) {
-                    d.type = o.enums === String ? $root.vector_tile.Tile.GeomType[m.type] === undefined ? m.type : $root.vector_tile.Tile.GeomType[m.type] : m.type;
-                }
-                if (m.geometry && m.geometry.length) {
-                    d.geometry = [];
-                    for (var j = 0; j < m.geometry.length; ++j) {
-                        d.geometry[j] = m.geometry[j];
-                    }
-                }
-                return d;
-            };
-
-            Feature.prototype.toJSON = function toJSON() {
-                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-            };
-
-            Feature.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
-                if (typeUrlPrefix === undefined) {
-                    typeUrlPrefix = "type.googleapis.com";
-                }
-                return typeUrlPrefix + "/vector_tile.Tile.Feature";
-            };
-
-            return Feature;
-        })();
-
-        Tile.Layer = (function() {
-
-            function Layer(p) {
-                this.features = [];
-                this.keys = [];
-                this.values = [];
-                if (p)
-                    for (var ks = Object.keys(p), i = 0; i < ks.length; ++i)
-                        if (p[ks[i]] != null)
-                            this[ks[i]] = p[ks[i]];
-            }
-
-            Layer.prototype.version = 1;
-            Layer.prototype.name = "";
-            Layer.prototype.features = $util.emptyArray;
-            Layer.prototype.keys = $util.emptyArray;
-            Layer.prototype.values = $util.emptyArray;
-            Layer.prototype.extent = 4096;
-
-            Layer.decode = function decode(r, l) {
-                if (!(r instanceof $Reader))
-                    r = $Reader.create(r);
-                var c = l === undefined ? r.len : r.pos + l, m = new $root.vector_tile.Tile.Layer();
-                while (r.pos < c) {
-                    var t = r.uint32();
-                    switch (t >>> 3) {
-                    case 15: {
-                            m.version = r.uint32();
-                            break;
-                        }
-                    case 1: {
-                            m.name = r.string();
-                            break;
-                        }
-                    case 2: {
-                            if (!(m.features && m.features.length))
-                                m.features = [];
-                            m.features.push($root.vector_tile.Tile.Feature.decode(r, r.uint32()));
-                            break;
-                        }
-                    case 3: {
-                            if (!(m.keys && m.keys.length))
-                                m.keys = [];
-                            m.keys.push(r.string());
-                            break;
-                        }
-                    case 4: {
-                            if (!(m.values && m.values.length))
-                                m.values = [];
-                            m.values.push($root.vector_tile.Tile.Value.decode(r, r.uint32()));
-                            break;
-                        }
-                    case 5: {
-                            m.extent = r.uint32();
-                            break;
-                        }
-                    default:
-                        r.skipType(t & 7);
-                        break;
-                    }
-                }
-                if (!m.hasOwnProperty("version"))
-                    throw $util.ProtocolError("missing required 'version'", { instance: m });
-                if (!m.hasOwnProperty("name"))
-                    throw $util.ProtocolError("missing required 'name'", { instance: m });
-                return m;
-            };
-
-            Layer.decodeDelimited = function decodeDelimited(reader) {
-                if (!(reader instanceof $Reader))
-                    reader = new $Reader(reader);
-                return this.decode(reader, reader.uint32());
-            };
-
-            Layer.verify = function verify(m) {
-                if (typeof m !== "object" || m === null)
-                    return "object expected";
-                if (!$util.isInteger(m.version))
-                    return "version: integer expected";
-                if (!$util.isString(m.name))
-                    return "name: string expected";
-                if (m.features != null && m.hasOwnProperty("features")) {
-                    if (!Array.isArray(m.features))
-                        return "features: array expected";
-                    for (var i = 0; i < m.features.length; ++i) {
-                        {
-                            var e = $root.vector_tile.Tile.Feature.verify(m.features[i]);
-                            if (e)
-                                return "features." + e;
-                        }
-                    }
-                }
-                if (m.keys != null && m.hasOwnProperty("keys")) {
-                    if (!Array.isArray(m.keys))
-                        return "keys: array expected";
-                    for (var i = 0; i < m.keys.length; ++i) {
-                        if (!$util.isString(m.keys[i]))
-                            return "keys: string[] expected";
-                    }
-                }
-                if (m.values != null && m.hasOwnProperty("values")) {
-                    if (!Array.isArray(m.values))
-                        return "values: array expected";
-                    for (var i = 0; i < m.values.length; ++i) {
-                        {
-                            var e = $root.vector_tile.Tile.Value.verify(m.values[i]);
-                            if (e)
-                                return "values." + e;
-                        }
-                    }
-                }
-                if (m.extent != null && m.hasOwnProperty("extent")) {
-                    if (!$util.isInteger(m.extent))
-                        return "extent: integer expected";
-                }
-                return null;
-            };
-
-            Layer.fromObject = function fromObject(d) {
-                if (d instanceof $root.vector_tile.Tile.Layer)
-                    return d;
-                var m = new $root.vector_tile.Tile.Layer();
-                if (d.version != null) {
-                    m.version = d.version >>> 0;
-                }
-                if (d.name != null) {
-                    m.name = String(d.name);
-                }
-                if (d.features) {
-                    if (!Array.isArray(d.features))
-                        throw TypeError(".vector_tile.Tile.Layer.features: array expected");
-                    m.features = [];
-                    for (var i = 0; i < d.features.length; ++i) {
-                        if (typeof d.features[i] !== "object")
-                            throw TypeError(".vector_tile.Tile.Layer.features: object expected");
-                        m.features[i] = $root.vector_tile.Tile.Feature.fromObject(d.features[i]);
-                    }
-                }
-                if (d.keys) {
-                    if (!Array.isArray(d.keys))
-                        throw TypeError(".vector_tile.Tile.Layer.keys: array expected");
-                    m.keys = [];
-                    for (var i = 0; i < d.keys.length; ++i) {
-                        m.keys[i] = String(d.keys[i]);
-                    }
-                }
-                if (d.values) {
-                    if (!Array.isArray(d.values))
-                        throw TypeError(".vector_tile.Tile.Layer.values: array expected");
-                    m.values = [];
-                    for (var i = 0; i < d.values.length; ++i) {
-                        if (typeof d.values[i] !== "object")
-                            throw TypeError(".vector_tile.Tile.Layer.values: object expected");
-                        m.values[i] = $root.vector_tile.Tile.Value.fromObject(d.values[i]);
-                    }
-                }
-                if (d.extent != null) {
-                    m.extent = d.extent >>> 0;
-                }
-                return m;
-            };
-
-            Layer.toObject = function toObject(m, o) {
-                if (!o)
-                    o = {};
-                var d = {};
-                if (o.arrays || o.defaults) {
-                    d.features = [];
-                    d.keys = [];
-                    d.values = [];
-                }
-                if (o.defaults) {
-                    d.name = "";
-                    d.extent = 4096;
-                    d.version = 1;
-                }
-                if (m.name != null && m.hasOwnProperty("name")) {
-                    d.name = m.name;
-                }
-                if (m.features && m.features.length) {
-                    d.features = [];
-                    for (var j = 0; j < m.features.length; ++j) {
-                        d.features[j] = $root.vector_tile.Tile.Feature.toObject(m.features[j], o);
-                    }
-                }
-                if (m.keys && m.keys.length) {
-                    d.keys = [];
-                    for (var j = 0; j < m.keys.length; ++j) {
-                        d.keys[j] = m.keys[j];
-                    }
-                }
-                if (m.values && m.values.length) {
-                    d.values = [];
-                    for (var j = 0; j < m.values.length; ++j) {
-                        d.values[j] = $root.vector_tile.Tile.Value.toObject(m.values[j], o);
-                    }
-                }
-                if (m.extent != null && m.hasOwnProperty("extent")) {
-                    d.extent = m.extent;
-                }
-                if (m.version != null && m.hasOwnProperty("version")) {
-                    d.version = m.version;
-                }
-                return d;
-            };
-
-            Layer.prototype.toJSON = function toJSON() {
-                return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
-            };
-
-            Layer.getTypeUrl = function getTypeUrl(typeUrlPrefix) {
-                if (typeUrlPrefix === undefined) {
-                    typeUrlPrefix = "type.googleapis.com";
-                }
-                return typeUrlPrefix + "/vector_tile.Tile.Layer";
-            };
-
-            return Layer;
-        })();
-
-        return Tile;
-    })();
-
-    return vector_tile;
-})();
-
-export { $root as default };
+// utils/flatbuffers/vector-tile/vector-tile/tile.ts
+import * as flatbuffers4 from "flatbuffers";
+var Tile = class _Tile {
+  constructor() {
+    this.bb = null;
+    this.bb_pos = 0;
+  }
+  __init(i, bb) {
+    this.bb_pos = i;
+    this.bb = bb;
+    return this;
+  }
+  static getRootAsTile(bb, obj) {
+    return (obj || new _Tile()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  }
+  static getSizePrefixedRootAsTile(bb, obj) {
+    bb.setPosition(bb.position() + flatbuffers4.SIZE_PREFIX_LENGTH);
+    return (obj || new _Tile()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  }
+  layers(index, obj) {
+    const offset = this.bb.__offset(this.bb_pos, 4);
+    return offset ? (obj || new Layer()).__init(this.bb.__indirect(this.bb.__vector(this.bb_pos + offset) + index * 4), this.bb) : null;
+  }
+  layersLength() {
+    const offset = this.bb.__offset(this.bb_pos, 4);
+    return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+  }
+  static startTile(builder) {
+    builder.startObject(1);
+  }
+  static addLayers(builder, layersOffset) {
+    builder.addFieldOffset(0, layersOffset, 0);
+  }
+  static createLayersVector(builder, data) {
+    builder.startVector(4, data.length, 4);
+    for (let i = data.length - 1; i >= 0; i--) {
+      builder.addOffset(data[i]);
+    }
+    return builder.endVector();
+  }
+  static startLayersVector(builder, numElems) {
+    builder.startVector(4, numElems, 4);
+  }
+  static endTile(builder) {
+    const offset = builder.endObject();
+    return offset;
+  }
+  static finishTileBuffer(builder, offset) {
+    builder.finish(offset);
+  }
+  static finishSizePrefixedTileBuffer(builder, offset) {
+    builder.finish(offset, void 0, true);
+  }
+  static createTile(builder, layersOffset) {
+    _Tile.startTile(builder);
+    _Tile.addLayers(builder, layersOffset);
+    return _Tile.endTile(builder);
+  }
+  unpack() {
+    return new TileT(
+      this.bb.createObjList(this.layers.bind(this), this.layersLength())
+    );
+  }
+  unpackTo(_o) {
+    _o.layers = this.bb.createObjList(this.layers.bind(this), this.layersLength());
+  }
+};
+var TileT = class {
+  constructor(layers = []) {
+    this.layers = layers;
+  }
+  pack(builder) {
+    const layers = Tile.createLayersVector(builder, builder.createObjectOffsetList(this.layers));
+    return Tile.createTile(
+      builder,
+      layers
+    );
+  }
+};
+export {
+  vector_tile_exports as vector_tile
+};

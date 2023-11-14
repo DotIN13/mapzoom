@@ -4,6 +4,7 @@ import { onGesture, offGesture, GESTURE_RIGHT } from "@zos/interaction";
 import { Geolocation } from "@zos/sensor";
 import { setScrollLock } from "@zos/page";
 import { pauseDropWristScreenOff, resetDropWristScreenOff } from "@zos/display";
+import "fast-text-encoding";
 
 import {
   TEXT_STYLE,

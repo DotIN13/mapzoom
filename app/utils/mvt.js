@@ -5,8 +5,8 @@ import {
   LOCAL_TILE_CACHE_SIZE,
 } from "./globals";
 import { logger, timer } from "./logger";
-import { vector_tile } from "./vector_tile";
 import { PMTiles } from "./pmtiles";
+import { exampleMvt } from "./example_mvt";
 
 // Decode a decompressed mvt tile
 function decodeTile(decompressed) {
@@ -24,15 +24,16 @@ function zigzagDecode(n) {
   return (n >> 1) ^ -(n & 1);
 }
 
-function firstPass(decodedTile) {
+export function firstPass(decodedTile) {
   for (const layer of decodedTile.layers) {
+    logger.debug(layer.name)
     for (const rawFeature of layer.features) {
       parseGeometry(rawFeature);
     }
   }
 }
 
-export function parseGeometry(rawFeature) {
+function parseGeometry(rawFeature) {
   let x = 0;
   let y = 0;
   let i = 0;
@@ -131,7 +132,7 @@ export class TileCache {
   constructor() {
     this.memoryCache = new Map();
     this.mapId = `shanghai-20231024-mini-v${VERSION}`;
-    this.pmtiles = new PMTiles("map/shanghai-20231024-mini.pmtiles");
+    // this.pmtiles = new PMTiles("map/shanghai-20231024-mini.pmtiles");
   }
 
   getTile(z, x, y) {
@@ -155,26 +156,28 @@ export class TileCache {
   }
 
   getTileFromFile(z, x, y) {
-    let decompressed, decoded;
+    // let decompressed, decoded;
 
-    if (DEBUG)
-      decompressed = timer(
-        () => this.pmtiles.getZxy(z, x, y),
-        "getZxy",
-        `fetch tile ${z} ${x} ${y}`
-      );
-    else decompressed = this.pmtiles.getZxy(z, x, y);
-    if (!decompressed) return null;
+    // if (DEBUG)
+    //   decompressed = timer(
+    //     () => this.pmtiles.getZxy(z, x, y),
+    //     "getZxy",
+    //     `fetch tile ${z} ${x} ${y}`
+    //   );
+    // else decompressed = this.pmtiles.getZxy(z, x, y);
+    // if (!decompressed) return null;
 
-    if (DEBUG)
-      decoded = timer(
-        decodeTile,
-        "decodeTile",
-        `decode tile ${z} ${x} ${y}`,
-        decompressed
-      );
-    else decoded = decodeTile(decompressed);
+    // if (DEBUG)
+    //   decoded = timer(
+    //     decodeTile,
+    //     "decodeTile",
+    //     `decode tile ${z} ${x} ${y}`,
+    //     decompressed
+    //   );
+    // else decoded = decodeTile(decompressed);
 
-    return decoded;
+    // return decoded;
+
+    return exampleMvt();
   }
 }

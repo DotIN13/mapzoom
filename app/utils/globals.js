@@ -19,8 +19,8 @@ export const TILE_SCALE = TILE_SIZE / TILE_EXTENT;
 
 export const PRECISION_FACTOR = 10;
 
-export const DIR_CACHE_SIZE = 6;
-export const MEM_TILE_CACHE_SIZE = 2;
+export const DIR_CACHE_SIZE = 5;
+export const MEM_TILE_CACHE_SIZE = 4;
 export const LOCAL_TILE_CACHE_SIZE = 50;
 
 export const PAN_SPEED_FACTOR = 1.8; // adjust this value as needed

@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@zeppos/zml": "^0.0.9",
+    "fast-text-encoding": "^1.0.6",
+    "flatbuffers": "^23.5.26",
     "pako": "^2.1.0",
     "protobufjs": "^7.2.5",
     "snappyjs": "^0.7.0"

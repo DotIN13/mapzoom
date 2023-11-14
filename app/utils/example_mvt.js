@@ -7,19 +7,21 @@ import {
 } from "@zos/fs";
 
 import pako from "pako";
+import * as flatbuffers from "flatbuffers";
 
-import { vector_tile } from "./vector_tile";
 import { logger } from "./logger";
+import { vector_tile } from "./vector_tile";
+import { firstPass } from "./mvt";
 
 export function exampleMvt() {
   // Open and stat file outside the loop as we only need to do it once
   const fd = openAssetsSync({
-    path: "map/shanghai_10_857_418_minify.mvt",
+    path: "map/shanghai_10_857_418_fbs.mvt",
     flag: O_RDONLY,
   });
 
   const stat = statAssetsSync({
-    path: "map/shanghai_10_857_418_minify.mvt",
+    path: "map/shanghai_10_857_418_fbs.mvt",
   });
 
   const buffer = new ArrayBuffer(stat.size);
@@ -30,14 +32,16 @@ export function exampleMvt() {
   // Read the file
   readSync({ fd, buffer });
   closeSync({ fd });
-  // logger.debug("readSync done");
 
-  // Decompress
-  const inflated = pako.inflate(Buffer.from(buffer));
-  // logger.debug("Inflate done");
+  logger.debug("readSync done");
+
+  const buf = new flatbuffers.ByteBuffer(new Uint8Array(buffer));
+
+  logger.debug("Created buffer.");
 
   // Decode
-  const decodedTile = vector_tile.Tile.decode(inflated);
+  const decodedTile = vector_tile.Tile.getRootAsTile(buf).unpack();
+
   firstPass(decodedTile);
   // logger.debug(mvtData.layers[0].name);
 
