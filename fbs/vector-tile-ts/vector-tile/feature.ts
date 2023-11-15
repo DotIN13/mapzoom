@@ -3,6 +3,7 @@
 import * as flatbuffers from 'flatbuffers';
 
 import { GeomType } from '../vector-tile/geom-type.js';
+import { TagType } from '../vector-tile/tag-type.js';
 
 
 export class Feature implements flatbuffers.IUnpackableObject<FeatureT> {
@@ -43,28 +44,43 @@ tagsArray():Uint32Array|null {
   return offset ? new Uint32Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
-type():GeomType {
+tagTypes(index: number):TagType|null {
   const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.readInt8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
+}
+
+tagTypesLength():number {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+}
+
+tagTypesArray():Int8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? new Int8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+}
+
+type():GeomType {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.readInt8(this.bb_pos + offset) : GeomType.UNKNOWN;
 }
 
 geometry(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.readUint32(this.bb!.__vector(this.bb_pos + offset) + index * 4) : 0;
 }
 
 geometryLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 geometryArray():Uint32Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? new Uint32Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
 static startFeature(builder:flatbuffers.Builder) {
-  builder.startObject(4);
+  builder.startObject(5);
 }
 
 static addId(builder:flatbuffers.Builder, id:number) {
@@ -92,12 +108,28 @@ static startTagsVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(4, numElems, 4);
 }
 
+static addTagTypes(builder:flatbuffers.Builder, tagTypesOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, tagTypesOffset, 0);
+}
+
+static createTagTypesVector(builder:flatbuffers.Builder, data:TagType[]):flatbuffers.Offset {
+  builder.startVector(1, data.length, 1);
+  for (let i = data.length - 1; i >= 0; i--) {
+    builder.addInt8(data[i]!);
+  }
+  return builder.endVector();
+}
+
+static startTagTypesVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(1, numElems, 1);
+}
+
 static addType(builder:flatbuffers.Builder, type:GeomType) {
-  builder.addFieldInt8(2, type, GeomType.UNKNOWN);
+  builder.addFieldInt8(3, type, GeomType.UNKNOWN);
 }
 
 static addGeometry(builder:flatbuffers.Builder, geometryOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(3, geometryOffset, 0);
+  builder.addFieldOffset(4, geometryOffset, 0);
 }
 
 static createGeometryVector(builder:flatbuffers.Builder, data:number[]|Uint32Array):flatbuffers.Offset;
@@ -122,10 +154,11 @@ static endFeature(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createFeature(builder:flatbuffers.Builder, id:number, tagsOffset:flatbuffers.Offset, type:GeomType, geometryOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createFeature(builder:flatbuffers.Builder, id:number, tagsOffset:flatbuffers.Offset, tagTypesOffset:flatbuffers.Offset, type:GeomType, geometryOffset:flatbuffers.Offset):flatbuffers.Offset {
   Feature.startFeature(builder);
   Feature.addId(builder, id);
   Feature.addTags(builder, tagsOffset);
+  Feature.addTagTypes(builder, tagTypesOffset);
   Feature.addType(builder, type);
   Feature.addGeometry(builder, geometryOffset);
   return Feature.endFeature(builder);
@@ -135,6 +168,7 @@ unpack(): FeatureT {
   return new FeatureT(
     this.id(),
     this.bb!.createScalarList<number>(this.tags.bind(this), this.tagsLength()),
+    this.bb!.createScalarList<TagType>(this.tagTypes.bind(this), this.tagTypesLength()),
     this.type(),
     this.bb!.createScalarList<number>(this.geometry.bind(this), this.geometryLength())
   );
@@ -144,6 +178,7 @@ unpack(): FeatureT {
 unpackTo(_o: FeatureT): void {
   _o.id = this.id();
   _o.tags = this.bb!.createScalarList<number>(this.tags.bind(this), this.tagsLength());
+  _o.tagTypes = this.bb!.createScalarList<TagType>(this.tagTypes.bind(this), this.tagTypesLength());
   _o.type = this.type();
   _o.geometry = this.bb!.createScalarList<number>(this.geometry.bind(this), this.geometryLength());
 }
@@ -153,6 +188,7 @@ export class FeatureT implements flatbuffers.IGeneratedObject {
 constructor(
   public id: number = 0,
   public tags: (number)[] = [],
+  public tagTypes: (TagType)[] = [],
   public type: GeomType = GeomType.UNKNOWN,
   public geometry: (number)[] = []
 ){}
@@ -160,11 +196,13 @@ constructor(
 
 pack(builder:flatbuffers.Builder): flatbuffers.Offset {
   const tags = Feature.createTagsVector(builder, this.tags);
+  const tagTypes = Feature.createTagTypesVector(builder, this.tagTypes);
   const geometry = Feature.createGeometryVector(builder, this.geometry);
 
   return Feature.createFeature(builder,
     this.id,
     tags,
+    tagTypes,
     this.type,
     geometry
   );

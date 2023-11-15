@@ -7,9 +7,20 @@ enum GeomType : byte {
     POLYGON = 3
 }
 
+enum TagType : byte {
+    STRING = 0,
+    FLOAT = 1,
+    DOUBLE = 2,
+    INT = 3,
+    UINT = 4,
+    SINT = 5,
+    BOOL = 6
+}
+
 table Feature {
     id:uint32 = 0;
-    tags:[uint32]; // A list of keyIndex, valueIndex, valueType triplets.
+    tags:[uint32]; // A list of keyIndex, valueIndex pairs.
+    tag_types:[TagType];
     type:GeomType = UNKNOWN;
     geometry:[uint32];
 }

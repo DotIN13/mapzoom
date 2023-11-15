@@ -34,24 +34,36 @@ export class Feature {
         const offset = this.bb.__offset(this.bb_pos, 6);
         return offset ? new Uint32Array(this.bb.bytes().buffer, this.bb.bytes().byteOffset + this.bb.__vector(this.bb_pos + offset), this.bb.__vector_len(this.bb_pos + offset)) : null;
     }
-    type() {
+    tagTypes(index) {
         const offset = this.bb.__offset(this.bb_pos, 8);
+        return offset ? this.bb.readInt8(this.bb.__vector(this.bb_pos + offset) + index) : 0;
+    }
+    tagTypesLength() {
+        const offset = this.bb.__offset(this.bb_pos, 8);
+        return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
+    }
+    tagTypesArray() {
+        const offset = this.bb.__offset(this.bb_pos, 8);
+        return offset ? new Int8Array(this.bb.bytes().buffer, this.bb.bytes().byteOffset + this.bb.__vector(this.bb_pos + offset), this.bb.__vector_len(this.bb_pos + offset)) : null;
+    }
+    type() {
+        const offset = this.bb.__offset(this.bb_pos, 10);
         return offset ? this.bb.readInt8(this.bb_pos + offset) : GeomType.UNKNOWN;
     }
     geometry(index) {
-        const offset = this.bb.__offset(this.bb_pos, 10);
+        const offset = this.bb.__offset(this.bb_pos, 12);
         return offset ? this.bb.readUint32(this.bb.__vector(this.bb_pos + offset) + index * 4) : 0;
     }
     geometryLength() {
-        const offset = this.bb.__offset(this.bb_pos, 10);
+        const offset = this.bb.__offset(this.bb_pos, 12);
         return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
     }
     geometryArray() {
-        const offset = this.bb.__offset(this.bb_pos, 10);
+        const offset = this.bb.__offset(this.bb_pos, 12);
         return offset ? new Uint32Array(this.bb.bytes().buffer, this.bb.bytes().byteOffset + this.bb.__vector(this.bb_pos + offset), this.bb.__vector_len(this.bb_pos + offset)) : null;
     }
     static startFeature(builder) {
-        builder.startObject(4);
+        builder.startObject(5);
     }
     static addId(builder, id) {
         builder.addFieldInt32(0, id, 0);
@@ -69,11 +81,24 @@ export class Feature {
     static startTagsVector(builder, numElems) {
         builder.startVector(4, numElems, 4);
     }
+    static addTagTypes(builder, tagTypesOffset) {
+        builder.addFieldOffset(2, tagTypesOffset, 0);
+    }
+    static createTagTypesVector(builder, data) {
+        builder.startVector(1, data.length, 1);
+        for (let i = data.length - 1; i >= 0; i--) {
+            builder.addInt8(data[i]);
+        }
+        return builder.endVector();
+    }
+    static startTagTypesVector(builder, numElems) {
+        builder.startVector(1, numElems, 1);
+    }
     static addType(builder, type) {
-        builder.addFieldInt8(2, type, GeomType.UNKNOWN);
+        builder.addFieldInt8(3, type, GeomType.UNKNOWN);
     }
     static addGeometry(builder, geometryOffset) {
-        builder.addFieldOffset(3, geometryOffset, 0);
+        builder.addFieldOffset(4, geometryOffset, 0);
     }
     static createGeometryVector(builder, data) {
         builder.startVector(4, data.length, 4);
@@ -89,34 +114,38 @@ export class Feature {
         const offset = builder.endObject();
         return offset;
     }
-    static createFeature(builder, id, tagsOffset, type, geometryOffset) {
+    static createFeature(builder, id, tagsOffset, tagTypesOffset, type, geometryOffset) {
         Feature.startFeature(builder);
         Feature.addId(builder, id);
         Feature.addTags(builder, tagsOffset);
+        Feature.addTagTypes(builder, tagTypesOffset);
         Feature.addType(builder, type);
         Feature.addGeometry(builder, geometryOffset);
         return Feature.endFeature(builder);
     }
     unpack() {
-        return new FeatureT(this.id(), this.bb.createScalarList(this.tags.bind(this), this.tagsLength()), this.type(), this.bb.createScalarList(this.geometry.bind(this), this.geometryLength()));
+        return new FeatureT(this.id(), this.bb.createScalarList(this.tags.bind(this), this.tagsLength()), this.bb.createScalarList(this.tagTypes.bind(this), this.tagTypesLength()), this.type(), this.bb.createScalarList(this.geometry.bind(this), this.geometryLength()));
     }
     unpackTo(_o) {
         _o.id = this.id();
         _o.tags = this.bb.createScalarList(this.tags.bind(this), this.tagsLength());
+        _o.tagTypes = this.bb.createScalarList(this.tagTypes.bind(this), this.tagTypesLength());
         _o.type = this.type();
         _o.geometry = this.bb.createScalarList(this.geometry.bind(this), this.geometryLength());
     }
 }
 export class FeatureT {
-    constructor(id = 0, tags = [], type = GeomType.UNKNOWN, geometry = []) {
+    constructor(id = 0, tags = [], tagTypes = [], type = GeomType.UNKNOWN, geometry = []) {
         this.id = id;
         this.tags = tags;
+        this.tagTypes = tagTypes;
         this.type = type;
         this.geometry = geometry;
     }
     pack(builder) {
         const tags = Feature.createTagsVector(builder, this.tags);
+        const tagTypes = Feature.createTagTypesVector(builder, this.tagTypes);
         const geometry = Feature.createGeometryVector(builder, this.geometry);
-        return Feature.createFeature(builder, this.id, tags, this.type, geometry);
+        return Feature.createFeature(builder, this.id, tags, tagTypes, this.type, geometry);
     }
 }
