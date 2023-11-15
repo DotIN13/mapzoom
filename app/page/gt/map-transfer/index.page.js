@@ -49,12 +49,12 @@ Page(
       console.log("Map transfer page init invoked.");
 
       this.textWidget = ui.createWidget(ui.widget.TEXT, {
-        x: px(56),
-        y: px(100),
-        w: DEVICE_WIDTH - 2 * px(56),
+        x: px(72),
+        y: px(110),
+        w: DEVICE_WIDTH - 2 * px(72),
         h: px(220),
         color: 0xffffff,
-        text_size: px(36),
+        text_size: px(32),
         align_h: ui.align.CENTER_H,
         align_v: ui.align.CENTER_V,
         text_style: ui.text_style.WRAP,
@@ -64,9 +64,9 @@ Page(
       });
 
       // Back button
-      const imgButton = ui.createWidget(ui.widget.BUTTON, {
-        x: 22,
-        y: (DEVICE_HEIGHT - 32) / 2,
+      const backButton = ui.createWidget(ui.widget.BUTTON, {
+        x: px(22),
+        y: (DEVICE_HEIGHT - px(32)) / 2,
         w: -1,
         h: -1,
         normal_src: "image/left-arrow.png",
@@ -77,12 +77,14 @@ Page(
       });
 
       const downloadButtom = ui.createWidget(ui.widget.BUTTON, {
-        x: (DEVICE_WIDTH - 100) / 2,
-        y: DEVICE_HEIGHT - 32,
-        w: 100,
-        h: 32,
-        normal_src: "image/left-arrow.png",
-        press_src: "image/left-arrow.png",
+        x: (DEVICE_WIDTH - px(200)) / 2,
+        y: DEVICE_HEIGHT - px(128),
+        w: px(200),
+        h: px(60),
+        radius: px(30),
+        normal_color: 0x00315e,
+        press_color: 0xa5c8ff,
+        text: "Download",
         click_func: () => {
           this.textWidget.setProperty(ui.prop.TEXT, "Downloading...");
 

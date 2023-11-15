@@ -13,6 +13,7 @@ import {
 import {
   DEVICE_HEIGHT,
   DEVICE_WIDTH,
+  HALF_HEIGHT,
   TILE_SIZE,
   TILE_EXTENT,
   TILE_PROJECTION,
@@ -26,6 +27,8 @@ import {
 import { logger } from "./logger";
 import { TileCache } from "./mvt";
 import { roundToPrecision, lonLatToPixelCoordinates } from "./coordinates";
+
+let isRendering = false; // Global Render Indicator
 
 function scaleCoordinates(coord, fromZoom, toZoom) {
   return {
@@ -101,7 +104,7 @@ export class ZoomMap {
     this.displayW = displayW;
     this.displayH = displayH;
 
-    this.isRendering = false;
+    isRendering = false;
 
     this.createWidgets();
     this.bindWidgets();
@@ -199,6 +202,7 @@ export class ZoomMap {
       text_size: 20,
       text: `z${roundToPrecision(this.zoom)}`,
       color: 0xffffff,
+      enable: false,
     };
     this.zoomIndicator = ui.createWidget(
       ui.widget.TEXT,
@@ -229,7 +233,7 @@ export class ZoomMap {
 
     onDigitalCrown({
       callback: (key, degree) => {
-        if (this.isRendering) return;
+        if (isRendering) return;
 
         // logger.debug(`Digital crown callback: ${key}, ${degree}.`);
 
@@ -267,7 +271,7 @@ export class ZoomMap {
 
     onKey({
       callback: (key, keyEvent) => {
-        if (this.isRendering) return;
+        if (isRendering) return;
 
         if (key == KEY_SHORTCUT && keyEvent === KEY_EVENT_CLICK) {
           this.updateCenter(this.initialCenter, { redraw: true });
@@ -279,15 +283,15 @@ export class ZoomMap {
     });
 
     this.trackpad.addEventListener(ui.event.CLICK_DOWN, (e) => {
-      if (this.isRendering) return;
+      if (isRendering) return;
 
       isDragging = true;
 
       dragTrace.x.push(e.x);
       dragTrace.y.push(e.y);
       if (
-        Math.sqrt((e.x - DEVICE_WIDTH / 2) ** 2 + (e.y - DEVICE_HEIGHT) ** 2) >
-        DEVICE_HEIGHT / 2 - 10
+        Math.sqrt((e.x - HALF_HEIGHT) ** 2 + (e.y - HALF_HEIGHT) ** 2) >
+        HALF_HEIGHT - 10
       ) {
         isGesture = true;
         return;
@@ -298,7 +302,7 @@ export class ZoomMap {
     });
 
     this.trackpad.addEventListener(ui.event.MOVE, (e) => {
-      if (this.isRendering) return;
+      if (isRendering) return;
       if (!isDragging || !lastPosition) return;
 
       dragTrace.x.push(e.x);
@@ -315,15 +319,14 @@ export class ZoomMap {
     });
 
     this.trackpad.addEventListener(ui.event.CLICK_UP, (e) => {
-      if (this.isRendering) return;
+      if (isRendering) return;
 
       if (
         isGesture &&
-        dragTrace.x[0] > DEVICE_WIDTH * 0.75 &&
-        e.x < DEVICE_WIDTH * 0.25
+        dragTrace.x[0] > DEVICE_WIDTH * 0.8 &&
+        e.x < DEVICE_WIDTH * 0.4
       ) {
         router.replace({ url: "page/gt/map-transfer/index.page" });
-        dragTrace = { x: [], y: [] };
         return;
       }
 
@@ -354,6 +357,8 @@ export class ZoomMap {
    * @param {Object} newCenter - New center coordinates in Web Mercator pixel format.
    */
   updateCenter(newCenter, opts = { redraw: false }) {
+    if (isRendering) return;
+
     this.center = newCenter;
 
     if (!opts.redraw) {
@@ -424,10 +429,10 @@ export class ZoomMap {
   }
 
   render() {
-    if (this.isRendering) return; // Prevent multiple renders
+    if (isRendering) return; // Prevent multiple renders
 
     // Set render indicators
-    this.isRendering = true;
+    isRendering = true;
     const startTime = Date.now();
 
     try {
@@ -436,7 +441,7 @@ export class ZoomMap {
       logger.error(e);
     }
 
-    this.isRendering = false;
+    isRendering = false;
 
     const elapsedTime = Date.now() - startTime;
     this.frametimeCounter.setProperty(ui.prop.TEXT, `${elapsedTime}ms`);

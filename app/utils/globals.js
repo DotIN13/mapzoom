@@ -1,9 +1,10 @@
 import { getDeviceInfo } from "@zos/device";
 
-export const DEBUG = true;
+export const DEBUG = false;
 export const VERSION = "1";
 
 export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo();
+export const HALF_HEIGHT = DEVICE_HEIGHT / 2;
 
 export const TILE_SIZE = 512;
 export const TILE_EXTENT = 4096;

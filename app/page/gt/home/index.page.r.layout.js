@@ -41,6 +41,7 @@ export const FRAMETIME_COUNTER_STYLE = {
   align_v: ui.align.CENTER_V,
   text_size: 20,
   color: 0xffffff,
+  enable: false,
 };
 
 export const CANVAS_STYLE = {
@@ -48,4 +49,5 @@ export const CANVAS_STYLE = {
   y: DEVICE_HEIGHT / 2 - CANVAS_HEIGHT / 2,
   w: DEVICE_WIDTH,
   h: DEVICE_HEIGHT,
+  enable: false,
 };

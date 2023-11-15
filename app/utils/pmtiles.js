@@ -269,7 +269,7 @@ function findTile(entries, tileId) {
 
 export function pmtilesFd(input) {
   const result = statSync({ path: input });
-  logger.debug("Stat result: ", result != undefined);
+  if (result === undefined) logger.warn("Map file not found.");
   if (result === undefined) return undefined;
 
   return openSync({
