@@ -1,6 +1,8 @@
 import * as ui from "@zos/ui";
+import * as router from "@zos/router";
 import {
   onDigitalCrown,
+  offDigitalCrown,
   onKey,
   KEY_DOWN,
   KEY_SHORTCUT,
@@ -101,6 +103,7 @@ export class ZoomMap {
 
     this.isRendering = false;
 
+    this.createWidgets();
     this.bindWidgets();
   }
 
@@ -185,14 +188,7 @@ export class ZoomMap {
     return val;
   }
 
-  bindWidgets() {
-    let isDragging = false;
-    let lastPosition = null;
-
-    let lastZoomUpdate = null;
-    let wheelDegrees = 0;
-    let zoomTimeout = null;
-
+  createWidgets() {
     this.zoomIndicatorProps = {
       x: 0,
       y: DEVICE_HEIGHT - 80,
@@ -216,9 +212,20 @@ export class ZoomMap {
       radius: 10,
       color: 0xea4335,
       alpha: 0,
+      enable: false,
     };
     this.userMarker = ui.createWidget(ui.widget.CIRCLE, this.userMarkerProps);
-    this.userMarker.setEnable(false); // Disable marker interactions
+  }
+
+  bindWidgets() {
+    let isDragging = false;
+    let isGesture = false;
+    let lastPosition = null;
+    let dragTrace = { x: [], y: [] };
+
+    let lastZoomUpdate = null;
+    let wheelDegrees = 0;
+    let zoomTimeout = null;
 
     onDigitalCrown({
       callback: (key, degree) => {
@@ -260,7 +267,7 @@ export class ZoomMap {
 
     onKey({
       callback: (key, keyEvent) => {
-        // logger.debug(`Key callback: ${key}`);
+        if (this.isRendering) return;
 
         if (key == KEY_SHORTCUT && keyEvent === KEY_EVENT_CLICK) {
           this.updateCenter(this.initialCenter, { redraw: true });
@@ -275,21 +282,28 @@ export class ZoomMap {
       if (this.isRendering) return;
 
       isDragging = true;
+
+      dragTrace.x.push(e.x);
+      dragTrace.y.push(e.y);
+      if (
+        Math.sqrt((e.x - DEVICE_WIDTH / 2) ** 2 + (e.y - DEVICE_HEIGHT) ** 2) >
+        DEVICE_HEIGHT / 2 - 10
+      ) {
+        isGesture = true;
+        return;
+      }
+
       this.followGPS = false;
       lastPosition = { x: e.x, y: e.y };
-    });
-
-    this.trackpad.addEventListener(ui.event.CLICK_UP, (e) => {
-      if (this.isRendering) return;
-
-      isDragging = false;
-      this.updateCenter(this.center, { redraw: true });
-      lastPosition = null;
     });
 
     this.trackpad.addEventListener(ui.event.MOVE, (e) => {
       if (this.isRendering) return;
       if (!isDragging || !lastPosition) return;
+
+      dragTrace.x.push(e.x);
+      dragTrace.y.push(e.y);
+      if (isGesture) return;
 
       const currentTime = Date.now();
       if (currentTime - this.lastCenterUpdate < PAN_THROTTLING_DELAY) return;
@@ -298,6 +312,27 @@ export class ZoomMap {
 
       this.lastCenterUpdate = currentTime;
       lastPosition = { x: e.x, y: e.y };
+    });
+
+    this.trackpad.addEventListener(ui.event.CLICK_UP, (e) => {
+      if (this.isRendering) return;
+
+      if (
+        isGesture &&
+        dragTrace.x[0] > DEVICE_WIDTH * 0.75 &&
+        e.x < DEVICE_WIDTH * 0.25
+      ) {
+        router.replace({ url: "page/gt/map-transfer/index.page" });
+        dragTrace = { x: [], y: [] };
+        return;
+      }
+
+      dragTrace = { x: [], y: [] };
+
+      isDragging = false;
+      isGesture = false;
+      this.updateCenter(this.center, { redraw: true });
+      lastPosition = null;
     });
   }
 
@@ -360,7 +395,7 @@ export class ZoomMap {
    * Calculate the tiles covering the viewport based on the center pixel.
    * @returns {Array} - An array of tiles covering the viewport.
    */
-  calculateViewportTiles() {
+  viewportTiles() {
     const halfCanvasW = this.canvasW / 2;
     const halfCanvasH = this.canvasH / 2;
 
@@ -409,8 +444,8 @@ export class ZoomMap {
 
   commitRender() {
     // First, calculate the tiles intersecting with the viewport
-    const tiles = this.calculateViewportTiles();
-    logger.info(tiles.length, "tiles to render.");
+    const tiles = this.viewportTiles();
+    // logger.info(tiles.length, "tiles to render.");
 
     this.canvas.setPaint({
       color: 0xffff00,
@@ -452,7 +487,6 @@ export class ZoomMap {
 
       // Iterate through features in the decoded tile and draw them
       for (const layer of tileObj.layers) {
-
         // Iterate through features in the layer
         for (let feature of layer.features) {
           // logger.debug(JSON.stringify(feature.properties.name));

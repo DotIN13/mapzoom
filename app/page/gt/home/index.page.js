@@ -3,7 +3,6 @@ import { offDigitalCrown } from "@zos/interaction";
 import { onGesture, offGesture, GESTURE_RIGHT } from "@zos/interaction";
 import { Geolocation } from "@zos/sensor";
 import { setScrollLock } from "@zos/page";
-import { pauseDropWristScreenOff, resetDropWristScreenOff } from "@zos/display";
 import "fast-text-encoding";
 
 import {
@@ -15,9 +14,9 @@ import {
   CANVAS_HEIGHT,
 } from "zosLoader:./index.page.[pf].layout.js";
 
+import { DEVICE_WIDTH, DEVICE_HEIGHT } from "../../../utils/globals";
 import { ZoomMap } from "../../../utils/mapzoom";
 import { logger } from "../../../utils/logger";
-import { DEVICE_WIDTH, DEVICE_HEIGHT } from "../../../utils/globals";
 
 const geolocation = new Geolocation();
 
@@ -25,7 +24,6 @@ Page({
   onInit() {
     logger.debug("page onInit invoked");
     setScrollLock({ lock: true });
-    pauseDropWristScreenOff({ duration: 0 });
   },
   build() {
     logger.debug("page build invoked");
@@ -87,7 +85,5 @@ Page({
 
     offDigitalCrown();
     offGesture();
-
-    resetDropWristScreenOff();
   },
 });

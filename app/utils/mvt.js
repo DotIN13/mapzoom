@@ -148,8 +148,8 @@ function parseGeometry(feature) {
 export class TileCache {
   constructor() {
     this.memoryCache = new Map();
-    this.mapId = `shanghai-20231024-mini-v${VERSION}`;
-    this.pmtiles = new PMTiles("map/shanghai-20231024-mini-fbs.pmtiles");
+    this.mapId = `example-v${VERSION}`;
+    this.pmtiles = new PMTiles("data://download/example.pmtiles");
   }
 
   getTile(z, x, y) {

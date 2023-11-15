@@ -1,7 +1,9 @@
 import {
+  openSync,
   openAssetsSync,
   readSync,
   statAssetsSync,
+  statSync,
   O_RDONLY,
   closeSync,
 } from "@zos/fs";
@@ -266,7 +268,11 @@ function findTile(entries, tileId) {
 }
 
 export function pmtilesFd(input) {
-  return openAssetsSync({
+  const result = statSync({ path: input });
+  logger.debug("Stat result: ", result != undefined);
+  if (result === undefined) return undefined;
+
+  return openSync({
     path: input,
     flag: O_RDONLY,
   });
@@ -275,6 +281,8 @@ export function pmtilesFd(input) {
 export class PMTiles {
   constructor(input) {
     this.fd = pmtilesFd(input);
+    if (this.fd === undefined) return undefined;
+
     this.dirCache = new Map();
     this.dirCacheHits = new Map();
 
@@ -333,6 +341,8 @@ export class PMTiles {
   }
 
   getZxy(z, x, y) {
+    if (this.fd === undefined) return null;
+
     const tileId = zxyToTileId(z, x, y);
 
     // logger.debug("Getting tile: ", tileId);

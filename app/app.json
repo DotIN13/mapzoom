@@ -10,7 +10,7 @@
     },
     "icon": "icon.png",
     "vender": "DotIN13",
-    "description": "hello world app"
+    "description": "MapZoom"
   },
   "permissions": [
     "data:os.device.info",
@@ -31,16 +31,18 @@
       "module": {
         "page": {
           "pages": [
-            "page/gt/home/index.page"
+            "page/gt/home/index.page",
+            "page/gt/map-transfer/index.page"
           ]
+        },
+        "app-side": {
+          "path": "app-side/index"
         }
       },
       "platforms": [
         {
-          "st": "r"
-        },
-        {
-          "st": "s"
+          "st": "r",
+          "dw": 480
         }
       ],
       "designWidth": 480

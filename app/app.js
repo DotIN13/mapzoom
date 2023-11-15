@@ -1,10 +1,14 @@
-App({
-  globalData: {},
-  onCreate(options) {
-    console.log("app on create invoke");
-  },
+import { BaseApp } from "@zeppos/zml/base-app";
+import { pauseDropWristScreenOff, resetDropWristScreenOff } from "@zos/display";
 
-  onDestroy(options) {
-    console.log("app on destroy invoke");
-  },
-});
+App(
+  BaseApp({
+    globalData: {},
+    onCreate() {
+      pauseDropWristScreenOff({ duration: 0 });
+    },
+    onDestroy(opts) {
+      resetDropWristScreenOff();
+    },
+  })
+);
