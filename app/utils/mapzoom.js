@@ -25,7 +25,7 @@ import {
   CENTER_STORAGE_SCALE,
 } from "./globals";
 import { logger } from "./logger";
-import { TileCache } from "./mvt";
+import { TileCache } from "./tile-cache";
 import { roundToPrecision, lonLatToPixelCoordinates } from "./coordinates";
 
 let isRendering = false; // Global Render Indicator
