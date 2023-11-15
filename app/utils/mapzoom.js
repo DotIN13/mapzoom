@@ -425,6 +425,9 @@ export class ZoomMap {
         tiles.push({ x: x, y: y });
       }
     }
+
+    // logger.info(tiles.length, "tiles to render.");
+
     return tiles;
   }
 
@@ -447,26 +450,26 @@ export class ZoomMap {
     this.frametimeCounter.setProperty(ui.prop.TEXT, `${elapsedTime}ms`);
   }
 
+  drawDebugBackground() {
+    this.canvas.drawRect({
+      x1: 0,
+      y1: 0,
+      x2: this.canvasW,
+      y2: this.canvasH,
+      color: 0x292900,
+    });
+  }
+
   commitRender() {
     // First, calculate the tiles intersecting with the viewport
     const tiles = this.viewportTiles();
-    // logger.info(tiles.length, "tiles to render.");
 
-    this.canvas.setPaint({
-      color: 0xffff00,
-      line_width: 2,
-    });
     // Clear canvas before drawing
     this.canvas.clear(this.defaultCanvasStyle);
+    this.canvas.setPaint({ color: 0xffff00, line_width: 2 });
 
     // Background color for debugging purpose
-    // this.canvas.drawRect({
-    //   x1: 0,
-    //   y1: 0,
-    //   x2: this.canvasW,
-    //   y2: this.canvasH,
-    //   color: 0x292900,
-    // });
+    // this.drawDebugBackground();
 
     const currentTileSize = this.getRenderCache("currentTileSize");
     const currentCanvasCenter = this.getRenderCache("currentCanvasCenter");
@@ -491,11 +494,11 @@ export class ZoomMap {
         tile.y * currentTileSize - (currentCanvasCenter.y - this.canvasH / 2);
 
       // Iterate through features in the decoded tile and draw them
-      for (const layer of tileObj.layers) {
+      for (const layer of tileObj) {
+        const layerName = layer.name;
+
         // Iterate through features in the layer
         for (let feature of layer.features) {
-          // logger.debug(JSON.stringify(feature.properties.name));
-
           const { type: geoType, coordinates: featCoords } = feature.geometry;
 
           if (geoType === "Point") {

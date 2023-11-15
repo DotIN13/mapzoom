@@ -1,9 +1,6 @@
 import * as flatbuffers from "flatbuffers";
 
-import {
-  DEBUG,
-  VERSION,
-} from "./globals";
+import { DEBUG, VERSION } from "./globals";
 import { logger, timer } from "./logger";
 import { vector_tile } from "./vector-tile-js/vector_tile";
 
@@ -27,22 +24,25 @@ function zigzagDecode(n) {
 
 export function firstPass(decodedTile) {
   const layers = []; // Create layers
+  const featureTemp = new vector_tile.Feature();
 
   for (let i = 0; i < decodedTile.layersLength(); i++) {
     const layer = decodedTile.layers(i);
     const features = []; // Create feature list of each layer
-    const featureTemp = new vector_tile.Feature();
 
     for (let j = 0; j < layer.featuresLength(); j++) {
-      const geometry = parseGeometry(layer.features(j, featureTemp));
-      if (geometry) features.push({ geometry });
+      const feature = layer.features(j, featureTemp);
+
+      const geometry = parseGeometry(feature);
+      const properties = parseProperties(feature, layer);
+      if (geometry) features.push({ geometry, properties });
     }
 
     if (features.length === 0) continue; // Skip layers with no features
 
     layers.push({ name: layer.name(), features });
   }
-  return { tile: decodeTile, layers };
+  return layers;
 }
 
 function parseGeometry(feature) {
@@ -119,25 +119,24 @@ function parseGeometry(feature) {
   }
 }
 
-// export function transformFeature(feature, layer) {
-//   parseGeometry(feature);
+export function parseProperties(feature, layer) {
+  const props = new Set(["name", "name:zh"]);
+  const properties = {};
+  const tags = feature.tagsArray();
 
-//   const keys = layer.keys;
-//   const values = layer.values;
+  // Parse tags to properties
+  for (let i = 0; i < feature.tagsLength(); i += 2) {
+    const keyIndex = tags[i];
+    const valueIndex = tags[i + 1];
+    const key = layer.keys(keyIndex);
 
-//   const feature = {
-//     type: "Feature",
-//     id: feature.id,
-//     properties: {},
-//     geometry: feature.geometry,
-//   };
+    if (props.has(key)) {
+      properties[key] = layer.values(valueIndex);
+      props.delete(key);
+    }
 
-//   // Parse tags to properties
-//   for (let i = 0; i < feature.tags.length; i += 2) {
-//     const keyIndex = feature.tags[i];
-//     const valueIndex = feature.tags[i + 1];
-//     feature.properties[keys[keyIndex]] = values[valueIndex];
-//   }
+    if (props.size === 0) return properties;
+  }
 
-//   return feature;
-// }
+  return properties;
+}

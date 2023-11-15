@@ -268,11 +268,23 @@ function findTile(entries, tileId) {
 }
 
 export function pmtilesFd(input) {
-  const result = statSync({ path: input });
+  // Handle assets:// and data:// paths separately
+  let statFunc, openFunc;
+
+  if (input.startsWith("assets://")) {
+    input = input.split("assets://")[1];
+    statFunc = statAssetsSync;
+    openFunc = openAssetsSync;
+  } else {
+    statFunc = statSync;
+    openFunc = openSync;
+  }
+
+  const result = statFunc({ path: input });
   if (result === undefined) logger.warn("Map file not found.");
   if (result === undefined) return undefined;
 
-  return openSync({
+  return openFunc({
     path: input,
     flag: O_RDONLY,
   });
