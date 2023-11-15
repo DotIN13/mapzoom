@@ -1,0 +1,35 @@
+namespace vector_tile;
+
+enum GeomType : byte {
+    UNKNOWN = 0,
+    POINT = 1,
+    LINESTRING = 2,
+    POLYGON = 3
+}
+
+table Feature {
+    id:uint32 = 0;
+    tags:[uint32]; // A list of keyIndex, valueIndex, valueType triplets.
+    type:GeomType = UNKNOWN;
+    geometry:[uint32];
+}
+
+table Layer {
+    version:uint32 = 1;
+    name:string;
+    features:[Feature];
+    keys:[string];
+    string_values:[string];
+    float_values:[float];
+    double_values:[double];
+    int_values:[int32];
+    uint_values:[uint32];
+    bool_values:[bool];
+    extent:uint32 = 4096;
+}
+
+table Tile {
+    layers:[Layer];
+}
+
+root_type Tile;

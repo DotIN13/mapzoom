@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "esnext",
+    "outDir": "./vector-tile-js"
+  },
+  "include": ["vector-tile-ts/**/*.ts"],
+  "exclude": ["node_modules"]
+}
