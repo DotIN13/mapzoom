@@ -130,10 +130,8 @@ export function parseProperties(feature, layer) {
     const valueIndex = tags[i + 1];
     const key = layer.keys(keyIndex);
 
-    if (props.has(key)) {
-      properties[key] = layer.values(valueIndex);
-      props.delete(key);
-    }
+    if (props.delete(key))
+      properties[key] = layer.values(valueIndex).stringValue();
 
     if (props.size === 0) return properties;
   }

@@ -460,6 +460,21 @@ export class ZoomMap {
     });
   }
 
+  drawText(coord, text, textSet, size = 13, color = 0x989898) {
+    if (!text) return;
+    if (textSet.has(text)) return;
+
+    textSet.add(text);
+
+    this.canvas.drawText({
+      x: coord.x,
+      y: coord.y,
+      text_size: size,
+      color,
+      text,
+    });
+  }
+
   commitRender() {
     // First, calculate the tiles intersecting with the viewport
     const tiles = this.viewportTiles();
@@ -475,6 +490,7 @@ export class ZoomMap {
     const currentCanvasCenter = this.getRenderCache("currentCanvasCenter");
 
     const coordCache = buildCoordCache(currentTileSize);
+    const textSet = new Set();
 
     // For each tile, interpolate the pixel coordinates of the features and draw them on the canvas.
     for (const tile of tiles) {
@@ -496,9 +512,12 @@ export class ZoomMap {
       // Iterate through features in the decoded tile and draw them
       for (const layer of tileObj) {
         const layerName = layer.name;
+        textSet.clear();
 
         // Iterate through features in the layer
         for (let feature of layer.features) {
+          const name = feature.properties["name:zh"] || feature.properties.name;
+
           const { type: geoType, coordinates: featCoords } = feature.geometry;
 
           if (geoType === "Point") {
@@ -533,6 +552,9 @@ export class ZoomMap {
               data_array: lineCoords,
               color: 0x00ff22,
             });
+
+            const textCoord = lineCoords[lineCoords.length >> 1];
+            this.drawText(textCoord, name, textSet);
             continue;
           }
 
