@@ -291,7 +291,7 @@ export class ZoomMap {
       dragTrace.y.push(e.y);
       if (
         Math.sqrt((e.x - HALF_HEIGHT) ** 2 + (e.y - HALF_HEIGHT) ** 2) >
-        HALF_HEIGHT - 10
+        HALF_HEIGHT - 30
       ) {
         isGesture = true;
         return;

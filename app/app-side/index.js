@@ -23,7 +23,7 @@ AppSideService(
     },
     onReceivedFile(file) {
       logger.log(`received file: ${file}`);
-    },
+    },    
     async onRequest(req, res) {
       const [, action] = req.method.split(".");
       if (action == "map") {
