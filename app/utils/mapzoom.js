@@ -27,6 +27,7 @@ import {
 import { logger } from "./logger";
 import { TileCache } from "./tile-cache";
 import { roundToPrecision, lonLatToPixelCoordinates } from "./coordinates";
+import { mapStyle } from "./map-style";
 import { GeomType } from "./vector-tile-js/vector-tile";
 
 let isRendering = false; // Global Render Indicator
@@ -473,7 +474,7 @@ export class ZoomMap {
     }
   }
 
-  drawText(coord, text, textSet, size = 16, color = 0xdfdfdf) {
+  drawText(coord, text, textSet, size = 20, color = 0xfefefe) {
     if (!text) return;
     if (textSet.has(text)) return;
 
@@ -525,10 +526,18 @@ export class ZoomMap {
       // Iterate through features in the decoded tile and draw them
       for (const layer of tileObj) {
         const layerName = layer.name;
+        const styleBuilder = mapStyle[layerName];
 
         // Iterate through features in the layer
         for (let feature of layer.features) {
-          const name = feature.properties.name || feature.properties["name:en"];
+          const style = styleBuilder ? styleBuilder(this.zoom, feature) : {};
+
+          this.canvas.setPaint({
+            color: style["line-color"] || 0xeeeeee,
+            line_width: style["line-width"] || 2,
+          });
+
+          const name = feature.properties.name;
 
           const { type: geoType, coordinates: featCoords } = feature;
 
@@ -538,8 +547,8 @@ export class ZoomMap {
               this.canvas.drawCircle({
                 center_x: pointCoord.x,
                 center_y: pointCoord.y,
-                radius: 4,
-                color: 0xdedede,
+                radius: style["circle-radius"] || 4,
+                color: style["fill-color"] || 0xdedede,
               });
             }
             continue;
@@ -566,7 +575,7 @@ export class ZoomMap {
                     y1: lastCoord.y,
                     x2: mapped.x,
                     y2: mapped.y,
-                    color: 0x444444,
+                    color: style["line-color"] || 0x444444,
                   });
                 }
                 lastCoord = mapped;
@@ -582,9 +591,9 @@ export class ZoomMap {
               let outerRingCoords = polygon[0].map((coord) =>
                 getCoordCache(coord, coordCache)
               );
-              this.canvas.strokePoly({
+              this.canvas.drawPoly({
                 data_array: outerRingCoords,
-                color: 0x3499ff,
+                color: style["fill-color"] || 0x3499ff,
               }); // Or fillPoly for filled polygons
 
               // Draw inner rings (holes) of each polygon if present
@@ -592,9 +601,9 @@ export class ZoomMap {
                 let innerRingCoords = polygon[i].map((coord) =>
                   getCoordCache(coord, coordCache)
                 );
-                this.canvas.strokePoly({
+                this.canvas.drawPoly({
                   data_array: innerRingCoords,
-                  color: 0x3499ff,
+                  color: style["fill-color"] || 0x3499ff,
                 }); // Use a different color for holes if desired
               }
             }

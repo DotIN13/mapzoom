@@ -127,7 +127,7 @@ function parsePolygon(geometry) {
 }
 
 export function parseProperties(feature, keys, layer) {
-  const props = new Set(["name", "name:en"]);
+  const props = new Set(["name", "pmap:kind"]);
   const properties = {};
   const tags = feature.tagsArray();
 
