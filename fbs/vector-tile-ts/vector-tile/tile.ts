@@ -2,10 +2,10 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { Layer, LayerT } from '../vector-tile/layer.js';
+import { Layer } from '../vector-tile/layer.js';
 
 
-export class Tile implements flatbuffers.IUnpackableObject<TileT> {
+export class Tile {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):Tile {
@@ -70,31 +70,5 @@ static createTile(builder:flatbuffers.Builder, layersOffset:flatbuffers.Offset):
   Tile.startTile(builder);
   Tile.addLayers(builder, layersOffset);
   return Tile.endTile(builder);
-}
-
-unpack(): TileT {
-  return new TileT(
-    this.bb!.createObjList<Layer, LayerT>(this.layers.bind(this), this.layersLength())
-  );
-}
-
-
-unpackTo(_o: TileT): void {
-  _o.layers = this.bb!.createObjList<Layer, LayerT>(this.layers.bind(this), this.layersLength());
-}
-}
-
-export class TileT implements flatbuffers.IGeneratedObject {
-constructor(
-  public layers: (LayerT)[] = []
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const layers = Tile.createLayersVector(builder, builder.createObjectOffsetList(this.layers));
-
-  return Tile.createTile(builder,
-    layers
-  );
 }
 }

@@ -27,6 +27,7 @@ import {
 import { logger } from "./logger";
 import { TileCache } from "./tile-cache";
 import { roundToPrecision, lonLatToPixelCoordinates } from "./coordinates";
+import { GeomType } from "./vector-tile-js/vector-tile";
 
 let isRendering = false; // Global Render Indicator
 
@@ -518,20 +519,9 @@ export class ZoomMap {
         for (let feature of layer.features) {
           const name = feature.properties["name:zh"] || feature.properties.name;
 
-          const { type: geoType, coordinates: featCoords } = feature.geometry;
+          const { type: geoType, coordinates: featCoords } = feature;
 
-          if (geoType === "Point") {
-            let pointCoord = getCoordCache(featCoords, coordCache);
-            this.canvas.drawCircle({
-              center_x: pointCoord.x,
-              center_y: pointCoord.y,
-              radius: 4,
-              color: 0xdedede,
-            });
-            continue;
-          }
-
-          if (geoType === "MultiPoint") {
+          if (geoType === GeomType.POINT) {
             for (const coord of featCoords) {
               let pointCoord = getCoordCache(coord, coordCache);
               this.canvas.drawCircle({
@@ -544,21 +534,7 @@ export class ZoomMap {
             continue;
           }
 
-          if (geoType === "LineString") {
-            let lineCoords = featCoords.map((coord) =>
-              getCoordCache(coord, coordCache)
-            );
-            this.canvas.strokePoly({
-              data_array: lineCoords,
-              color: 0x00ff22,
-            });
-
-            const textCoord = lineCoords[lineCoords.length >> 1];
-            this.drawText(textCoord, name, textSet);
-            continue;
-          }
-
-          if (geoType === "MultiLineString") {
+          if (geoType === GeomType.LINESTRING) {
             for (const line of featCoords) {
               let lineCoords = line.map((coord) =>
                 getCoordCache(coord, coordCache)
@@ -568,33 +544,13 @@ export class ZoomMap {
                 color: 0x444444,
               });
             }
+
+            // const textCoord = lineCoords[lineCoords.length >> 1];
+            // this.drawText(textCoord, name, textSet);
             continue;
           }
 
-          if (geoType === "Polygon") {
-            // Draw the outer ring
-            let outerRingCoords = featCoords[0].map((coord) =>
-              getCoordCache(coord, coordCache)
-            );
-            this.canvas.strokePoly({
-              data_array: outerRingCoords,
-              color: 0x3499ff,
-            }); // Or fillPoly if you want filled polygons
-
-            // Draw inner rings (holes) if present
-            for (let i = 1; i < featCoords.length; i++) {
-              let innerRingCoords = featCoords[i].map((coord) =>
-                getCoordCache(coord, coordCache)
-              );
-              this.canvas.strokePoly({
-                data_array: innerRingCoords,
-                color: 0x3499ff,
-              }); // Use a different color if you want to distinguish holes
-            }
-            continue;
-          }
-
-          if (geoType === "MultiPolygon") {
+          if (geoType === GeomType.POLYGON) {
             for (const polygon of featCoords) {
               // Draw the outer ring of each polygon
               let outerRingCoords = polygon[0].map((coord) =>
@@ -602,7 +558,7 @@ export class ZoomMap {
               );
               this.canvas.strokePoly({
                 data_array: outerRingCoords,
-                color: 0x00ff99,
+                color: 0x3499ff,
               }); // Or fillPoly for filled polygons
 
               // Draw inner rings (holes) of each polygon if present
@@ -612,14 +568,14 @@ export class ZoomMap {
                 );
                 this.canvas.strokePoly({
                   data_array: innerRingCoords,
-                  color: 0x00ff99,
+                  color: 0x3499ff,
                 }); // Use a different color for holes if desired
               }
             }
             continue;
           }
 
-          logger.warn(`Unsupported feature type: ${feature.geometry.type}`);
+          logger.warn(`Unsupported feature type: ${feature.type}`);
         }
       }
     }

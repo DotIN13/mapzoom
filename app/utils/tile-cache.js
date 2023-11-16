@@ -12,8 +12,8 @@ export class TileCache {
   constructor() {
     this.memoryCache = new Map();
     this.mapId = `example-v${VERSION}`;
-    this.pmtiles = new PMTiles("data://download/example.pmtiles");
-    // this.pmtiles = new PMTiles("assets://map/shanghai-20231024-mini-fbs.pmtiles");
+    // this.pmtiles = new PMTiles("data://download/example.pmtiles");
+    this.pmtiles = new PMTiles("assets://map/shanghai-20231116-mini-fbs.pmtiles");
   }
 
   getTile(z, x, y) {

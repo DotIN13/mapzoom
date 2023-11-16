@@ -22,7 +22,7 @@ table Feature {
     tags:[uint32]; // A list of keyIndex, valueIndex pairs.
     tag_types:[TagType];
     type:GeomType = UNKNOWN;
-    geometry:[uint32];
+    geometry:[int32];
 }
 
 table Layer {

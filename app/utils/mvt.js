@@ -28,14 +28,21 @@ export function firstPass(decodedTile) {
 
   for (let i = 0; i < decodedTile.layersLength(); i++) {
     const layer = decodedTile.layers(i);
+    const keys = [];
+    for (let k = 0; k < layer.keysLength(); k++) {
+      keys.push(layer.keys(k));
+    }
     const features = []; // Create feature list of each layer
 
     for (let j = 0; j < layer.featuresLength(); j++) {
       const feature = layer.features(j, featureTemp);
 
-      const geometry = parseGeometry(feature);
-      const properties = parseProperties(feature, layer);
-      if (geometry) features.push({ geometry, properties });
+      const featureType = feature.type();
+      const coordinates = parseGeometry(feature, featureType);
+      if (coordinates) {
+        const properties = parseProperties(feature, keys, layer);
+        features.push({ type: featureType, coordinates, properties });
+      }
     }
 
     if (features.length === 0) continue; // Skip layers with no features
@@ -45,96 +52,82 @@ export function firstPass(decodedTile) {
   return layers;
 }
 
-function parseGeometry(feature) {
-  let x = 0;
-  let y = 0;
-  let i = 0;
-  let rings = [];
-  let ring = [];
-
+function parseGeometry(feature, featureType) {
   const geometry = feature.geometryArray();
 
-  while (i < feature.geometryLength()) {
-    const cmdInt = geometry[i++];
-    const cmdId = cmdInt & 0x7;
-    const cmdCount = cmdInt >> 3;
-
-    switch (cmdId) {
-      case 1: // MoveTo
-        if (ring.length) {
-          rings.push(ring);
-          ring = [];
-        }
-        for (let j = 0; j < cmdCount; j++) {
-          x += zigzagDecode(geometry[i++]);
-          y += zigzagDecode(geometry[i++]);
-          ring.push([x, y]);
-        }
-        break;
-
-      case 2: // LineTo
-        for (let j = 0; j < cmdCount; j++) {
-          x += zigzagDecode(geometry[i++]);
-          y += zigzagDecode(geometry[i++]);
-          ring.push([x, y]);
-        }
-        break;
-
-      case 7: // ClosePath
-        if (ring.length) {
-          ring.push(ring[0]); // Close the ring
-          rings.push(ring);
-          ring = [];
-        }
-        break;
-    }
+  if (featureType === vector_tile.GeomType.POINT) {
+    return parsePoint(geometry);
   }
-
-  if (ring.length) rings.push(ring);
-
-  // Return null if no coordinates are found
-  if (rings.length === 0) return null;
-
-  switch (feature.type()) {
-    case 1: // POINT
-      return {
-        type: rings[0].length === 1 ? "Point" : "MultiPoint",
-        coordinates: rings[0].length === 1 ? rings[0][0] : rings[0],
-      };
-    case 2: // LINESTRING
-      return {
-        type: rings.length === 1 ? "LineString" : "MultiLineString",
-        coordinates: rings.length === 1 ? rings[0] : rings,
-      };
-    case 3: // POLYGON
-      // TODO: Handle polygon/multipolygon distinction based on winding order and nested rings.
-      // Simplified here for brevity.
-      return {
-        type: "Polygon",
-        coordinates: rings,
-      };
-    default:
-      // Type UNKNOWN or any other types can be handled here, if necessary.
-      return null;
+  if (featureType === vector_tile.GeomType.LINESTRING) {
+    return parseLineString(geometry);
+  }
+  if (featureType === vector_tile.GeomType.POLYGON) {
+    return parsePolygon(geometry);
   }
 }
 
-export function parseProperties(feature, layer) {
+// feature type Point and MultiPoint: [cmd_int, x1, y1, x2, y2, ...].
+// cmd_int = (id) | (coord_count << 1)
+function parsePoint(geometry) {
+  let coordinates = [];
+  for (let i = 1; i < geometry.length; i += 2) {
+    coordinates.push([geometry[i], geometry[i + 1]]);
+  }
+  return coordinates;
+}
+
+// LineString and MultiLineString: [cmd_int, x1, y1, x2, y2, cmd_int, x1, y1, x2, y2, ...].
+function parseLineString(geometry) {
+  let lines = [];
+  let i = 0;
+  while (i < geometry.length) {
+    let cmd_int = geometry[i++];
+    let count = cmd_int >> 1; // Extract count from cmd_int
+    let line = [];
+    for (let j = 0; j < count; j++) {
+      line.push([geometry[i], geometry[i + 1]]);
+      i += 2;
+    }
+    lines.push(line);
+  }
+  return lines;
+}
+
+// Polygon includes feature type Polygon and MultiPolygon:
+// [cmd_int, x1, y1, x2, y2, ..., x1, y1, cmd_int, x1, y1, x2, y2, ..., x1, y1].
+function parsePolygon(geometry) {
+  let polygons = [];
+  let currentPolygon = [];
+  let i = 0;
+
+  while (i < geometry.length) {
+    let cmd_int = geometry[i++];
+    let count = cmd_int >> 1; // Extract count from cmd_int
+    let ring = [];
+
+    for (let j = 0; j < count; j++) {
+      ring.push([geometry[i], geometry[i + 1]]);
+      i += 2;
+    }
+
+    if ((cmd_int & 1) === 0) {
+      // Start of a new polygon
+      if (currentPolygon.length > 0) polygons.push(currentPolygon);
+      currentPolygon = [ring];
+    } else {
+      // Interior ring of the current polygon
+      currentPolygon.push(ring);
+    }
+  }
+  if (currentPolygon.length > 0) polygons.push(currentPolygon);
+
+  return polygons;
+}
+
+export function parseProperties(feature, keys, layer) {
   const props = new Set(["name", "name:zh"]);
   const properties = {};
   const tags = feature.tagsArray();
-
-  // Parse tags to properties
-  for (let i = 0; i < feature.tagsLength(); i += 2) {
-    const keyIndex = tags[i];
-    const valueIndex = tags[i + 1];
-    const key = layer.keys(keyIndex);
-
-    if (props.delete(key))
-      properties[key] = layer.values(valueIndex).stringValue();
-
-    if (props.size === 0) return properties;
-  }
 
   return properties;
 }

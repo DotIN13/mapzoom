@@ -1,0 +1,69 @@
+"Full parsing"
+11/16 [0]02:54:59.238 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:54:59.234Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 122 ms to fetch tile 10 857 417. 
+11/16 [0]02:54:59.438 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:54:59.436Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 194 ms to run. 
+11/16 [0]02:54:59.443 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:54:59.440Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 200 ms to decode tile 10 857 417. 
+11/16 [0]02:54:59.868 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:54:59.866Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 144 ms to fetch tile 10 857 418. 
+11/16 [0]02:55:00.025 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:00.023Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 152 ms to run. 
+11/16 [0]02:55:00.030 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:00.028Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 158 ms to decode tile 10 857 418. 
+11/16 [0]02:55:00.445 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:00.442Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 58 ms to fetch tile 10 858 417. 
+11/16 [0]02:55:00.514 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:00.512Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 59 ms to fetch tile 10 858 418. 
+11/16 [0]02:55:05.747 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:05.744Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 250 ms to fetch tile 15 27442 13381. 
+11/16 [0]02:55:07.156 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:07.154Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 1403 ms to run. 
+11/16 [0]02:55:07.160 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:07.158Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 1409 ms to decode tile 15 27442 13381. 
+11/16 [0]02:55:08.240 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:08.238Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 553 ms to fetch tile 15 27442 13382. 
+11/16 [0]02:55:11.852 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:11.850Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 3606 ms to run. 
+11/16 [0]02:55:11.856 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:11.854Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 3612 ms to decode tile 15 27442 13382. 
+11/16 [0]02:55:13.816 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:13.814Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 403 ms to fetch tile 15 27443 13381. 
+11/16 [0]02:55:17.131 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:17.128Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 3309 ms to run. 
+11/16 [0]02:55:17.137 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:17.134Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 3316 ms to decode tile 15 27443 13381.
+11/16 [0]02:55:18.636 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:18.634Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 467 ms to fetch tile 15 27443 13382. 
+11/16 [0]02:55:21.914 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:21.910Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 3270 ms to run. 
+11/16 [0]02:55:21.918 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:21.916Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 3277 ms to decode tile 15 27443 13382. 
+11/16 [0]02:55:26.930 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:26.927Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 217 ms to fetch tile 15 27442 13381. 
+11/16 [0]02:55:28.336 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:28.334Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 1401 ms to run. 
+11/16 [0]02:55:28.340 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:55:28.338Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 1406 ms to decode tile 15 27442 13381. 
+"Full parsing 2"
+11/16 [0]02:58:30.544 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:30.542Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 115 ms to fetch tile 10 857 417. 
+11/16 [0]02:58:30.693 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:30.690Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 142 ms to run. 
+11/16 [0]02:58:30.697 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:30.695Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 149 ms to decode tile 10 857 417. 
+11/16 [0]02:58:31.065 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:31.063Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 123 ms to fetch tile 10 857 418. 
+11/16 [0]02:58:31.219 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:31.217Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 149 ms to run. 
+11/16 [0]02:58:31.224 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:31.221Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 154 ms to decode tile 10 857 418. 
+11/16 [0]02:58:31.638 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:31.636Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 57 ms to fetch tile 10 858 417. 
+11/16 [0]02:58:31.698 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:31.696Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 50 ms to fetch tile 10 858 418. 
+11/16 [0]02:58:35.265 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:35.263Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 250 ms to fetch tile 15 27442 13381. 
+11/16 [0]02:58:37.125 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:37.122Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 1854 ms to run. 
+11/16 [0]02:58:37.129 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:37.127Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 1860 ms to decode tile 15 27442 13381. 
+11/16 [0]02:58:38.666 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:38.662Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 628 ms to fetch tile 15 27442 13382. 
+11/16 [0]02:58:42.649 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:42.647Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 3973 ms to run. 
+11/16 [0]02:58:42.653 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:42.651Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 3981 ms to decode tile 15 27442 13382. 
+11/16 [0]02:58:44.719 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:44.716Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 471 ms to fetch tile 15 27443 13381. 
+11/16 [0]02:58:48.688 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:48.685Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 3963 ms to run. 
+11/16 [0]02:58:48.693 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:48.690Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 3969 ms to decode tile 15 27443 13381. 
+11/16 [0]02:58:50.285 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:50.282Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 478 ms to fetch tile 15 27443 13382. 
+11/16 [0]02:58:53.878 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:53.876Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 3588 ms to run. 
+11/16 [0]02:58:53.882 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:53.880Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 3593 ms to decode tile 15 27443 13382. 
+11/16 [0]02:58:55.382 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:55.380Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 230 ms to fetch tile 15 27442 13381. 
+11/16 [0]02:58:56.800 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:56.798Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 1413 ms to run. 
+11/16 [0]02:58:56.804 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T10:58:56.802Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 1418 ms to decode tile 15 27442 13381. 
+"Without toString"
+11/16 [0]03:03:25.756 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:25.754Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 109 ms to fetch tile 10 857 417. 
+11/16 [0]03:03:25.860 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:25.858Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 98 ms to run. 
+11/16 [0]03:03:25.864 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:25.862Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 104 ms to decode tile 10 857 417. 
+11/16 [0]03:03:26.212 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:26.210Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 120 ms to fetch tile 10 857 418. 
+11/16 [0]03:03:26.335 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:26.333Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 117 ms to run. 
+11/16 [0]03:03:26.339 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:26.337Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 122 ms to decode tile 10 857 418. 
+11/16 [0]03:03:26.716 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:26.714Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 49 ms to fetch tile 10 858 417. 
+11/16 [0]03:03:26.777 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:26.776Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 51 ms to fetch tile 10 858 418. 
+11/16 [0]03:03:35.066 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:35.064Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 268 ms to fetch tile 15 27442 13381. 
+11/16 [0]03:03:35.958 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:35.956Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 885 ms to run. 
+11/16 [0]03:03:35.962 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:35.960Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 891 ms to decode tile 15 27442 13381. 
+11/16 [0]03:03:37.034 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:37.032Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 576 ms to fetch tile 15 27442 13382. 
+11/16 [0]03:03:39.510 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:39.508Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 2470 ms to run. 
+11/16 [0]03:03:39.515 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:39.512Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 2476 ms to decode tile 15 27442 13382. 
+11/16 [0]03:03:41.550 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:41.548Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 459 ms to fetch tile 15 27443 13381. 
+11/16 [0]03:03:43.538 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:43.536Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 1981 ms to run. 
+11/16 [0]03:03:43.542 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:43.540Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 1987 ms to decode tile 15 27443 13381. 
+11/16 [0]03:03:45.024 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:45.022Z] [jsfwk.info ] [mapzoom] [-] Function getZxy took 472 ms to fetch tile 15 27443 13382. 
+11/16 [0]03:03:47.036 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:47.034Z] [jsfwk.info ] [mapzoom] [-] Function parseMvt took 2007 ms to run. 
+11/16 [0]03:03:47.041 I/quickjs-libc SBEngine: [MapZoom] [2023-11-16T11:03:47.038Z] [jsfwk.info ] [mapzoom] [-] Function decodeTile took 2012 ms to decode tile 15 27443 13382. 

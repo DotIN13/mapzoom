@@ -2,10 +2,10 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { Feature, FeatureT } from '../vector-tile/feature.js';
+import { Feature } from '../vector-tile/feature.js';
 
 
-export class Layer implements flatbuffers.IUnpackableObject<LayerT> {
+export class Layer {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
   __init(i:number, bb:flatbuffers.ByteBuffer):Layer {
@@ -332,79 +332,5 @@ static createLayer(builder:flatbuffers.Builder, version:number, nameOffset:flatb
   Layer.addBoolValues(builder, boolValuesOffset);
   Layer.addExtent(builder, extent);
   return Layer.endLayer(builder);
-}
-
-unpack(): LayerT {
-  return new LayerT(
-    this.version(),
-    this.name(),
-    this.bb!.createObjList<Feature, FeatureT>(this.features.bind(this), this.featuresLength()),
-    this.bb!.createScalarList<string>(this.keys.bind(this), this.keysLength()),
-    this.bb!.createScalarList<string>(this.stringValues.bind(this), this.stringValuesLength()),
-    this.bb!.createScalarList<number>(this.floatValues.bind(this), this.floatValuesLength()),
-    this.bb!.createScalarList<number>(this.doubleValues.bind(this), this.doubleValuesLength()),
-    this.bb!.createScalarList<number>(this.intValues.bind(this), this.intValuesLength()),
-    this.bb!.createScalarList<number>(this.uintValues.bind(this), this.uintValuesLength()),
-    this.bb!.createScalarList<boolean>(this.boolValues.bind(this), this.boolValuesLength()),
-    this.extent()
-  );
-}
-
-
-unpackTo(_o: LayerT): void {
-  _o.version = this.version();
-  _o.name = this.name();
-  _o.features = this.bb!.createObjList<Feature, FeatureT>(this.features.bind(this), this.featuresLength());
-  _o.keys = this.bb!.createScalarList<string>(this.keys.bind(this), this.keysLength());
-  _o.stringValues = this.bb!.createScalarList<string>(this.stringValues.bind(this), this.stringValuesLength());
-  _o.floatValues = this.bb!.createScalarList<number>(this.floatValues.bind(this), this.floatValuesLength());
-  _o.doubleValues = this.bb!.createScalarList<number>(this.doubleValues.bind(this), this.doubleValuesLength());
-  _o.intValues = this.bb!.createScalarList<number>(this.intValues.bind(this), this.intValuesLength());
-  _o.uintValues = this.bb!.createScalarList<number>(this.uintValues.bind(this), this.uintValuesLength());
-  _o.boolValues = this.bb!.createScalarList<boolean>(this.boolValues.bind(this), this.boolValuesLength());
-  _o.extent = this.extent();
-}
-}
-
-export class LayerT implements flatbuffers.IGeneratedObject {
-constructor(
-  public version: number = 1,
-  public name: string|Uint8Array|null = null,
-  public features: (FeatureT)[] = [],
-  public keys: (string)[] = [],
-  public stringValues: (string)[] = [],
-  public floatValues: (number)[] = [],
-  public doubleValues: (number)[] = [],
-  public intValues: (number)[] = [],
-  public uintValues: (number)[] = [],
-  public boolValues: (boolean)[] = [],
-  public extent: number = 4096
-){}
-
-
-pack(builder:flatbuffers.Builder): flatbuffers.Offset {
-  const name = (this.name !== null ? builder.createString(this.name!) : 0);
-  const features = Layer.createFeaturesVector(builder, builder.createObjectOffsetList(this.features));
-  const keys = Layer.createKeysVector(builder, builder.createObjectOffsetList(this.keys));
-  const stringValues = Layer.createStringValuesVector(builder, builder.createObjectOffsetList(this.stringValues));
-  const floatValues = Layer.createFloatValuesVector(builder, this.floatValues);
-  const doubleValues = Layer.createDoubleValuesVector(builder, this.doubleValues);
-  const intValues = Layer.createIntValuesVector(builder, this.intValues);
-  const uintValues = Layer.createUintValuesVector(builder, this.uintValues);
-  const boolValues = Layer.createBoolValuesVector(builder, this.boolValues);
-
-  return Layer.createLayer(builder,
-    this.version,
-    name,
-    features,
-    keys,
-    stringValues,
-    floatValues,
-    doubleValues,
-    intValues,
-    uintValues,
-    boolValues,
-    this.extent
-  );
 }
 }
