@@ -56,11 +56,13 @@ function parseGeometry(feature, featureType) {
   const geometry = feature.geometryArray();
 
   if (featureType === vector_tile.GeomType.POINT) {
-    return parsePoint(geometry);
+    return parsePoint(geometry)
   }
+
   if (featureType === vector_tile.GeomType.LINESTRING) {
     return parseLineString(geometry);
   }
+
   if (featureType === vector_tile.GeomType.POLYGON) {
     return parsePolygon(geometry);
   }
@@ -125,9 +127,24 @@ function parsePolygon(geometry) {
 }
 
 export function parseProperties(feature, keys, layer) {
-  const props = new Set(["name", "name:zh"]);
+  const props = new Set(["name", "name:en"]);
   const properties = {};
   const tags = feature.tagsArray();
+
+  for (let i = 0; i < tags.length; i += 2) {
+    const key = keys[tags[i]];
+
+    if (props.delete(key)) {
+      let value = layer.values(tags[i + 1]);
+      const valueType = value.tagType();
+
+      if (valueType === vector_tile.TagType.STRING) {
+        properties[key] = value.stringValue();
+      }
+    }
+
+    if (props.size === 0) return properties;
+  }
 
   return properties;
 }

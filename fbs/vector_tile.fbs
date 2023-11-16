@@ -17,26 +17,30 @@ enum TagType : byte {
     BOOL = 6
 }
 
+table Value {
+    tag_type:TagType;
+    string_value:string;
+    float_value:float;
+    double_value:double;
+    int_value:int32;
+    uint_value:uint32;
+    bool_value:bool;
+}
+
 table Feature {
     id:uint32 = 0;
-    tags:[uint32]; // A list of keyIndex, valueIndex pairs.
-    tag_types:[TagType];
+    tags:[uint16]; // A list of keyIndex, valueIndex pairs.
     type:GeomType = UNKNOWN;
-    geometry:[int32];
+    geometry:[int16];
 }
 
 table Layer {
-    version:uint32 = 1;
+    version:uint8 = 1;
     name:string;
     features:[Feature];
     keys:[string];
-    string_values:[string];
-    float_values:[float];
-    double_values:[double];
-    int_values:[int32];
-    uint_values:[uint32];
-    bool_values:[bool];
-    extent:uint32 = 4096;
+    values:[Value];
+    extent:uint16 = 4096;
 }
 
 table Tile {

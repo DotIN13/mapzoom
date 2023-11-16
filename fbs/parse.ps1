@@ -1,0 +1,1 @@
+.\flatc.exe -t --raw-binary .\vector_tile.fbs  -- .\shanghai_15_27437_13396_fbs.mvt

@@ -24,7 +24,7 @@ export class Feature {
     }
     tags(index) {
         const offset = this.bb.__offset(this.bb_pos, 6);
-        return offset ? this.bb.readUint32(this.bb.__vector(this.bb_pos + offset) + index * 4) : 0;
+        return offset ? this.bb.readUint16(this.bb.__vector(this.bb_pos + offset) + index * 2) : 0;
     }
     tagsLength() {
         const offset = this.bb.__offset(this.bb_pos, 6);
@@ -32,38 +32,26 @@ export class Feature {
     }
     tagsArray() {
         const offset = this.bb.__offset(this.bb_pos, 6);
-        return offset ? new Uint32Array(this.bb.bytes().buffer, this.bb.bytes().byteOffset + this.bb.__vector(this.bb_pos + offset), this.bb.__vector_len(this.bb_pos + offset)) : null;
-    }
-    tagTypes(index) {
-        const offset = this.bb.__offset(this.bb_pos, 8);
-        return offset ? this.bb.readInt8(this.bb.__vector(this.bb_pos + offset) + index) : 0;
-    }
-    tagTypesLength() {
-        const offset = this.bb.__offset(this.bb_pos, 8);
-        return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
-    }
-    tagTypesArray() {
-        const offset = this.bb.__offset(this.bb_pos, 8);
-        return offset ? new Int8Array(this.bb.bytes().buffer, this.bb.bytes().byteOffset + this.bb.__vector(this.bb_pos + offset), this.bb.__vector_len(this.bb_pos + offset)) : null;
+        return offset ? new Uint16Array(this.bb.bytes().buffer, this.bb.bytes().byteOffset + this.bb.__vector(this.bb_pos + offset), this.bb.__vector_len(this.bb_pos + offset)) : null;
     }
     type() {
-        const offset = this.bb.__offset(this.bb_pos, 10);
+        const offset = this.bb.__offset(this.bb_pos, 8);
         return offset ? this.bb.readInt8(this.bb_pos + offset) : GeomType.UNKNOWN;
     }
     geometry(index) {
-        const offset = this.bb.__offset(this.bb_pos, 12);
-        return offset ? this.bb.readInt32(this.bb.__vector(this.bb_pos + offset) + index * 4) : 0;
+        const offset = this.bb.__offset(this.bb_pos, 10);
+        return offset ? this.bb.readInt16(this.bb.__vector(this.bb_pos + offset) + index * 2) : 0;
     }
     geometryLength() {
-        const offset = this.bb.__offset(this.bb_pos, 12);
+        const offset = this.bb.__offset(this.bb_pos, 10);
         return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
     }
     geometryArray() {
-        const offset = this.bb.__offset(this.bb_pos, 12);
-        return offset ? new Int32Array(this.bb.bytes().buffer, this.bb.bytes().byteOffset + this.bb.__vector(this.bb_pos + offset), this.bb.__vector_len(this.bb_pos + offset)) : null;
+        const offset = this.bb.__offset(this.bb_pos, 10);
+        return offset ? new Int16Array(this.bb.bytes().buffer, this.bb.bytes().byteOffset + this.bb.__vector(this.bb_pos + offset), this.bb.__vector_len(this.bb_pos + offset)) : null;
     }
     static startFeature(builder) {
-        builder.startObject(5);
+        builder.startObject(4);
     }
     static addId(builder, id) {
         builder.addFieldInt32(0, id, 0);
@@ -72,53 +60,39 @@ export class Feature {
         builder.addFieldOffset(1, tagsOffset, 0);
     }
     static createTagsVector(builder, data) {
-        builder.startVector(4, data.length, 4);
+        builder.startVector(2, data.length, 2);
         for (let i = data.length - 1; i >= 0; i--) {
-            builder.addInt32(data[i]);
+            builder.addInt16(data[i]);
         }
         return builder.endVector();
     }
     static startTagsVector(builder, numElems) {
-        builder.startVector(4, numElems, 4);
-    }
-    static addTagTypes(builder, tagTypesOffset) {
-        builder.addFieldOffset(2, tagTypesOffset, 0);
-    }
-    static createTagTypesVector(builder, data) {
-        builder.startVector(1, data.length, 1);
-        for (let i = data.length - 1; i >= 0; i--) {
-            builder.addInt8(data[i]);
-        }
-        return builder.endVector();
-    }
-    static startTagTypesVector(builder, numElems) {
-        builder.startVector(1, numElems, 1);
+        builder.startVector(2, numElems, 2);
     }
     static addType(builder, type) {
-        builder.addFieldInt8(3, type, GeomType.UNKNOWN);
+        builder.addFieldInt8(2, type, GeomType.UNKNOWN);
     }
     static addGeometry(builder, geometryOffset) {
-        builder.addFieldOffset(4, geometryOffset, 0);
+        builder.addFieldOffset(3, geometryOffset, 0);
     }
     static createGeometryVector(builder, data) {
-        builder.startVector(4, data.length, 4);
+        builder.startVector(2, data.length, 2);
         for (let i = data.length - 1; i >= 0; i--) {
-            builder.addInt32(data[i]);
+            builder.addInt16(data[i]);
         }
         return builder.endVector();
     }
     static startGeometryVector(builder, numElems) {
-        builder.startVector(4, numElems, 4);
+        builder.startVector(2, numElems, 2);
     }
     static endFeature(builder) {
         const offset = builder.endObject();
         return offset;
     }
-    static createFeature(builder, id, tagsOffset, tagTypesOffset, type, geometryOffset) {
+    static createFeature(builder, id, tagsOffset, type, geometryOffset) {
         Feature.startFeature(builder);
         Feature.addId(builder, id);
         Feature.addTags(builder, tagsOffset);
-        Feature.addTagTypes(builder, tagTypesOffset);
         Feature.addType(builder, type);
         Feature.addGeometry(builder, geometryOffset);
         return Feature.endFeature(builder);

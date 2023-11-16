@@ -3,6 +3,7 @@
 import * as flatbuffers from 'flatbuffers';
 
 import { Feature } from '../vector-tile/feature.js';
+import { Value } from '../vector-tile/value.js';
 
 
 export class Layer {
@@ -25,7 +26,7 @@ static getSizePrefixedRootAsLayer(bb:flatbuffers.ByteBuffer, obj?:Layer):Layer {
 
 version():number {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.readUint32(this.bb_pos + offset) : 1;
+  return offset ? this.bb!.readUint8(this.bb_pos + offset) : 1;
 }
 
 name():string|null
@@ -57,104 +58,27 @@ keysLength():number {
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-stringValues(index: number):string
-stringValues(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
-stringValues(index: number,optionalEncoding?:any):string|Uint8Array|null {
+values(index: number, obj?:Value):Value|null {
   const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+  return offset ? (obj || new Value()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
 }
 
-stringValuesLength():number {
+valuesLength():number {
   const offset = this.bb!.__offset(this.bb_pos, 12);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-}
-
-floatValues(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
-  return offset ? this.bb!.readFloat32(this.bb!.__vector(this.bb_pos + offset) + index * 4) : 0;
-}
-
-floatValuesLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
-  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-}
-
-floatValuesArray():Float32Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
-  return offset ? new Float32Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
-}
-
-doubleValues(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 16);
-  return offset ? this.bb!.readFloat64(this.bb!.__vector(this.bb_pos + offset) + index * 8) : 0;
-}
-
-doubleValuesLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 16);
-  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-}
-
-doubleValuesArray():Float64Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 16);
-  return offset ? new Float64Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
-}
-
-intValues(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 18);
-  return offset ? this.bb!.readInt32(this.bb!.__vector(this.bb_pos + offset) + index * 4) : 0;
-}
-
-intValuesLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 18);
-  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-}
-
-intValuesArray():Int32Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 18);
-  return offset ? new Int32Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
-}
-
-uintValues(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 20);
-  return offset ? this.bb!.readUint32(this.bb!.__vector(this.bb_pos + offset) + index * 4) : 0;
-}
-
-uintValuesLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 20);
-  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-}
-
-uintValuesArray():Uint32Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 20);
-  return offset ? new Uint32Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
-}
-
-boolValues(index: number):boolean|null {
-  const offset = this.bb!.__offset(this.bb_pos, 22);
-  return offset ? !!this.bb!.readInt8(this.bb!.__vector(this.bb_pos + offset) + index) : false;
-}
-
-boolValuesLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 22);
-  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-}
-
-boolValuesArray():Int8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 22);
-  return offset ? new Int8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
 extent():number {
-  const offset = this.bb!.__offset(this.bb_pos, 24);
-  return offset ? this.bb!.readUint32(this.bb_pos + offset) : 4096;
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 4096;
 }
 
 static startLayer(builder:flatbuffers.Builder) {
-  builder.startObject(11);
+  builder.startObject(6);
 }
 
 static addVersion(builder:flatbuffers.Builder, version:number) {
-  builder.addFieldInt32(0, version, 1);
+  builder.addFieldInt8(0, version, 1);
 }
 
 static addName(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset) {
@@ -193,11 +117,11 @@ static startKeysVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(4, numElems, 4);
 }
 
-static addStringValues(builder:flatbuffers.Builder, stringValuesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(4, stringValuesOffset, 0);
+static addValues(builder:flatbuffers.Builder, valuesOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(4, valuesOffset, 0);
 }
 
-static createStringValuesVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+static createValuesVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
   builder.startVector(4, data.length, 4);
   for (let i = data.length - 1; i >= 0; i--) {
     builder.addOffset(data[i]!);
@@ -205,112 +129,12 @@ static createStringValuesVector(builder:flatbuffers.Builder, data:flatbuffers.Of
   return builder.endVector();
 }
 
-static startStringValuesVector(builder:flatbuffers.Builder, numElems:number) {
+static startValuesVector(builder:flatbuffers.Builder, numElems:number) {
   builder.startVector(4, numElems, 4);
-}
-
-static addFloatValues(builder:flatbuffers.Builder, floatValuesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(5, floatValuesOffset, 0);
-}
-
-static createFloatValuesVector(builder:flatbuffers.Builder, data:number[]|Float32Array):flatbuffers.Offset;
-/**
- * @deprecated This Uint8Array overload will be removed in the future.
- */
-static createFloatValuesVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset;
-static createFloatValuesVector(builder:flatbuffers.Builder, data:number[]|Float32Array|Uint8Array):flatbuffers.Offset {
-  builder.startVector(4, data.length, 4);
-  for (let i = data.length - 1; i >= 0; i--) {
-    builder.addFloat32(data[i]!);
-  }
-  return builder.endVector();
-}
-
-static startFloatValuesVector(builder:flatbuffers.Builder, numElems:number) {
-  builder.startVector(4, numElems, 4);
-}
-
-static addDoubleValues(builder:flatbuffers.Builder, doubleValuesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(6, doubleValuesOffset, 0);
-}
-
-static createDoubleValuesVector(builder:flatbuffers.Builder, data:number[]|Float64Array):flatbuffers.Offset;
-/**
- * @deprecated This Uint8Array overload will be removed in the future.
- */
-static createDoubleValuesVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset;
-static createDoubleValuesVector(builder:flatbuffers.Builder, data:number[]|Float64Array|Uint8Array):flatbuffers.Offset {
-  builder.startVector(8, data.length, 8);
-  for (let i = data.length - 1; i >= 0; i--) {
-    builder.addFloat64(data[i]!);
-  }
-  return builder.endVector();
-}
-
-static startDoubleValuesVector(builder:flatbuffers.Builder, numElems:number) {
-  builder.startVector(8, numElems, 8);
-}
-
-static addIntValues(builder:flatbuffers.Builder, intValuesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(7, intValuesOffset, 0);
-}
-
-static createIntValuesVector(builder:flatbuffers.Builder, data:number[]|Int32Array):flatbuffers.Offset;
-/**
- * @deprecated This Uint8Array overload will be removed in the future.
- */
-static createIntValuesVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset;
-static createIntValuesVector(builder:flatbuffers.Builder, data:number[]|Int32Array|Uint8Array):flatbuffers.Offset {
-  builder.startVector(4, data.length, 4);
-  for (let i = data.length - 1; i >= 0; i--) {
-    builder.addInt32(data[i]!);
-  }
-  return builder.endVector();
-}
-
-static startIntValuesVector(builder:flatbuffers.Builder, numElems:number) {
-  builder.startVector(4, numElems, 4);
-}
-
-static addUintValues(builder:flatbuffers.Builder, uintValuesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(8, uintValuesOffset, 0);
-}
-
-static createUintValuesVector(builder:flatbuffers.Builder, data:number[]|Uint32Array):flatbuffers.Offset;
-/**
- * @deprecated This Uint8Array overload will be removed in the future.
- */
-static createUintValuesVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset;
-static createUintValuesVector(builder:flatbuffers.Builder, data:number[]|Uint32Array|Uint8Array):flatbuffers.Offset {
-  builder.startVector(4, data.length, 4);
-  for (let i = data.length - 1; i >= 0; i--) {
-    builder.addInt32(data[i]!);
-  }
-  return builder.endVector();
-}
-
-static startUintValuesVector(builder:flatbuffers.Builder, numElems:number) {
-  builder.startVector(4, numElems, 4);
-}
-
-static addBoolValues(builder:flatbuffers.Builder, boolValuesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(9, boolValuesOffset, 0);
-}
-
-static createBoolValuesVector(builder:flatbuffers.Builder, data:boolean[]):flatbuffers.Offset {
-  builder.startVector(1, data.length, 1);
-  for (let i = data.length - 1; i >= 0; i--) {
-    builder.addInt8(+data[i]!);
-  }
-  return builder.endVector();
-}
-
-static startBoolValuesVector(builder:flatbuffers.Builder, numElems:number) {
-  builder.startVector(1, numElems, 1);
 }
 
 static addExtent(builder:flatbuffers.Builder, extent:number) {
-  builder.addFieldInt32(10, extent, 4096);
+  builder.addFieldInt16(5, extent, 4096);
 }
 
 static endLayer(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -318,18 +142,13 @@ static endLayer(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createLayer(builder:flatbuffers.Builder, version:number, nameOffset:flatbuffers.Offset, featuresOffset:flatbuffers.Offset, keysOffset:flatbuffers.Offset, stringValuesOffset:flatbuffers.Offset, floatValuesOffset:flatbuffers.Offset, doubleValuesOffset:flatbuffers.Offset, intValuesOffset:flatbuffers.Offset, uintValuesOffset:flatbuffers.Offset, boolValuesOffset:flatbuffers.Offset, extent:number):flatbuffers.Offset {
+static createLayer(builder:flatbuffers.Builder, version:number, nameOffset:flatbuffers.Offset, featuresOffset:flatbuffers.Offset, keysOffset:flatbuffers.Offset, valuesOffset:flatbuffers.Offset, extent:number):flatbuffers.Offset {
   Layer.startLayer(builder);
   Layer.addVersion(builder, version);
   Layer.addName(builder, nameOffset);
   Layer.addFeatures(builder, featuresOffset);
   Layer.addKeys(builder, keysOffset);
-  Layer.addStringValues(builder, stringValuesOffset);
-  Layer.addFloatValues(builder, floatValuesOffset);
-  Layer.addDoubleValues(builder, doubleValuesOffset);
-  Layer.addIntValues(builder, intValuesOffset);
-  Layer.addUintValues(builder, uintValuesOffset);
-  Layer.addBoolValues(builder, boolValuesOffset);
+  Layer.addValues(builder, valuesOffset);
   Layer.addExtent(builder, extent);
   return Layer.endLayer(builder);
 }

@@ -28,7 +28,7 @@ class Layer(object):
     def Version(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint32Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Uint8Flags, o + self._tab.Pos)
         return 1
 
     # Layer
@@ -84,175 +84,45 @@ class Layer(object):
         return o == 0
 
     # Layer
-    def StringValues(self, j):
+    def Values(self, j):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
         if o != 0:
-            a = self._tab.Vector(o)
-            return self._tab.String(a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 4))
-        return ""
+            x = self._tab.Vector(o)
+            x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
+            x = self._tab.Indirect(x)
+            from vector_tile.Value import Value
+            obj = Value()
+            obj.Init(self._tab.Bytes, x)
+            return obj
+        return None
 
     # Layer
-    def StringValuesLength(self):
+    def ValuesLength(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # Layer
-    def StringValuesIsNone(self):
+    def ValuesIsNone(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
-        return o == 0
-
-    # Layer
-    def FloatValues(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
-        if o != 0:
-            a = self._tab.Vector(o)
-            return self._tab.Get(flatbuffers.number_types.Float32Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 4))
-        return 0
-
-    # Layer
-    def FloatValuesAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
-        if o != 0:
-            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Float32Flags, o)
-        return 0
-
-    # Layer
-    def FloatValuesLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
-        if o != 0:
-            return self._tab.VectorLen(o)
-        return 0
-
-    # Layer
-    def FloatValuesIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
-        return o == 0
-
-    # Layer
-    def DoubleValues(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
-        if o != 0:
-            a = self._tab.Vector(o)
-            return self._tab.Get(flatbuffers.number_types.Float64Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 8))
-        return 0
-
-    # Layer
-    def DoubleValuesAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
-        if o != 0:
-            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Float64Flags, o)
-        return 0
-
-    # Layer
-    def DoubleValuesLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
-        if o != 0:
-            return self._tab.VectorLen(o)
-        return 0
-
-    # Layer
-    def DoubleValuesIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
-        return o == 0
-
-    # Layer
-    def IntValues(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
-        if o != 0:
-            a = self._tab.Vector(o)
-            return self._tab.Get(flatbuffers.number_types.Int32Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 4))
-        return 0
-
-    # Layer
-    def IntValuesAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
-        if o != 0:
-            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Int32Flags, o)
-        return 0
-
-    # Layer
-    def IntValuesLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
-        if o != 0:
-            return self._tab.VectorLen(o)
-        return 0
-
-    # Layer
-    def IntValuesIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
-        return o == 0
-
-    # Layer
-    def UintValues(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
-        if o != 0:
-            a = self._tab.Vector(o)
-            return self._tab.Get(flatbuffers.number_types.Uint32Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 4))
-        return 0
-
-    # Layer
-    def UintValuesAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
-        if o != 0:
-            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Uint32Flags, o)
-        return 0
-
-    # Layer
-    def UintValuesLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
-        if o != 0:
-            return self._tab.VectorLen(o)
-        return 0
-
-    # Layer
-    def UintValuesIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
-        return o == 0
-
-    # Layer
-    def BoolValues(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(22))
-        if o != 0:
-            a = self._tab.Vector(o)
-            return self._tab.Get(flatbuffers.number_types.BoolFlags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 1))
-        return 0
-
-    # Layer
-    def BoolValuesAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(22))
-        if o != 0:
-            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.BoolFlags, o)
-        return 0
-
-    # Layer
-    def BoolValuesLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(22))
-        if o != 0:
-            return self._tab.VectorLen(o)
-        return 0
-
-    # Layer
-    def BoolValuesIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(22))
         return o == 0
 
     # Layer
     def Extent(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(24))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint32Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
         return 4096
 
 def LayerStart(builder):
-    builder.StartObject(11)
+    builder.StartObject(6)
 
 def Start(builder):
     LayerStart(builder)
 
 def LayerAddVersion(builder, version):
-    builder.PrependUint32Slot(0, version, 1)
+    builder.PrependUint8Slot(0, version, 1)
 
 def AddVersion(builder, version):
     LayerAddVersion(builder, version)
@@ -287,80 +157,20 @@ def LayerStartKeysVector(builder, numElems):
 def StartKeysVector(builder, numElems: int) -> int:
     return LayerStartKeysVector(builder, numElems)
 
-def LayerAddStringValues(builder, stringValues):
-    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(stringValues), 0)
+def LayerAddValues(builder, values):
+    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(values), 0)
 
-def AddStringValues(builder, stringValues):
-    LayerAddStringValues(builder, stringValues)
+def AddValues(builder, values):
+    LayerAddValues(builder, values)
 
-def LayerStartStringValuesVector(builder, numElems):
+def LayerStartValuesVector(builder, numElems):
     return builder.StartVector(4, numElems, 4)
 
-def StartStringValuesVector(builder, numElems: int) -> int:
-    return LayerStartStringValuesVector(builder, numElems)
-
-def LayerAddFloatValues(builder, floatValues):
-    builder.PrependUOffsetTRelativeSlot(5, flatbuffers.number_types.UOffsetTFlags.py_type(floatValues), 0)
-
-def AddFloatValues(builder, floatValues):
-    LayerAddFloatValues(builder, floatValues)
-
-def LayerStartFloatValuesVector(builder, numElems):
-    return builder.StartVector(4, numElems, 4)
-
-def StartFloatValuesVector(builder, numElems: int) -> int:
-    return LayerStartFloatValuesVector(builder, numElems)
-
-def LayerAddDoubleValues(builder, doubleValues):
-    builder.PrependUOffsetTRelativeSlot(6, flatbuffers.number_types.UOffsetTFlags.py_type(doubleValues), 0)
-
-def AddDoubleValues(builder, doubleValues):
-    LayerAddDoubleValues(builder, doubleValues)
-
-def LayerStartDoubleValuesVector(builder, numElems):
-    return builder.StartVector(8, numElems, 8)
-
-def StartDoubleValuesVector(builder, numElems: int) -> int:
-    return LayerStartDoubleValuesVector(builder, numElems)
-
-def LayerAddIntValues(builder, intValues):
-    builder.PrependUOffsetTRelativeSlot(7, flatbuffers.number_types.UOffsetTFlags.py_type(intValues), 0)
-
-def AddIntValues(builder, intValues):
-    LayerAddIntValues(builder, intValues)
-
-def LayerStartIntValuesVector(builder, numElems):
-    return builder.StartVector(4, numElems, 4)
-
-def StartIntValuesVector(builder, numElems: int) -> int:
-    return LayerStartIntValuesVector(builder, numElems)
-
-def LayerAddUintValues(builder, uintValues):
-    builder.PrependUOffsetTRelativeSlot(8, flatbuffers.number_types.UOffsetTFlags.py_type(uintValues), 0)
-
-def AddUintValues(builder, uintValues):
-    LayerAddUintValues(builder, uintValues)
-
-def LayerStartUintValuesVector(builder, numElems):
-    return builder.StartVector(4, numElems, 4)
-
-def StartUintValuesVector(builder, numElems: int) -> int:
-    return LayerStartUintValuesVector(builder, numElems)
-
-def LayerAddBoolValues(builder, boolValues):
-    builder.PrependUOffsetTRelativeSlot(9, flatbuffers.number_types.UOffsetTFlags.py_type(boolValues), 0)
-
-def AddBoolValues(builder, boolValues):
-    LayerAddBoolValues(builder, boolValues)
-
-def LayerStartBoolValuesVector(builder, numElems):
-    return builder.StartVector(1, numElems, 1)
-
-def StartBoolValuesVector(builder, numElems: int) -> int:
-    return LayerStartBoolValuesVector(builder, numElems)
+def StartValuesVector(builder, numElems: int) -> int:
+    return LayerStartValuesVector(builder, numElems)
 
 def LayerAddExtent(builder, extent):
-    builder.PrependUint32Slot(10, extent, 4096)
+    builder.PrependUint16Slot(5, extent, 4096)
 
 def AddExtent(builder, extent):
     LayerAddExtent(builder, extent)

@@ -36,14 +36,14 @@ class Feature(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             a = self._tab.Vector(o)
-            return self._tab.Get(flatbuffers.number_types.Uint32Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 4))
+            return self._tab.Get(flatbuffers.number_types.Uint16Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 2))
         return 0
 
     # Feature
     def TagsAsNumpy(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
-            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Uint32Flags, o)
+            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Uint16Flags, o)
         return 0
 
     # Feature
@@ -59,68 +59,41 @@ class Feature(object):
         return o == 0
 
     # Feature
-    def TagTypes(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
-        if o != 0:
-            a = self._tab.Vector(o)
-            return self._tab.Get(flatbuffers.number_types.Int8Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 1))
-        return 0
-
-    # Feature
-    def TagTypesAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
-        if o != 0:
-            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Int8Flags, o)
-        return 0
-
-    # Feature
-    def TagTypesLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
-        if o != 0:
-            return self._tab.VectorLen(o)
-        return 0
-
-    # Feature
-    def TagTypesIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
-        return o == 0
-
-    # Feature
     def Type(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Int8Flags, o + self._tab.Pos)
         return 0
 
     # Feature
     def Geometry(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
             a = self._tab.Vector(o)
-            return self._tab.Get(flatbuffers.number_types.Int32Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 4))
+            return self._tab.Get(flatbuffers.number_types.Int16Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 2))
         return 0
 
     # Feature
     def GeometryAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
-            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Int32Flags, o)
+            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Int16Flags, o)
         return 0
 
     # Feature
     def GeometryLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # Feature
     def GeometryIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         return o == 0
 
 def FeatureStart(builder):
-    builder.StartObject(5)
+    builder.StartObject(4)
 
 def Start(builder):
     FeatureStart(builder)
@@ -138,37 +111,25 @@ def AddTags(builder, tags):
     FeatureAddTags(builder, tags)
 
 def FeatureStartTagsVector(builder, numElems):
-    return builder.StartVector(4, numElems, 4)
+    return builder.StartVector(2, numElems, 2)
 
 def StartTagsVector(builder, numElems: int) -> int:
     return FeatureStartTagsVector(builder, numElems)
 
-def FeatureAddTagTypes(builder, tagTypes):
-    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(tagTypes), 0)
-
-def AddTagTypes(builder, tagTypes):
-    FeatureAddTagTypes(builder, tagTypes)
-
-def FeatureStartTagTypesVector(builder, numElems):
-    return builder.StartVector(1, numElems, 1)
-
-def StartTagTypesVector(builder, numElems: int) -> int:
-    return FeatureStartTagTypesVector(builder, numElems)
-
 def FeatureAddType(builder, type):
-    builder.PrependInt8Slot(3, type, 0)
+    builder.PrependInt8Slot(2, type, 0)
 
 def AddType(builder, type):
     FeatureAddType(builder, type)
 
 def FeatureAddGeometry(builder, geometry):
-    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(geometry), 0)
+    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(geometry), 0)
 
 def AddGeometry(builder, geometry):
     FeatureAddGeometry(builder, geometry)
 
 def FeatureStartGeometryVector(builder, numElems):
-    return builder.StartVector(4, numElems, 4)
+    return builder.StartVector(2, numElems, 2)
 
 def StartGeometryVector(builder, numElems: int) -> int:
     return FeatureStartGeometryVector(builder, numElems)

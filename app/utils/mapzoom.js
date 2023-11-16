@@ -461,14 +461,26 @@ export class ZoomMap {
     });
   }
 
-  drawText(coord, text, textSet, size = 13, color = 0x989898) {
+  setPaint(layerName) {
+    let color, lineWidth;
+    if (layerName === "water") {
+      color = 0x3499ff;
+      lineWidth = 1;
+    }
+    if (layerName === "roads") {
+      color = 0x444444;
+      lineWidth = 2;
+    }
+  }
+
+  drawText(coord, text, textSet, size = 13, color = 0xb2b2b2) {
     if (!text) return;
     if (textSet.has(text)) return;
 
     textSet.add(text);
 
     this.canvas.drawText({
-      x: coord.x,
+      x: coord.x - (size * text.length) / 2,
       y: coord.y,
       text_size: size,
       color,
@@ -513,11 +525,10 @@ export class ZoomMap {
       // Iterate through features in the decoded tile and draw them
       for (const layer of tileObj) {
         const layerName = layer.name;
-        textSet.clear();
 
         // Iterate through features in the layer
         for (let feature of layer.features) {
-          const name = feature.properties["name:zh"] || feature.properties.name;
+          const name = feature.properties["name:en"] || feature.properties.name;
 
           const { type: geoType, coordinates: featCoords } = feature;
 
@@ -535,18 +546,23 @@ export class ZoomMap {
           }
 
           if (geoType === GeomType.LINESTRING) {
-            for (const line of featCoords) {
-              let lineCoords = line.map((coord) =>
+            for (let i = 0; i < featCoords.length; i++) {
+              let lineCoords = featCoords[i].map((coord) =>
                 getCoordCache(coord, coordCache)
               );
               this.canvas.strokePoly({
                 data_array: lineCoords,
                 color: 0x444444,
               });
-            }
 
-            // const textCoord = lineCoords[lineCoords.length >> 1];
-            // this.drawText(textCoord, name, textSet);
+              if (i === 0) {
+                this.drawText(
+                  lineCoords[lineCoords.length >> 1],
+                  name,
+                  textSet
+                );
+              }
+            }
             continue;
           }
 

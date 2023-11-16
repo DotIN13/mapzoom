@@ -3,7 +3,6 @@
 import * as flatbuffers from 'flatbuffers';
 
 import { GeomType } from '../vector-tile/geom-type.js';
-import { TagType } from '../vector-tile/tag-type.js';
 
 
 export class Feature {
@@ -31,7 +30,7 @@ id():number {
 
 tags(index: number):number|null {
   const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.readUint32(this.bb!.__vector(this.bb_pos + offset) + index * 4) : 0;
+  return offset ? this.bb!.readUint16(this.bb!.__vector(this.bb_pos + offset) + index * 2) : 0;
 }
 
 tagsLength():number {
@@ -39,48 +38,33 @@ tagsLength():number {
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-tagsArray():Uint32Array|null {
+tagsArray():Uint16Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? new Uint32Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
-}
-
-tagTypes(index: number):TagType|null {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? this.bb!.readInt8(this.bb!.__vector(this.bb_pos + offset) + index) : 0;
-}
-
-tagTypesLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
-}
-
-tagTypesArray():Int8Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? new Int8Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+  return offset ? new Uint16Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
 type():GeomType {
-  const offset = this.bb!.__offset(this.bb_pos, 10);
+  const offset = this.bb!.__offset(this.bb_pos, 8);
   return offset ? this.bb!.readInt8(this.bb_pos + offset) : GeomType.UNKNOWN;
 }
 
 geometry(index: number):number|null {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? this.bb!.readInt32(this.bb!.__vector(this.bb_pos + offset) + index * 4) : 0;
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.readInt16(this.bb!.__vector(this.bb_pos + offset) + index * 2) : 0;
 }
 
 geometryLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
+  const offset = this.bb!.__offset(this.bb_pos, 10);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
-geometryArray():Int32Array|null {
-  const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? new Int32Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
+geometryArray():Int16Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? new Int16Array(this.bb!.bytes().buffer, this.bb!.bytes().byteOffset + this.bb!.__vector(this.bb_pos + offset), this.bb!.__vector_len(this.bb_pos + offset)) : null;
 }
 
 static startFeature(builder:flatbuffers.Builder) {
-  builder.startObject(5);
+  builder.startObject(4);
 }
 
 static addId(builder:flatbuffers.Builder, id:number) {
@@ -91,62 +75,46 @@ static addTags(builder:flatbuffers.Builder, tagsOffset:flatbuffers.Offset) {
   builder.addFieldOffset(1, tagsOffset, 0);
 }
 
-static createTagsVector(builder:flatbuffers.Builder, data:number[]|Uint32Array):flatbuffers.Offset;
+static createTagsVector(builder:flatbuffers.Builder, data:number[]|Uint16Array):flatbuffers.Offset;
 /**
  * @deprecated This Uint8Array overload will be removed in the future.
  */
 static createTagsVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset;
-static createTagsVector(builder:flatbuffers.Builder, data:number[]|Uint32Array|Uint8Array):flatbuffers.Offset {
-  builder.startVector(4, data.length, 4);
+static createTagsVector(builder:flatbuffers.Builder, data:number[]|Uint16Array|Uint8Array):flatbuffers.Offset {
+  builder.startVector(2, data.length, 2);
   for (let i = data.length - 1; i >= 0; i--) {
-    builder.addInt32(data[i]!);
+    builder.addInt16(data[i]!);
   }
   return builder.endVector();
 }
 
 static startTagsVector(builder:flatbuffers.Builder, numElems:number) {
-  builder.startVector(4, numElems, 4);
-}
-
-static addTagTypes(builder:flatbuffers.Builder, tagTypesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, tagTypesOffset, 0);
-}
-
-static createTagTypesVector(builder:flatbuffers.Builder, data:TagType[]):flatbuffers.Offset {
-  builder.startVector(1, data.length, 1);
-  for (let i = data.length - 1; i >= 0; i--) {
-    builder.addInt8(data[i]!);
-  }
-  return builder.endVector();
-}
-
-static startTagTypesVector(builder:flatbuffers.Builder, numElems:number) {
-  builder.startVector(1, numElems, 1);
+  builder.startVector(2, numElems, 2);
 }
 
 static addType(builder:flatbuffers.Builder, type:GeomType) {
-  builder.addFieldInt8(3, type, GeomType.UNKNOWN);
+  builder.addFieldInt8(2, type, GeomType.UNKNOWN);
 }
 
 static addGeometry(builder:flatbuffers.Builder, geometryOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(4, geometryOffset, 0);
+  builder.addFieldOffset(3, geometryOffset, 0);
 }
 
-static createGeometryVector(builder:flatbuffers.Builder, data:number[]|Int32Array):flatbuffers.Offset;
+static createGeometryVector(builder:flatbuffers.Builder, data:number[]|Int16Array):flatbuffers.Offset;
 /**
  * @deprecated This Uint8Array overload will be removed in the future.
  */
 static createGeometryVector(builder:flatbuffers.Builder, data:number[]|Uint8Array):flatbuffers.Offset;
-static createGeometryVector(builder:flatbuffers.Builder, data:number[]|Int32Array|Uint8Array):flatbuffers.Offset {
-  builder.startVector(4, data.length, 4);
+static createGeometryVector(builder:flatbuffers.Builder, data:number[]|Int16Array|Uint8Array):flatbuffers.Offset {
+  builder.startVector(2, data.length, 2);
   for (let i = data.length - 1; i >= 0; i--) {
-    builder.addInt32(data[i]!);
+    builder.addInt16(data[i]!);
   }
   return builder.endVector();
 }
 
 static startGeometryVector(builder:flatbuffers.Builder, numElems:number) {
-  builder.startVector(4, numElems, 4);
+  builder.startVector(2, numElems, 2);
 }
 
 static endFeature(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -154,11 +122,10 @@ static endFeature(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createFeature(builder:flatbuffers.Builder, id:number, tagsOffset:flatbuffers.Offset, tagTypesOffset:flatbuffers.Offset, type:GeomType, geometryOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createFeature(builder:flatbuffers.Builder, id:number, tagsOffset:flatbuffers.Offset, type:GeomType, geometryOffset:flatbuffers.Offset):flatbuffers.Offset {
   Feature.startFeature(builder);
   Feature.addId(builder, id);
   Feature.addTags(builder, tagsOffset);
-  Feature.addTagTypes(builder, tagTypesOffset);
   Feature.addType(builder, type);
   Feature.addGeometry(builder, geometryOffset);
   return Feature.endFeature(builder);
