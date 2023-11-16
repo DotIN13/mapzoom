@@ -473,7 +473,7 @@ export class ZoomMap {
     }
   }
 
-  drawText(coord, text, textSet, size = 13, color = 0xb2b2b2) {
+  drawText(coord, text, textSet, size = 16, color = 0xdfdfdf) {
     if (!text) return;
     if (textSet.has(text)) return;
 
@@ -528,7 +528,7 @@ export class ZoomMap {
 
         // Iterate through features in the layer
         for (let feature of layer.features) {
-          const name = feature.properties["name:en"] || feature.properties.name;
+          const name = feature.properties.name || feature.properties["name:en"];
 
           const { type: geoType, coordinates: featCoords } = feature;
 
@@ -546,23 +546,33 @@ export class ZoomMap {
           }
 
           if (geoType === GeomType.LINESTRING) {
-            for (let i = 0; i < featCoords.length; i++) {
-              let lineCoords = featCoords[i].map((coord) =>
-                getCoordCache(coord, coordCache)
-              );
-              this.canvas.strokePoly({
-                data_array: lineCoords,
-                color: 0x444444,
-              });
+            let textCoord = undefined;
 
-              if (i === 0) {
-                this.drawText(
-                  lineCoords[lineCoords.length >> 1],
-                  name,
-                  textSet
-                );
+            for (let i = 0; i < featCoords.length; i++) {
+              const line = featCoords[i];
+              let lastCoord = null;
+
+              // For each line
+              for (let j = 0; j < line.length; j++) {
+                const coord = line[j];
+                const mapped = getCoordCache(coord, coordCache);
+
+                // Place text marker in the middle of the first line
+                if (i === 0 && j === line.length >> 1) textCoord = mapped;
+
+                if (lastCoord) {
+                  this.canvas.drawLine({
+                    x1: lastCoord.x,
+                    y1: lastCoord.y,
+                    x2: mapped.x,
+                    y2: mapped.y,
+                    color: 0x444444,
+                  });
+                }
+                lastCoord = mapped;
               }
             }
+            this.drawText(textCoord, name, textSet);
             continue;
           }
 
