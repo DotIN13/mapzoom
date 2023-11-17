@@ -28,7 +28,8 @@ import { logger } from "./logger";
 import { TileCache } from "./tile-cache";
 import { roundToPrecision, lonLatToPixelCoordinates } from "./coordinates";
 import { mapStyle } from "./map-style";
-import { GeomType } from "./vector-tile-js/vector-tile";
+import { GeomType, Feature, Layer } from "./vector-tile-js/vector-tile";
+import { parsePoint, parseLineString, parsePolygon } from "./geometry";
 
 let isRendering = false; // Global Render Indicator
 
@@ -54,23 +55,69 @@ function buildCoordCache(tileSize) {
   return { cache, tileSize };
 }
 
-/**
- * Get the pixel coordinates of a given MVT tile coordinates pair.
- * @param {Array} xy - A MVT tile coordinates pair, usually in [0, 4096].
- * @param {Object} coordCache - A coordinate cache object.
- * @returns {Object} - Pixel coordinates {x, y}.
- */
-function getCoordCache(xy, coordCache) {
-  let x = coordCache.cache[xy[0] + 128] + coordCache.baseTileX;
-  let y = coordCache.cache[xy[1] + 128] + coordCache.baseTileY;
+function mapPointCoords(geometry, coordsStart, coordCache) {
+  let x = coordCache.cache[geometry[coordsStart] + 128] + coordCache.baseTileX;
+  let y =
+    coordCache.cache[geometry[coordsStart + 1] + 128] + coordCache.baseTileY;
 
-  if (!(isNaN(x) || isNaN(y))) return { x, y };
+  if (isNaN(x))
+    x =
+      (geometry[coordsStart] / TILE_EXTENT) * coordCache.tileSize +
+      coordCache.baseTileX;
 
-  // logger.debug("Coordinates cache missed.");
+  if (isNaN(y))
+    y =
+      (geometry[coordsStart + 1] / TILE_EXTENT) * coordCache.tileSize +
+      coordCache.baseTileY;
 
-  x = (xy[0] / TILE_EXTENT) * coordCache.tileSize + coordCache.baseTileX;
-  y = (xy[1] / TILE_EXTENT) * coordCache.tileSize + coordCache.baseTileY;
   return { x, y };
+}
+
+function mapLineStringCoords(geometry, coordsRange, coordCache) {
+  const [i, j] = coordsRange;
+
+  for (let k = i; k < j; k += 2) {
+    let x = coordCache.cache[geometry[k] + 128] + coordCache.baseTileX;
+    let y = coordCache.cache[geometry[k + 1] + 128] + coordCache.baseTileY;
+
+    if (isNaN(x))
+      x =
+        (geometry[k] / TILE_EXTENT) * coordCache.tileSize +
+        coordCache.baseTileX;
+
+    if (isNaN(y))
+      y =
+        (geometry[k + 1] / TILE_EXTENT) * coordCache.tileSize +
+        coordCache.baseTileY;
+
+    geometry[k] = x;
+    geometry[k + 1] = y;
+  }
+}
+
+function mapPolygonCoords(geometry, coordsRange, coordCache) {
+  const [i, j] = coordsRange;
+
+  let ring = [];
+
+  for (let k = i; k < j; k += 2) {
+    let x = coordCache.cache[geometry[k] + 128] + coordCache.baseTileX;
+    let y = coordCache.cache[geometry[k + 1] + 128] + coordCache.baseTileY;
+
+    if (isNaN(x))
+      x =
+        (geometry[k] / TILE_EXTENT) * coordCache.tileSize +
+        coordCache.baseTileX;
+
+    if (isNaN(y))
+      y =
+        (geometry[k + 1] / TILE_EXTENT) * coordCache.tileSize +
+        coordCache.baseTileY;
+
+    ring.push({ x, y });
+  }
+
+  return ring;
 }
 
 export class ZoomMap {
@@ -506,14 +553,15 @@ export class ZoomMap {
     const coordCache = buildCoordCache(currentTileSize);
     const textSet = new Set();
 
+    const tileZ = Math.floor(this.zoom);
+
+    const layerTemp = new Layer();
+    const featureTemp = new Feature();
+
     // For each tile, interpolate the pixel coordinates of the features and draw them on the canvas.
     for (const tile of tiles) {
       // Convert the byte range to decoded mvt json
-      const tileObj = this.tileCache.getTile(
-        Math.floor(this.zoom),
-        tile.x,
-        tile.y
-      );
+      const tileObj = this.tileCache.getTile(tileZ, tile.x, tile.y);
 
       if (!tileObj) continue;
 
@@ -524,29 +572,35 @@ export class ZoomMap {
         tile.y * currentTileSize - (currentCanvasCenter.y - this.canvasH / 2);
 
       // Iterate through features in the decoded tile and draw them
-      for (const layer of tileObj) {
-        const layerName = layer.name;
+      for (let i = 0; i < tileObj.layersLength(); i++) {
+        const layer = tileObj.layers(i, layerTemp);
+
+        const layerName = layer.name();
         const styleBuilder = mapStyle[layerName];
 
         // Iterate through features in the layer
-        for (let feature of layer.features) {
-          const style = styleBuilder ? styleBuilder(this.zoom, feature) : {};
+        for (let j = 0; j < layer.featuresLength(); j++) {
+          const feature = layer.features(j, featureTemp);
+          const geometry = feature.geometryArray();
+
+          // const style = styleBuilder ? styleBuilder(this.zoom, feature) : {};
+          const style = {};
 
           this.canvas.setPaint({
             color: style["line-color"] || 0xeeeeee,
             line_width: style["line-width"] || 2,
           });
 
-          const name = feature.properties.name;
+          // const name = feature.properties.name;
 
-          const { type: geoType, coordinates: featCoords } = feature;
+          const featType = feature.type();
 
-          if (geoType === GeomType.POINT) {
-            for (const coord of featCoords) {
-              let pointCoord = getCoordCache(coord, coordCache);
+          if (featType === GeomType.POINT) {
+            for (const pointStart of parsePoint(geometry)) {
+              const point = mapPointCoords(geometry, pointStart, coordCache);
               this.canvas.drawCircle({
-                center_x: pointCoord.x,
-                center_y: pointCoord.y,
+                center_x: point.x,
+                center_y: point.y,
                 radius: style["circle-radius"] || 4,
                 color: style["fill-color"] || 0xdedede,
               });
@@ -554,63 +608,34 @@ export class ZoomMap {
             continue;
           }
 
-          if (geoType === GeomType.LINESTRING) {
-            let textCoord = undefined;
-
-            for (let i = 0; i < featCoords.length; i++) {
-              const line = featCoords[i];
-              let lastCoord = null;
-
-              // For each line
-              for (let j = 0; j < line.length; j++) {
-                const coord = line[j];
-                const mapped = getCoordCache(coord, coordCache);
-
-                // Place text marker in the middle of the first line
-                if (i === 0 && j === line.length >> 1) textCoord = mapped;
-
-                if (lastCoord) {
-                  this.canvas.drawLine({
-                    x1: lastCoord.x,
-                    y1: lastCoord.y,
-                    x2: mapped.x,
-                    y2: mapped.y,
-                    color: style["line-color"] || 0x444444,
-                  });
-                }
-                lastCoord = mapped;
+          if (featType === GeomType.LINESTRING) {
+            for (const lineRange of parseLineString(geometry)) {
+              mapLineStringCoords(geometry, lineRange, coordCache);
+              for (let k = lineRange[0]; k < lineRange[1] - 2; k += 2) {
+                this.canvas.drawLine({
+                  x1: geometry[k],
+                  y1: geometry[k + 1],
+                  x2: geometry[k + 2],
+                  y2: geometry[k + 3],
+                  color: style["line-color"] || 0x444444,
+                });
               }
             }
-            this.drawText(textCoord, name, textSet);
             continue;
           }
 
-          if (geoType === GeomType.POLYGON) {
-            for (const polygon of featCoords) {
-              // Draw the outer ring of each polygon
-              let outerRingCoords = polygon[0].map((coord) =>
-                getCoordCache(coord, coordCache)
-              );
+          if (featType === GeomType.POLYGON) {
+            for (const { ringRange, isExterior } of parsePolygon(geometry)) {
+              const coords = mapPolygonCoords(geometry, ringRange, coordCache);
               this.canvas.drawPoly({
-                data_array: outerRingCoords,
+                data_array: coords,
                 color: style["fill-color"] || 0x3499ff,
-              }); // Or fillPoly for filled polygons
-
-              // Draw inner rings (holes) of each polygon if present
-              for (let i = 1; i < polygon.length; i++) {
-                let innerRingCoords = polygon[i].map((coord) =>
-                  getCoordCache(coord, coordCache)
-                );
-                this.canvas.drawPoly({
-                  data_array: innerRingCoords,
-                  color: style["fill-color"] || 0x3499ff,
-                }); // Use a different color for holes if desired
-              }
+              });
             }
             continue;
           }
 
-          logger.warn(`Unsupported feature type: ${feature.type}`);
+          logger.warn(`Unsupported feature type: ${featType}`);
         }
       }
     }

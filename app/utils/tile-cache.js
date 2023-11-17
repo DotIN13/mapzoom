@@ -1,3 +1,5 @@
+import * as flatbuffers from "flatbuffers";
+
 import {
   DEBUG,
   VERSION,
@@ -6,7 +8,7 @@ import {
 } from "./globals";
 import { logger, timer } from "./logger";
 import { PMTiles } from "./pmtiles";
-import { decodeTile } from "./mvt";
+import { Tile } from "./vector-tile-js/vector-tile";
 
 export class TileCache {
   constructor() {
@@ -48,15 +50,7 @@ export class TileCache {
     else decompressed = this.pmtiles.getZxy(z, x, y);
     if (!decompressed) return null;
 
-    if (DEBUG)
-      decoded = timer(
-        decodeTile,
-        "decodeTile",
-        `decode tile ${z} ${x} ${y}`,
-        decompressed
-      );
-    else decoded = decodeTile(decompressed);
-
-    return decoded;
+    const buf = new flatbuffers.ByteBuffer(decompressed);
+    return Tile.getRootAsTile(buf);
   }
 }

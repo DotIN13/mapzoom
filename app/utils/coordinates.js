@@ -1,5 +1,3 @@
-import { openAssetsSync, O_RDONLY, readSync, statAssetsSync } from "@zos/fs";
-
 import { TILE_SIZE, PRECISION_FACTOR } from "./globals";
 import { logger } from "./logger";
 
@@ -35,51 +33,6 @@ export function getBoundingBox(center, zoom, canvasH, canvasW) {
     minLat: center.lat - deltaLat,
     maxLat: center.lat + deltaLat,
   };
-}
-
-/**
- * Check if a feature's bounding box intersects with another bounding box.
- * @param {Object} feature - A GeoJSON feature.
- * @param {Object} bbox - A bounding box represented by its minimum and maximum longitudes and latitudes.
- * @returns {boolean} True if the feature intersects with the bounding box, otherwise false.
- */
-export function featureIntersects(feature, bbox) {
-  let coords;
-
-  switch (feature.geometry.type) {
-    case "Point":
-      coords = [feature.geometry.coordinates];
-      break;
-    case "MultiPoint":
-    case "LineString":
-      coords = feature.geometry.coordinates;
-      break;
-    case "MultiLineString":
-    case "Polygon":
-      coords = [].concat(...feature.geometry.coordinates);
-      break;
-    case "MultiPolygon":
-      coords = [].concat(...feature.geometry.coordinates.flat());
-      break;
-    default:
-      logger.warn("Unsupported feature type:", feature.geometry.type);
-      return false;
-  }
-
-  for (let i = 0; i < coords.length; i++) {
-    const lon = coords[i][0];
-    const lat = coords[i][1];
-    if (
-      lon >= bbox.minLon &&
-      lon <= bbox.maxLon &&
-      lat >= bbox.minLat &&
-      lat <= bbox.maxLat
-    ) {
-      return true; // Early exit on intersection
-    }
-  }
-
-  return false;
 }
 
 /**
@@ -172,40 +125,4 @@ export function lonlat(array) {
     lon: array[0],
     lat: array[1],
   };
-}
-
-function assetSize(path) {
-  const result = statAssetsSync({ path });
-  if (result) return result.size;
-
-  logger.error("Failed to get asset size.");
-  return null;
-}
-
-export function fetchGeojson(path) {
-  const mapBytesize = assetSize(path);
-  if (mapBytesize > 128 * 1024) {
-    logger.error("Map file size exceeds 128KB.");
-    return;
-  }
-
-  const buffer = new ArrayBuffer(mapBytesize);
-  const fd = openAssetsSync({
-    path: path,
-    flag: O_RDONLY,
-  });
-  const result = readSync({ fd, buffer });
-
-  if (result < 0) {
-    logger.error("Failed to read map file.");
-    return {};
-  }
-
-  logger.debug("readSync result: ", result);
-
-  const jsonString = Buffer.from(buffer).toString(); // 128KB max
-  const geojson = JSON.parse(jsonString);
-
-  logger.debug("GeoJSON parsed.");
-  return geojson;
 }
