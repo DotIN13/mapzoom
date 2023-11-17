@@ -19,6 +19,7 @@ import { ZoomMap } from "../../../utils/mapzoom";
 import { logger } from "../../../utils/logger";
 
 const geolocation = new Geolocation();
+let canvas, trackpad, frametimeCounter, zoomMap;
 
 Page({
   onInit() {
@@ -41,14 +42,11 @@ Page({
     const zoom = 10;
 
     // Create canvas
-    const canvas = ui.createWidget(ui.widget.CANVAS, CANVAS_STYLE);
-    const trackpad = ui.createWidget(ui.widget.FILL_RECT, TRACKPAD_STYLE);
-    const frametimeCounter = ui.createWidget(
-      ui.widget.TEXT,
-      FRAMETIME_COUNTER_STYLE
-    );
+    canvas = ui.createWidget(ui.widget.CANVAS, CANVAS_STYLE);
+    trackpad = ui.createWidget(ui.widget.FILL_RECT, TRACKPAD_STYLE);
+    frametimeCounter = ui.createWidget(ui.widget.TEXT, FRAMETIME_COUNTER_STYLE);
 
-    this.zoomMap = new ZoomMap(
+    zoomMap = new ZoomMap(
       canvas,
       trackpad,
       frametimeCounter,
@@ -59,7 +57,7 @@ Page({
       DEVICE_WIDTH,
       DEVICE_HEIGHT
     );
-    this.zoomMap.render();
+    zoomMap.render();
 
     // Geolocation updates
     const callback = () => {
@@ -68,7 +66,7 @@ Page({
         lon = geolocation.getLongitude();
         if (typeof lat != "number" || typeof lon != "number") return;
 
-        this.zoomMap.geoLocation = { lon, lat };
+        zoomMap.geoLocation = { lon, lat };
       }
     };
 
@@ -78,7 +76,7 @@ Page({
   onDestroy() {
     logger.debug("page onDestroy invoked");
 
-    this.zoomMap = null;
+    zoomMap = null;
 
     geolocation.offChange();
     geolocation.stop();
