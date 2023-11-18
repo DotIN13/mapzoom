@@ -15,7 +15,7 @@ export class TileCache {
     this.memoryCache = new Map();
     this.mapId = `example-v${VERSION}`;
     this.pmtiles = new PMTiles("data://download/example.pmtiles");
-    // this.pmtiles = new PMTiles("assets://map/shanghai-20231116-mini-fbs.pmtiles");
+    // this.pmtiles = new PMTiles("assets://map/shanghai-20231117-mini-fbs.pmtiles");
   }
 
   getTile(z, x, y) {
@@ -39,7 +39,7 @@ export class TileCache {
   }
 
   getTileFromFile(z, x, y) {
-    let decompressed, decoded;
+    let decompressed;
 
     if (DEBUG)
       decompressed = timer(

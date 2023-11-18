@@ -29,7 +29,7 @@ class Layer(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Uint8Flags, o + self._tab.Pos)
-        return 1
+        return 2
 
     # Layer
     def Name(self):
@@ -122,7 +122,7 @@ def Start(builder):
     LayerStart(builder)
 
 def LayerAddVersion(builder, version):
-    builder.PrependUint8Slot(0, version, 1)
+    builder.PrependUint8Slot(0, version, 2)
 
 def AddVersion(builder, version):
     LayerAddVersion(builder, version)

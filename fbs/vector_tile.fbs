@@ -29,13 +29,22 @@ table Value {
 
 table Feature {
     id:uint32 = 0;
-    tags:[uint16]; // A list of keyIndex, valueIndex pairs.
+    coverage:ubyte = 0;
+
+    // Fixed properties
+    name:string;
+    name_en:string;
+    pmap_kind:string;
+    pmap_min_zoom:uint8;
+
+    // A list of keyIndex, valueIndex pairs.
+    tags:[uint16];
     type:GeomType = UNKNOWN;
     geometry:[int16];
 }
 
 table Layer {
-    version:uint8 = 1;
+    version:uint8 = 2;
     name:string;
     features:[Feature];
     keys:[string];

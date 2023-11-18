@@ -21,7 +21,7 @@ export class Layer {
     }
     version() {
         const offset = this.bb.__offset(this.bb_pos, 4);
-        return offset ? this.bb.readUint8(this.bb_pos + offset) : 1;
+        return offset ? this.bb.readUint8(this.bb_pos + offset) : 2;
     }
     name(optionalEncoding) {
         const offset = this.bb.__offset(this.bb_pos, 6);
@@ -59,7 +59,7 @@ export class Layer {
         builder.startObject(6);
     }
     static addVersion(builder, version) {
-        builder.addFieldInt8(0, version, 1);
+        builder.addFieldInt8(0, version, 2);
     }
     static addName(builder, nameOffset) {
         builder.addFieldOffset(1, nameOffset, 0);

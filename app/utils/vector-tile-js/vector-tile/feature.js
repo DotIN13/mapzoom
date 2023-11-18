@@ -22,42 +22,77 @@ export class Feature {
         const offset = this.bb.__offset(this.bb_pos, 4);
         return offset ? this.bb.readUint32(this.bb_pos + offset) : 0;
     }
-    tags(index) {
+    coverage() {
         const offset = this.bb.__offset(this.bb_pos, 6);
+        return offset ? this.bb.readUint8(this.bb_pos + offset) : 0;
+    }
+    name(optionalEncoding) {
+        const offset = this.bb.__offset(this.bb_pos, 8);
+        return offset ? this.bb.__string(this.bb_pos + offset, optionalEncoding) : null;
+    }
+    nameEn(optionalEncoding) {
+        const offset = this.bb.__offset(this.bb_pos, 10);
+        return offset ? this.bb.__string(this.bb_pos + offset, optionalEncoding) : null;
+    }
+    pmapKind(optionalEncoding) {
+        const offset = this.bb.__offset(this.bb_pos, 12);
+        return offset ? this.bb.__string(this.bb_pos + offset, optionalEncoding) : null;
+    }
+    pmapMinZoom() {
+        const offset = this.bb.__offset(this.bb_pos, 14);
+        return offset ? this.bb.readUint8(this.bb_pos + offset) : 0;
+    }
+    tags(index) {
+        const offset = this.bb.__offset(this.bb_pos, 16);
         return offset ? this.bb.readUint16(this.bb.__vector(this.bb_pos + offset) + index * 2) : 0;
     }
     tagsLength() {
-        const offset = this.bb.__offset(this.bb_pos, 6);
+        const offset = this.bb.__offset(this.bb_pos, 16);
         return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
     }
     tagsArray() {
-        const offset = this.bb.__offset(this.bb_pos, 6);
+        const offset = this.bb.__offset(this.bb_pos, 16);
         return offset ? new Uint16Array(this.bb.bytes().buffer, this.bb.bytes().byteOffset + this.bb.__vector(this.bb_pos + offset), this.bb.__vector_len(this.bb_pos + offset)) : null;
     }
     type() {
-        const offset = this.bb.__offset(this.bb_pos, 8);
+        const offset = this.bb.__offset(this.bb_pos, 18);
         return offset ? this.bb.readInt8(this.bb_pos + offset) : GeomType.UNKNOWN;
     }
     geometry(index) {
-        const offset = this.bb.__offset(this.bb_pos, 10);
+        const offset = this.bb.__offset(this.bb_pos, 20);
         return offset ? this.bb.readInt16(this.bb.__vector(this.bb_pos + offset) + index * 2) : 0;
     }
     geometryLength() {
-        const offset = this.bb.__offset(this.bb_pos, 10);
+        const offset = this.bb.__offset(this.bb_pos, 20);
         return offset ? this.bb.__vector_len(this.bb_pos + offset) : 0;
     }
     geometryArray() {
-        const offset = this.bb.__offset(this.bb_pos, 10);
+        const offset = this.bb.__offset(this.bb_pos, 20);
         return offset ? new Int16Array(this.bb.bytes().buffer, this.bb.bytes().byteOffset + this.bb.__vector(this.bb_pos + offset), this.bb.__vector_len(this.bb_pos + offset)) : null;
     }
     static startFeature(builder) {
-        builder.startObject(4);
+        builder.startObject(9);
     }
     static addId(builder, id) {
         builder.addFieldInt32(0, id, 0);
     }
+    static addCoverage(builder, coverage) {
+        builder.addFieldInt8(1, coverage, 0);
+    }
+    static addName(builder, nameOffset) {
+        builder.addFieldOffset(2, nameOffset, 0);
+    }
+    static addNameEn(builder, nameEnOffset) {
+        builder.addFieldOffset(3, nameEnOffset, 0);
+    }
+    static addPmapKind(builder, pmapKindOffset) {
+        builder.addFieldOffset(4, pmapKindOffset, 0);
+    }
+    static addPmapMinZoom(builder, pmapMinZoom) {
+        builder.addFieldInt8(5, pmapMinZoom, 0);
+    }
     static addTags(builder, tagsOffset) {
-        builder.addFieldOffset(1, tagsOffset, 0);
+        builder.addFieldOffset(6, tagsOffset, 0);
     }
     static createTagsVector(builder, data) {
         builder.startVector(2, data.length, 2);
@@ -70,10 +105,10 @@ export class Feature {
         builder.startVector(2, numElems, 2);
     }
     static addType(builder, type) {
-        builder.addFieldInt8(2, type, GeomType.UNKNOWN);
+        builder.addFieldInt8(7, type, GeomType.UNKNOWN);
     }
     static addGeometry(builder, geometryOffset) {
-        builder.addFieldOffset(3, geometryOffset, 0);
+        builder.addFieldOffset(8, geometryOffset, 0);
     }
     static createGeometryVector(builder, data) {
         builder.startVector(2, data.length, 2);
@@ -89,9 +124,14 @@ export class Feature {
         const offset = builder.endObject();
         return offset;
     }
-    static createFeature(builder, id, tagsOffset, type, geometryOffset) {
+    static createFeature(builder, id, coverage, nameOffset, nameEnOffset, pmapKindOffset, pmapMinZoom, tagsOffset, type, geometryOffset) {
         Feature.startFeature(builder);
         Feature.addId(builder, id);
+        Feature.addCoverage(builder, coverage);
+        Feature.addName(builder, nameOffset);
+        Feature.addNameEn(builder, nameEnOffset);
+        Feature.addPmapKind(builder, pmapKindOffset);
+        Feature.addPmapMinZoom(builder, pmapMinZoom);
         Feature.addTags(builder, tagsOffset);
         Feature.addType(builder, type);
         Feature.addGeometry(builder, geometryOffset);

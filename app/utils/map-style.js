@@ -1,41 +1,41 @@
 // Define functions to configure line-width, line-color, and fill-color for each layer
 
-const configureBoundariesStyle = (zoom, feature) => ({
+const configureBoundariesStyle = (zoom, props) => ({
   "line-width": 2,
   "line-color": 0x555555,
 });
 
-const configureBuildingStyle = (zoom, feature) => ({
+const configureBuildingStyle = (zoom, props) => ({
   "line-width": null,
   "line-color": 0x555555,
   "fill-color": 0x454441,
 });
 
-const configureEarthStyle = (zoom, feature) => ({
+const configureEarthStyle = (zoom, props) => ({
   "line-width": null,
   "line-color": 0x555555,
   "fill-color": 0xc7c7c7,
 });
 
-const configureLanduseStyle = (zoom, feature) => ({
+const configureLanduseStyle = (zoom, props) => ({
   "line-width": null,
   "line-color": 0x555555,
   "fill-color": 0xe5e0d3,
 });
 
-const configureNaturalStyle = (zoom, feature) => ({
+const configureNaturalStyle = (zoom, props) => ({
   "line-width": null,
   "line-color": 0x555555,
   "fill-color": 0xc7c7c7,
 });
 
-const configurePhysicalLineStyle = (zoom, feature) => {
+const configurePhysicalLineStyle = (zoom, props) => {
   let lineWidth = 1;
-  if (feature.properties["pmap:kind"] === "major_road") {
+  if (props["pmap:kind"] === "major_road") {
     lineWidth = zoom >= 14 ? 4 : zoom >= 12 ? 3 : zoom >= 10 ? 2 : 1;
-  } else if (feature.properties["pmap:kind"] === "medium_road") {
+  } else if (props["pmap:kind"] === "medium_road") {
     lineWidth = zoom >= 14 ? 3 : zoom >= 12 ? 2 : 1;
-  } else if (feature.properties["pmap:kind"] === "minor_road") {
+  } else if (props["pmap:kind"] === "minor_road") {
     lineWidth = zoom >= 14 ? 2 : 1;
   }
   return {
@@ -44,33 +44,33 @@ const configurePhysicalLineStyle = (zoom, feature) => {
   };
 };
 
-const configurePhysicalPointStyle = (zoom, feature) => ({
+const configurePhysicalPointStyle = (zoom, props) => ({
   "line-width": null,
   "line-color": 0x555555,
   "fill-color": 0xffffff,
 });
 
-const configurePlacesStyle = (zoom, feature) => ({
+const configurePlacesStyle = (zoom, props) => ({
   "line-width": null,
   "line-color": 0x555555,
   "fill-color": 0xdedede,
   "circle-radius": 3,
 });
 
-const configurePoisStyle = (zoom, feature) => ({
+const configurePoisStyle = (zoom, props) => ({
   "line-width": null,
   "line-color": 0x555555,
   "fill-color": 0xf2efe9,
   "circle-radius": 4,
 });
 
-const configureRoadsStyle = (zoom, feature) => {
+const configureRoadsStyle = (zoom, props) => {
   let lineWidth = 2;
-  if (feature.properties["pmap:kind"] === "major_road") {
-    lineWidth = zoom >= 14 ? 8 : zoom >= 12 ? 6 : zoom >= 10 ? 4 : 3;
-  } else if (feature.properties["pmap:kind"] === "medium_road") {
+  if (props["pmap:kind"] === "major_road") {
+    lineWidth = zoom >= 14 ? 6 : zoom >= 12 ? 5 : zoom >= 10 ? 4 : 3;
+  } else if (props["pmap:kind"] === "medium_road") {
     lineWidth = zoom >= 14 ? 5 : zoom >= 12 ? 3 : 2;
-  } else if (feature.properties["pmap:kind"] === "minor_road") {
+  } else if (props["pmap:kind"] === "minor_road") {
     lineWidth = zoom >= 14 ? 3 : 2;
   }
   return {
@@ -79,13 +79,13 @@ const configureRoadsStyle = (zoom, feature) => {
   };
 };
 
-const configureTransitStyle = (zoom, feature) => ({
+const configureTransitStyle = (zoom, props) => ({
   "line-width": 1,
   "line-color": 0x555555,
   "fill-color": 0xf2efe9,
 });
 
-const configureWaterStyle = (zoom, feature) => ({
+const configureWaterStyle = (zoom, props) => ({
   "line-width": null,
   "line-color": 0x555555,
   "fill-color": 0x2c4773,

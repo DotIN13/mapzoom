@@ -5,9 +5,6 @@ import { fileTransferModule } from "./file-transfer-module";
 
 const logger = Logger.getLogger("message-app-side");
 
-// Dummy pmtiles file: https://x0.at/T0CC.pmtiles
-// Shanghai pmtiles file: https://x0.at/ltN8.pmtiles
-
 AppSideService(
   BaseSideService({
     ...fileDownloadModule,
@@ -27,7 +24,7 @@ AppSideService(
     async onRequest(req, res) {
       const [, action] = req.method.split(".");
       if (action == "map") {
-        const { fileUrl = "https://x0.at/P1EK.pmtiles" } = req.params || {};
+        const { fileUrl = "https://x0.at/gcsx.pmtiles" } = req.params || {};
         const filePath = "data://example.pmtiles";
         const downloadTask = this.downloadFile(encodeURI(fileUrl), filePath);
 

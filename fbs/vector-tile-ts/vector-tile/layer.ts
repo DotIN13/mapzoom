@@ -26,7 +26,7 @@ static getSizePrefixedRootAsLayer(bb:flatbuffers.ByteBuffer, obj?:Layer):Layer {
 
 version():number {
   const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.readUint8(this.bb_pos + offset) : 1;
+  return offset ? this.bb!.readUint8(this.bb_pos + offset) : 2;
 }
 
 name():string|null
@@ -78,7 +78,7 @@ static startLayer(builder:flatbuffers.Builder) {
 }
 
 static addVersion(builder:flatbuffers.Builder, version:number) {
-  builder.addFieldInt8(0, version, 1);
+  builder.addFieldInt8(0, version, 2);
 }
 
 static addName(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset) {

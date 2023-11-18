@@ -32,8 +32,43 @@ class Feature(object):
         return 0
 
     # Feature
-    def Tags(self, j):
+    def Coverage(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Uint8Flags, o + self._tab.Pos)
+        return 0
+
+    # Feature
+    def Name(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
+    # Feature
+    def NameEn(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
+    # Feature
+    def PmapKind(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        if o != 0:
+            return self._tab.String(o + self._tab.Pos)
+        return None
+
+    # Feature
+    def PmapMinZoom(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
+        if o != 0:
+            return self._tab.Get(flatbuffers.number_types.Uint8Flags, o + self._tab.Pos)
+        return 0
+
+    # Feature
+    def Tags(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
         if o != 0:
             a = self._tab.Vector(o)
             return self._tab.Get(flatbuffers.number_types.Uint16Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 2))
@@ -41,33 +76,33 @@ class Feature(object):
 
     # Feature
     def TagsAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
         if o != 0:
             return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Uint16Flags, o)
         return 0
 
     # Feature
     def TagsLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # Feature
     def TagsIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
         return o == 0
 
     # Feature
     def Type(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(18))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Int8Flags, o + self._tab.Pos)
         return 0
 
     # Feature
     def Geometry(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
         if o != 0:
             a = self._tab.Vector(o)
             return self._tab.Get(flatbuffers.number_types.Int16Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 2))
@@ -75,25 +110,25 @@ class Feature(object):
 
     # Feature
     def GeometryAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
         if o != 0:
             return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Int16Flags, o)
         return 0
 
     # Feature
     def GeometryLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # Feature
     def GeometryIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(20))
         return o == 0
 
 def FeatureStart(builder):
-    builder.StartObject(4)
+    builder.StartObject(9)
 
 def Start(builder):
     FeatureStart(builder)
@@ -104,8 +139,38 @@ def FeatureAddId(builder, id):
 def AddId(builder, id):
     FeatureAddId(builder, id)
 
+def FeatureAddCoverage(builder, coverage):
+    builder.PrependUint8Slot(1, coverage, 0)
+
+def AddCoverage(builder, coverage):
+    FeatureAddCoverage(builder, coverage)
+
+def FeatureAddName(builder, name):
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(name), 0)
+
+def AddName(builder, name):
+    FeatureAddName(builder, name)
+
+def FeatureAddNameEn(builder, nameEn):
+    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(nameEn), 0)
+
+def AddNameEn(builder, nameEn):
+    FeatureAddNameEn(builder, nameEn)
+
+def FeatureAddPmapKind(builder, pmapKind):
+    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(pmapKind), 0)
+
+def AddPmapKind(builder, pmapKind):
+    FeatureAddPmapKind(builder, pmapKind)
+
+def FeatureAddPmapMinZoom(builder, pmapMinZoom):
+    builder.PrependUint8Slot(5, pmapMinZoom, 0)
+
+def AddPmapMinZoom(builder, pmapMinZoom):
+    FeatureAddPmapMinZoom(builder, pmapMinZoom)
+
 def FeatureAddTags(builder, tags):
-    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(tags), 0)
+    builder.PrependUOffsetTRelativeSlot(6, flatbuffers.number_types.UOffsetTFlags.py_type(tags), 0)
 
 def AddTags(builder, tags):
     FeatureAddTags(builder, tags)
@@ -117,13 +182,13 @@ def StartTagsVector(builder, numElems: int) -> int:
     return FeatureStartTagsVector(builder, numElems)
 
 def FeatureAddType(builder, type):
-    builder.PrependInt8Slot(2, type, 0)
+    builder.PrependInt8Slot(7, type, 0)
 
 def AddType(builder, type):
     FeatureAddType(builder, type)
 
 def FeatureAddGeometry(builder, geometry):
-    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(geometry), 0)
+    builder.PrependUOffsetTRelativeSlot(8, flatbuffers.number_types.UOffsetTFlags.py_type(geometry), 0)
 
 def AddGeometry(builder, geometry):
     FeatureAddGeometry(builder, geometry)

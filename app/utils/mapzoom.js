@@ -423,23 +423,28 @@ export class ZoomMap {
     const endX = currentCanvasCenter.x + halfCanvasW;
     const endY = currentCanvasCenter.y + halfCanvasH;
 
-    const currentTileSize = this.getRenderCache("currentTileSize");
+    const quadrantSize = this.getRenderCache("currentTileSize") / 2;
 
-    const startTileX = Math.floor(startX / currentTileSize);
-    const startTileY = Math.floor(startY / currentTileSize);
-    const endTileX = Math.floor(endX / currentTileSize);
-    const endTileY = Math.floor(endY / currentTileSize);
+    const startQX = Math.floor(startX / quadrantSize);
+    const startQY = Math.floor(startY / quadrantSize);
+    const endQX = Math.floor(endX / quadrantSize);
+    const endQY = Math.floor(endY / quadrantSize);
 
-    const tiles = [];
-    for (let x = startTileX; x <= endTileX; x++) {
-      for (let y = startTileY; y <= endTileY; y++) {
-        tiles.push({ x: x, y: y });
+    const tiles = {};
+    // Hardcoded to 4 quadrants per tile
+    for (let qX = startQX; qX <= endQX; qX++) {
+      for (let qY = startQY; qY <= endQY; qY++) {
+        const x = Math.floor(qX / 2);
+        const y = Math.floor(qY / 2);
+        const key = `${x}-${y}`;
+        tiles[key] ||= { x, y, quadrants: 0 };
+
+        const id = (qX % 2) + (qY % 2) * 2;
+        tiles[key].quadrants |= 1 << (4 - id - 1);
       }
     }
 
-    // logger.info(tiles.length, "tiles to render.");
-
-    return tiles;
+    return Object.values(tiles);
   }
 
   render() {
@@ -471,16 +476,16 @@ export class ZoomMap {
     });
   }
 
-  setPaint(layerName) {
-    let color, lineWidth;
-    if (layerName === "water") {
-      color = 0x3499ff;
-      lineWidth = 1;
-    }
-    if (layerName === "roads") {
-      color = 0x444444;
-      lineWidth = 2;
-    }
+  // Debug: draw tile bounding box
+  drawDebugBoundingBox() {
+    const tileSize = this.getRenderCache("currentTileSize");
+    this.canvas.strokeRect({
+      x1: coordCache.baseTile.x,
+      y1: coordCache.baseTile.y,
+      x2: coordCache.baseTile.x + tileSize,
+      y2: coordCache.baseTile.y + tileSize,
+      color: 0xffee00,
+    });
   }
 
   drawText(coord, text, textSet, size = 20, color = 0xfefefe) {
@@ -519,6 +524,7 @@ export class ZoomMap {
 
     const layerTemp = new Layer();
     const featureTemp = new Feature();
+    const featPropsTemp = {};
 
     // For each tile, interpolate the pixel coordinates of the features and draw them on the canvas.
     for (const tile of tiles) {
@@ -541,19 +547,26 @@ export class ZoomMap {
         // Iterate through features in the layer
         for (let j = 0; j < layer.featuresLength(); j++) {
           const feature = layer.features(j, featureTemp);
-          const geometry = feature.geometryArray();
 
-          // const style = styleBuilder ? styleBuilder(this.zoom, feature) : {};
-          const style = {};
+          const coverage = feature.coverage();
+          if ((coverage & tile.quadrants) === 0) continue;
+
+          featPropsTemp["name"] = feature.name() || feature.nameEn();
+          featPropsTemp["pmap:kind"] = feature.pmapKind();
+          featPropsTemp["pmap:min_zoom"] = feature.pmapMinZoom();
+          const featType = feature.type();
+          featPropsTemp["type"] = featType;
+
+          const style = styleBuilder
+            ? styleBuilder(this.zoom, featPropsTemp)
+            : {};
 
           this.canvas.setPaint({
             color: style["line-color"] || 0xeeeeee,
             line_width: style["line-width"] || 2,
           });
 
-          // const name = feature.properties.name;
-
-          const featType = feature.type();
+          const geometry = feature.geometryArray();
 
           if (featType === GeomType.POINT) {
             for (const pointStart of parsePoint(geometry)) {
