@@ -24,7 +24,7 @@ AppSideService(
     async onRequest(req, res) {
       const [, action] = req.method.split(".");
       if (action == "map") {
-        const { fileUrl = "https://x0.at/gcsx.pmtiles" } = req.params || {};
+        const { fileUrl = "https://x0.at/FeWi.pmtiles" } = req.params || {};
         const filePath = "data://example.pmtiles";
         const downloadTask = this.downloadFile(encodeURI(fileUrl), filePath);
 

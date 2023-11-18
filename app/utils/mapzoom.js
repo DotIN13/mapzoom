@@ -187,14 +187,22 @@ export class ZoomMap {
     if (this.renderCache.has(key)) return this.renderCache.get(key);
 
     let val = null;
-    if (key == "currentCanvasCenter")
+
+    if (key == "currentCanvasCenter") {
       val = scaleCoordinates(
         this.canvasCenter,
         CENTER_STORAGE_SCALE,
         this.zoom
       );
-    if (key == "currentTileSize")
-      val = TILE_SIZE * Math.pow(2, this.zoom - Math.floor(this.zoom));
+    }
+
+    if (key == "currentTileSize") {
+      const maxZoom = this.tileCache.pmtiles.header.maxZoom;
+      const tileZoom =
+        this.zoom > maxZoom ? Math.floor(maxZoom) : Math.floor(this.zoom);
+
+      val = TILE_SIZE * Math.pow(2, this.zoom - tileZoom);
+    }
 
     if (val === null) throw new Error(`Invalid cache key: ${key}`);
 
@@ -412,18 +420,36 @@ export class ZoomMap {
    * @returns {Array} - An array of tiles covering the viewport.
    */
   viewportTiles() {
+    let canvasCenter, z, quadrantSize;
+    const maxZoom = this.tileCache.pmtiles.header.maxZoom;
     const halfCanvasW = this.canvasW / 2;
     const halfCanvasH = this.canvasH / 2;
 
-    const currentCanvasCenter = this.getRenderCache("currentCanvasCenter");
+    if (this.zoom > maxZoom) {
+      const zoom = maxZoom + this.zoom - Math.floor(this.zoom);
+      canvasCenter = scaleCoordinates(
+        this.canvasCenter,
+        CENTER_STORAGE_SCALE,
+        zoom
+      );
 
-    const startX = currentCanvasCenter.x - halfCanvasW;
-    const startY = currentCanvasCenter.y - halfCanvasH;
+      z = Math.floor(maxZoom);
 
-    const endX = currentCanvasCenter.x + halfCanvasW;
-    const endY = currentCanvasCenter.y + halfCanvasH;
+      const tileSize =
+        TILE_SIZE * Math.pow(2, this.zoom - Math.floor(this.zoom));
+      quadrantSize = tileSize / 2;
+    }
 
-    const quadrantSize = this.getRenderCache("currentTileSize") / 2;
+    if (this.zoom <= maxZoom) {
+      canvasCenter = this.getRenderCache("currentCanvasCenter");
+      z = Math.floor(this.zoom);
+      quadrantSize = this.getRenderCache("currentTileSize") / 2;
+    }
+
+    const startX = canvasCenter.x - halfCanvasW;
+    const startY = canvasCenter.y - halfCanvasH;
+    const endX = canvasCenter.x + halfCanvasW;
+    const endY = canvasCenter.y + halfCanvasH;
 
     const startQX = Math.floor(startX / quadrantSize);
     const startQY = Math.floor(startY / quadrantSize);
@@ -437,7 +463,7 @@ export class ZoomMap {
         const x = Math.floor(qX / 2);
         const y = Math.floor(qY / 2);
         const key = `${x}-${y}`;
-        tiles[key] ||= { x, y, quadrants: 0 };
+        tiles[key] ||= { z, x, y, quadrants: 0 };
 
         const id = (qX % 2) + (qY % 2) * 2;
         tiles[key].quadrants |= 1 << (4 - id - 1);
@@ -488,12 +514,7 @@ export class ZoomMap {
     });
   }
 
-  drawText(coord, text, textSet, size = 20, color = 0xfefefe) {
-    if (!text) return;
-    if (textSet.has(text)) return;
-
-    textSet.add(text);
-
+  drawText(text, coord, size = 20, color = 0xfefefe) {
     this.canvas.drawText({
       x: coord.x - (size * text.length) / 2,
       y: coord.y,
@@ -518,9 +539,7 @@ export class ZoomMap {
     const canvasCenter = this.getRenderCache("currentCanvasCenter");
     coordCache.newCache(tileSize);
 
-    const textSet = new Set();
-
-    const tileZ = Math.floor(this.zoom);
+    const textItems = {};
 
     const layerTemp = new Layer();
     const featureTemp = new Feature();
@@ -529,7 +548,7 @@ export class ZoomMap {
     // For each tile, interpolate the pixel coordinates of the features and draw them on the canvas.
     for (const tile of tiles) {
       // Get tile from cache or PMTiles file
-      const tileObj = this.tileCache.getTile(tileZ, tile.x, tile.y);
+      const tileObj = this.tileCache.getTile(tile.z, tile.x, tile.y);
       if (!tileObj) continue;
 
       coordCache.baseTile.x =
@@ -551,11 +570,15 @@ export class ZoomMap {
           const coverage = feature.coverage();
           if ((coverage & tile.quadrants) === 0) continue;
 
-          featPropsTemp["name"] = feature.name() || feature.nameEn();
-          featPropsTemp["pmap:kind"] = feature.pmapKind();
-          featPropsTemp["pmap:min_zoom"] = feature.pmapMinZoom();
+          // Load properties
+          const name = feature.name() || feature.nameEn();
+          featPropsTemp["name"] = name;
+
           const featType = feature.type();
           featPropsTemp["type"] = featType;
+
+          featPropsTemp["pmap:kind"] = feature.pmapKind();
+          featPropsTemp["pmap:min_zoom"] = feature.pmapMinZoom();
 
           const style = styleBuilder
             ? styleBuilder(this.zoom, featPropsTemp)
@@ -584,6 +607,17 @@ export class ZoomMap {
           if (featType === GeomType.LINESTRING) {
             for (const lineRange of parseLineString(geometry)) {
               mapLineStringCoords(geometry, lineRange, coordCache);
+              let textCoordIndex = (lineRange[0] + lineRange[1]) >> 1;
+              if ((textCoordIndex - lineRange[0]) % 2 != 0) textCoordIndex--;
+
+              if (name && !(name in textItems))
+                textItems[name] = {
+                  coord: {
+                    x: geometry[textCoordIndex],
+                    y: geometry[textCoordIndex + 1],
+                  },
+                };
+
               for (let k = lineRange[0]; k < lineRange[1] - 2; k += 2) {
                 this.canvas.drawLine({
                   x1: geometry[k],
@@ -594,6 +628,7 @@ export class ZoomMap {
                 });
               }
             }
+
             continue;
           }
 
@@ -611,6 +646,13 @@ export class ZoomMap {
           logger.warn(`Unsupported feature type: ${featType}`);
         }
       }
+    }
+
+    logger.debug(JSON.stringify(textItems));
+
+    // Draw text
+    for (const [text, item] of Object.entries(textItems)) {
+      this.drawText(text, item.coord);
     }
   }
 }

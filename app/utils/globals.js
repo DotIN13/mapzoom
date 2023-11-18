@@ -25,7 +25,7 @@ export const MEM_TILE_CACHE_SIZE = 1;
 export const LOCAL_TILE_CACHE_SIZE = 50;
 
 export const PAN_SPEED_FACTOR = 1.8; // adjust this value as needed
-export const ZOOM_SPEED_FACTOR = 0.05; // adjust this value as needed
+export const ZOOM_SPEED_FACTOR = 0.035; // adjust this value as needed
 
 export const PAN_THROTTLING_DELAY = 20; // Throttle delay of 20ms
 export const ZOOM_THROTTLING_DELAY = 360; // Throttle delay of 360ms
