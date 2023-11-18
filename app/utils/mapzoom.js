@@ -598,6 +598,15 @@ export class ZoomMap {
 
             for (const pointStart of parsePoint(geometry)) {
               point = mapPointCoords(geometry, pointStart, coordCache);
+              if (
+                this.zoom >= 15 &&
+                (point.x < 0 ||
+                  point.x > this.canvasW ||
+                  point.y < 0 ||
+                  point.y > this.canvasH)
+              )
+                continue;
+
               this.canvas.drawCircle({
                 center_x: point.x,
                 center_y: point.y,
