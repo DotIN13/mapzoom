@@ -9,6 +9,13 @@ export function roundToPrecision(number, precision = PRECISION_FACTOR) {
   return Math.round(number * precision) / precision;
 }
 
+export function scaleCoordinates(coord, fromZoom, toZoom) {
+  return {
+    x: coord.x * Math.pow(2, toZoom - fromZoom),
+    y: coord.y * Math.pow(2, toZoom - fromZoom),
+  };
+}
+
 /**
  * Calculate the bounding box of the current viewport based on the given center, zoom level, and canvas dimensions.
  * @param {Object} center - An object representing the {lon, lat} of the center of the viewport.

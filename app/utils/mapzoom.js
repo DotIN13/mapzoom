@@ -26,95 +26,57 @@ import {
 } from "./globals";
 import { logger } from "./logger";
 import { TileCache } from "./tile-cache";
-import { roundToPrecision, lonLatToPixelCoordinates } from "./coordinates";
+import {
+  scaleCoordinates,
+  roundToPrecision,
+  lonLatToPixelCoordinates,
+} from "./coordinates";
 import { mapStyle } from "./map-style";
-import { GeomType, Feature, Layer } from "./vector-tile-js/vector-tile";
 import { parsePoint, parseLineString, parsePolygon } from "./geometry";
+import { CoordCache } from "./coord-cache";
+import { GeomType, Feature, Layer } from "./vector-tile-js/vector-tile";
 
 let isRendering = false; // Global Render Indicator
+let coordCache = new CoordCache();
 
-function scaleCoordinates(coord, fromZoom, toZoom) {
-  return {
-    x: coord.x * Math.pow(2, toZoom - fromZoom),
-    y: coord.y * Math.pow(2, toZoom - fromZoom),
-  };
+function mapPointCoords(geometry, begin, cache) {
+  let x = cache.cache[geometry[begin] + 128];
+  let y = cache.cache[geometry[begin + 1] + 128];
+
+  if (isNaN(x)) x = (geometry[begin] / TILE_EXTENT) * cache.tileSize;
+  if (isNaN(y)) y = (geometry[begin + 1] / TILE_EXTENT) * cache.tileSize;
+
+  return { x: x + cache.baseTile.x, y: y + cache.baseTile.y };
 }
 
-/**
- * Build a coordinate cache for a given tile size.
- * @param {Number} tileSize - Tile size in pixels.
- * @returns {Object} - A coordinate cache object.
- */
-function buildCoordCache(tileSize) {
-  const cache = new Float32Array(TILE_EXTENT + 256);
-  cache.set(TILE_PROJECTION);
-
-  for (let i = 0; i < TILE_EXTENT + 256; i++) {
-    cache[i] *= tileSize;
-  }
-  return { cache, tileSize };
-}
-
-function mapPointCoords(geometry, coordsStart, coordCache) {
-  let x = coordCache.cache[geometry[coordsStart] + 128] + coordCache.baseTileX;
-  let y =
-    coordCache.cache[geometry[coordsStart + 1] + 128] + coordCache.baseTileY;
-
-  if (isNaN(x))
-    x =
-      (geometry[coordsStart] / TILE_EXTENT) * coordCache.tileSize +
-      coordCache.baseTileX;
-
-  if (isNaN(y))
-    y =
-      (geometry[coordsStart + 1] / TILE_EXTENT) * coordCache.tileSize +
-      coordCache.baseTileY;
-
-  return { x, y };
-}
-
-function mapLineStringCoords(geometry, coordsRange, coordCache) {
-  const [i, j] = coordsRange;
+function mapLineStringCoords(geometry, range, cache) {
+  const [i, j] = range;
 
   for (let k = i; k < j; k += 2) {
-    let x = coordCache.cache[geometry[k] + 128] + coordCache.baseTileX;
-    let y = coordCache.cache[geometry[k + 1] + 128] + coordCache.baseTileY;
+    let x = cache.cache[geometry[k] + 128];
+    let y = cache.cache[geometry[k + 1] + 128];
 
-    if (isNaN(x))
-      x =
-        (geometry[k] / TILE_EXTENT) * coordCache.tileSize +
-        coordCache.baseTileX;
+    if (isNaN(x)) x = (geometry[k] / TILE_EXTENT) * cache.tileSize;
+    if (isNaN(y)) y = (geometry[k + 1] / TILE_EXTENT) * cache.tileSize;
 
-    if (isNaN(y))
-      y =
-        (geometry[k + 1] / TILE_EXTENT) * coordCache.tileSize +
-        coordCache.baseTileY;
-
-    geometry[k] = x;
-    geometry[k + 1] = y;
+    geometry[k] = x + cache.baseTile.x;
+    geometry[k + 1] = y + cache.baseTile.y;
   }
 }
 
-function mapPolygonCoords(geometry, coordsRange, coordCache) {
-  const [i, j] = coordsRange;
+function mapPolygonCoords(geometry, range, cache) {
+  const [i, j] = range;
 
   let ring = [];
 
   for (let k = i; k < j; k += 2) {
-    let x = coordCache.cache[geometry[k] + 128] + coordCache.baseTileX;
-    let y = coordCache.cache[geometry[k + 1] + 128] + coordCache.baseTileY;
+    let x = cache.cache[geometry[k] + 128];
+    let y = cache.cache[geometry[k + 1] + 128];
 
-    if (isNaN(x))
-      x =
-        (geometry[k] / TILE_EXTENT) * coordCache.tileSize +
-        coordCache.baseTileX;
+    if (isNaN(x)) x = (geometry[k] / TILE_EXTENT) * cache.tileSize;
+    if (isNaN(y)) y = (geometry[k + 1] / TILE_EXTENT) * cache.tileSize;
 
-    if (isNaN(y))
-      y =
-        (geometry[k + 1] / TILE_EXTENT) * coordCache.tileSize +
-        coordCache.baseTileY;
-
-    ring.push({ x, y });
+    ring.push({ x: x + cache.baseTile.x, y: y + cache.baseTile.y });
   }
 
   return ring;
@@ -547,10 +509,10 @@ export class ZoomMap {
     // Background color for debugging purpose
     // this.drawDebugBackground();
 
-    const currentTileSize = this.getRenderCache("currentTileSize");
-    const currentCanvasCenter = this.getRenderCache("currentCanvasCenter");
+    const tileSize = this.getRenderCache("currentTileSize");
+    const canvasCenter = this.getRenderCache("currentCanvasCenter");
+    coordCache.newCache(tileSize);
 
-    const coordCache = buildCoordCache(currentTileSize);
     const textSet = new Set();
 
     const tileZ = Math.floor(this.zoom);
@@ -560,16 +522,14 @@ export class ZoomMap {
 
     // For each tile, interpolate the pixel coordinates of the features and draw them on the canvas.
     for (const tile of tiles) {
-      // Convert the byte range to decoded mvt json
+      // Get tile from cache or PMTiles file
       const tileObj = this.tileCache.getTile(tileZ, tile.x, tile.y);
-
       if (!tileObj) continue;
 
-      coordCache.baseTileX =
-        tile.x * currentTileSize - (currentCanvasCenter.x - this.canvasW / 2);
-
-      coordCache.baseTileY =
-        tile.y * currentTileSize - (currentCanvasCenter.y - this.canvasH / 2);
+      coordCache.baseTile.x =
+        tile.x * tileSize - (canvasCenter.x - this.canvasW / 2);
+      coordCache.baseTile.y =
+        tile.y * tileSize - (canvasCenter.y - this.canvasH / 2);
 
       // Iterate through features in the decoded tile and draw them
       for (let i = 0; i < tileObj.layersLength(); i++) {
