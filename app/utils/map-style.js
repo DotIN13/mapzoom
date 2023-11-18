@@ -1,9 +1,21 @@
 // Define functions to configure line-width, line-color, and fill-color for each layer
 
-const configureBoundariesStyle = (zoom, props) => ({
-  "line-width": 2,
-  "line-color": 0x555555,
-});
+const configureBoundariesStyle = (zoom, props) => {
+  let lineWidth = 2;
+  let lineColor = 0x727272;
+
+  if (props["pmap:kind"] === "county") {
+    lineWidth = 3;
+    lineColor = 0x727272;
+  } else if (props["pmap:kind"] === "locality") {
+    lineWidth = 2;
+    lineColor = 0x555555;
+  }
+  return {
+    "line-width": lineWidth,
+    "line-color": lineColor,
+  };
+};
 
 const configureBuildingStyle = (zoom, props) => ({
   "line-width": null,
@@ -50,32 +62,49 @@ const configurePhysicalPointStyle = (zoom, props) => ({
   "fill-color": 0xffffff,
 });
 
-const configurePlacesStyle = (zoom, props) => ({
-  "line-width": null,
-  "line-color": 0x555555,
-  "fill-color": 0xdedede,
-  "circle-radius": 3,
-});
+const configurePlacesStyle = (zoom, props) => {
+  let fillColor = null;
+  let visible = false;
 
-const configurePoisStyle = (zoom, props) => ({
-  "line-width": null,
-  "line-color": 0x555555,
-  "fill-color": 0xf2efe9,
-  "circle-radius": 4,
-});
+  if (props["pmap:kind"] === "region" && zoom < 11) {
+    fillColor = 0xfefefe;
+    visible = true;
+  }
+
+  if (props["pmap:kind"] === "locality" && zoom >= 11 && zoom < 13) {
+    fillColor = 0xdedede;
+    visible = true;
+  }
+
+  return { visible, "fill-color": fillColor };
+};
+
+const configurePoisStyle = (zoom, props) => {
+  let visible = false;
+
+  if (zoom >= props["pmap:min_zoom"]) {
+    visible = true;
+  }
+
+  return { visible };
+};
 
 const configureRoadsStyle = (zoom, props) => {
   let lineWidth = 2;
+  let lineColor = 0x727272;
   if (props["pmap:kind"] === "major_road") {
-    lineWidth = zoom >= 14 ? 6 : zoom >= 12 ? 5 : zoom >= 10 ? 4 : 3;
+    lineWidth = zoom >= 15 ? 6 : zoom >= 12 ? 4 : zoom >= 10 ? 3 : 2;
+    lineColor = 0x868686;
   } else if (props["pmap:kind"] === "medium_road") {
     lineWidth = zoom >= 14 ? 5 : zoom >= 12 ? 3 : 2;
+    lineColor = 0x787878;
   } else if (props["pmap:kind"] === "minor_road") {
     lineWidth = zoom >= 14 ? 3 : 2;
+    lineColor = 0x727272;
   }
   return {
     "line-width": lineWidth,
-    "line-color": 0x727272,
+    "line-color": lineColor,
   };
 };
 

@@ -516,7 +516,7 @@ export class ZoomMap {
 
   drawText(text, coord, size = 20, color = 0xfefefe) {
     this.canvas.drawText({
-      x: coord.x - (size * text.length) / 2,
+      x: coord.x,
       y: coord.y,
       text_size: size,
       color,
@@ -584,6 +584,8 @@ export class ZoomMap {
             ? styleBuilder(this.zoom, featPropsTemp)
             : {};
 
+          if (style.visible === false) continue;
+
           this.canvas.setPaint({
             color: style["line-color"] || 0xeeeeee,
             line_width: style["line-width"] || 2,
@@ -592,8 +594,10 @@ export class ZoomMap {
           const geometry = feature.geometryArray();
 
           if (featType === GeomType.POINT) {
+            let point;
+
             for (const pointStart of parsePoint(geometry)) {
-              const point = mapPointCoords(geometry, pointStart, coordCache);
+              point = mapPointCoords(geometry, pointStart, coordCache);
               this.canvas.drawCircle({
                 center_x: point.x,
                 center_y: point.y,
@@ -601,24 +605,30 @@ export class ZoomMap {
                 color: style["fill-color"] || 0xdedede,
               });
             }
+
+            if (name && !(name in textItems)) {
+              const size = style["font-size"] || 20;
+
+              textItems[name] = {
+                coord: {
+                  x: point.x + 8,
+                  y: point.y - size - 4,
+                },
+              };
+            }
             continue;
           }
 
           if (featType === GeomType.LINESTRING) {
+            const mid = Math.floor(geometry.length / 3);
+            let m = Infinity;
+
             for (const lineRange of parseLineString(geometry)) {
               mapLineStringCoords(geometry, lineRange, coordCache);
-              let textCoordIndex = (lineRange[0] + lineRange[1]) >> 1;
-              if ((textCoordIndex - lineRange[0]) % 2 != 0) textCoordIndex--;
-
-              if (name && !(name in textItems))
-                textItems[name] = {
-                  coord: {
-                    x: geometry[textCoordIndex],
-                    y: geometry[textCoordIndex + 1],
-                  },
-                };
 
               for (let k = lineRange[0]; k < lineRange[1] - 2; k += 2) {
+                if (k - mid < m) m = k;
+
                 this.canvas.drawLine({
                   x1: geometry[k],
                   y1: geometry[k + 1],
@@ -627,6 +637,17 @@ export class ZoomMap {
                   color: style["line-color"] || 0x444444,
                 });
               }
+            }
+
+            if (name && !(name in textItems)) {
+              const size = style["font-size"] || 20;
+
+              textItems[name] = {
+                coord: {
+                  x: geometry[m] - (size * name.length) / 2,
+                  y: geometry[m + 1],
+                },
+              };
             }
 
             continue;
@@ -648,7 +669,7 @@ export class ZoomMap {
       }
     }
 
-    logger.debug(JSON.stringify(textItems));
+    // logger.debug(JSON.stringify(textItems));
 
     // Draw text
     for (const [text, item] of Object.entries(textItems)) {

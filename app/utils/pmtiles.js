@@ -347,7 +347,7 @@ export class PMTiles {
 
     if (!minHitsKey) return false;
 
-    logger.debug("Dir cache pruned: ", minHitsKey);
+    // logger.debug("Dir cache pruned: ", minHitsKey);
 
     return minHitsKey;
   }
