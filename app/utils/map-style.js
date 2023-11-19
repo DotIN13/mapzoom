@@ -94,13 +94,13 @@ const configureRoadsStyle = (zoom, props) => {
   let lineColor = 0x727272;
   if (props["pmap:kind"] === "major_road") {
     lineWidth = zoom >= 15 ? 6 : zoom >= 12 ? 4 : zoom >= 10 ? 3 : 2;
-    lineColor = 0x868686;
+    lineColor = 0x808080;
   } else if (props["pmap:kind"] === "medium_road") {
     lineWidth = zoom >= 14 ? 5 : zoom >= 12 ? 3 : 2;
-    lineColor = 0x787878;
+    lineColor = 0x727272;
   } else if (props["pmap:kind"] === "minor_road") {
     lineWidth = zoom >= 14 ? 3 : 2;
-    lineColor = 0x727272;
+    lineColor = 0x686868;
   }
   return {
     "line-width": lineWidth,
