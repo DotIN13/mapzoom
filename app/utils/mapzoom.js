@@ -420,11 +420,12 @@ export class ZoomMap {
    * @returns {Array} - An array of tiles covering the viewport.
    */
   viewportTiles() {
-    let canvasCenter, z, quadrantSize;
+    let canvasCenter, z;
     const maxZoom = this.tileCache.pmtiles.header.maxZoom;
     const halfCanvasW = this.canvasW / 2;
     const halfCanvasH = this.canvasH / 2;
 
+    // Adjust zoom and center based on maxZoom
     if (this.zoom > maxZoom) {
       const zoom = maxZoom + this.zoom - Math.floor(this.zoom);
       canvasCenter = scaleCoordinates(
@@ -432,45 +433,49 @@ export class ZoomMap {
         CENTER_STORAGE_SCALE,
         zoom
       );
-
       z = Math.floor(maxZoom);
-
-      const tileSize =
-        TILE_SIZE * Math.pow(2, this.zoom - Math.floor(this.zoom));
-      quadrantSize = tileSize / 2;
-    }
-
-    if (this.zoom <= maxZoom) {
+    } else {
       canvasCenter = this.getRenderCache("currentCanvasCenter");
       z = Math.floor(this.zoom);
-      quadrantSize = this.getRenderCache("currentTileSize") / 2;
     }
 
-    const startX = canvasCenter.x - halfCanvasW;
-    const startY = canvasCenter.y - halfCanvasH;
-    const endX = canvasCenter.x + halfCanvasW;
-    const endY = canvasCenter.y + halfCanvasH;
+    // Calculate view boundaries
+    const viewBB = new Float32Array([
+      canvasCenter.x - halfCanvasW,
+      canvasCenter.x + halfCanvasW,
+      canvasCenter.y - halfCanvasH,
+      canvasCenter.y + halfCanvasH,
+    ]);
 
-    const startQX = Math.floor(startX / quadrantSize);
-    const startQY = Math.floor(startY / quadrantSize);
-    const endQX = Math.floor(endX / quadrantSize);
-    const endQY = Math.floor(endY / quadrantSize);
+    // Determine tile range
+    const tileSize = TILE_SIZE * Math.pow(2, z);
+    const startX = Math.floor(viewBB[0] / tileSize);
+    const endX = Math.floor(viewBB[1] / tileSize);
+    const startY = Math.floor(viewBB[2] / tileSize);
+    const endY = Math.floor(viewBB[3] / tileSize);
 
-    const tiles = {};
-    // Hardcoded to 4 quadrants per tile
-    for (let qX = startQX; qX <= endQX; qX++) {
-      for (let qY = startQY; qY <= endQY; qY++) {
-        const x = Math.floor(qX / 2);
-        const y = Math.floor(qY / 2);
-        const key = `${x}-${y}`;
-        tiles[key] ||= { z, x, y, quadrants: 0 };
-
-        const id = (qX % 2) + (qY % 2) * 2;
-        tiles[key].quadrants |= 1 << (4 - id - 1);
+    const tiles = [];
+    let tileX = startX * tileSize;
+    for (let x = startX; x <= endX; x++) {
+      let tileY = startY * tileSize;
+      for (let y = startY; y <= endY; y++) {
+        const tileBB = new Float32Array([
+          tileX,
+          tileX + tileSize, // X bounds
+          tileY,
+          tileY + tileSize, // Y bounds
+        ]);
+        tiles.push({
+          zxy: new Uint32Array([z, x, y]),
+          tileBB: tileBB,
+          viewBB: viewBB,
+        });
+        tileY += tileSize;
       }
+      tileX += tileSize;
     }
 
-    return Object.values(tiles);
+    return tiles;
   }
 
   render() {
