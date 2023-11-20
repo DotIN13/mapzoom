@@ -30,7 +30,7 @@ id():number {
 
 coverage():number {
   const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.readUint8(this.bb_pos + offset) : 0;
+  return offset ? this.bb!.readUint16(this.bb_pos + offset) : 0;
 }
 
 name():string|null
@@ -103,7 +103,7 @@ static addId(builder:flatbuffers.Builder, id:number) {
 }
 
 static addCoverage(builder:flatbuffers.Builder, coverage:number) {
-  builder.addFieldInt8(1, coverage, 0);
+  builder.addFieldInt16(1, coverage, 0);
 }
 
 static addName(builder:flatbuffers.Builder, nameOffset:flatbuffers.Offset) {

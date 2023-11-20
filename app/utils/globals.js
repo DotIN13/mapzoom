@@ -8,6 +8,7 @@ export const HALF_HEIGHT = DEVICE_HEIGHT / 2;
 
 export const TILE_SIZE = 512;
 export const TILE_EXTENT = 4096;
+export const TILE_GRID_SIZE = 4;
 
 // Create a precomputed tile projection from TILE_EXTENT to 0..1
 export const TILE_PROJECTION = new Float32Array(TILE_EXTENT + 256);

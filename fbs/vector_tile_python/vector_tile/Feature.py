@@ -35,7 +35,7 @@ class Feature(object):
     def Coverage(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint8Flags, o + self._tab.Pos)
+            return self._tab.Get(flatbuffers.number_types.Uint16Flags, o + self._tab.Pos)
         return 0
 
     # Feature
@@ -140,7 +140,7 @@ def AddId(builder, id):
     FeatureAddId(builder, id)
 
 def FeatureAddCoverage(builder, coverage):
-    builder.PrependUint8Slot(1, coverage, 0)
+    builder.PrependUint16Slot(1, coverage, 0)
 
 def AddCoverage(builder, coverage):
     FeatureAddCoverage(builder, coverage)

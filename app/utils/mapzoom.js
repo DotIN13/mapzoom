@@ -16,20 +16,20 @@ import {
   HALF_HEIGHT,
   TILE_SIZE,
   TILE_EXTENT,
-  TILE_PROJECTION,
-  PAN_SPEED_FACTOR,
+  TILE_GRID_SIZE,
   ZOOM_SPEED_FACTOR,
   PAN_THROTTLING_DELAY,
   ZOOM_THROTTLING_DELAY,
-  PRECISION_FACTOR,
   CENTER_STORAGE_SCALE,
 } from "./globals";
 import { logger } from "./logger";
 import { TileCache } from "./tile-cache";
+import GridIndex from "./grid-index";
 import {
   scaleCoordinates,
   roundToPrecision,
   lonLatToPixelCoordinates,
+  getVisibleSectors,
 } from "./coordinates";
 import { mapStyle } from "./map-style";
 import { parsePoint, parseLineString, parsePolygon } from "./geometry";
@@ -108,6 +108,7 @@ export class ZoomMap {
 
     this.tileCache = new TileCache();
     this.renderCache = new Map();
+    this.gridIndex = new GridIndex();
 
     this.zoom = initialZoom;
     this.canvasW = canvasW;
@@ -420,22 +421,25 @@ export class ZoomMap {
    * @returns {Array} - An array of tiles covering the viewport.
    */
   viewportTiles() {
-    let canvasCenter, z;
+    let canvasCenter, tileSize, z;
     const maxZoom = this.tileCache.pmtiles.header.maxZoom;
     const halfCanvasW = this.canvasW / 2;
     const halfCanvasH = this.canvasH / 2;
 
     // Adjust zoom and center based on maxZoom
     if (this.zoom > maxZoom) {
-      const zoom = maxZoom + this.zoom - Math.floor(this.zoom);
+      const tail = this.zoom - Math.floor(this.zoom);
+      const zoom = maxZoom + tail;
       canvasCenter = scaleCoordinates(
         this.canvasCenter,
         CENTER_STORAGE_SCALE,
         zoom
       );
+      tileSize = TILE_SIZE * Math.pow(2, tail);
       z = Math.floor(maxZoom);
     } else {
       canvasCenter = this.getRenderCache("currentCanvasCenter");
+      tileSize = this.getRenderCache("currentTileSize");
       z = Math.floor(this.zoom);
     }
 
@@ -448,7 +452,6 @@ export class ZoomMap {
     ]);
 
     // Determine tile range
-    const tileSize = TILE_SIZE * Math.pow(2, z);
     const startX = Math.floor(viewBB[0] / tileSize);
     const endX = Math.floor(viewBB[1] / tileSize);
     const startY = Math.floor(viewBB[2] / tileSize);
@@ -456,8 +459,10 @@ export class ZoomMap {
 
     const tiles = [];
     let tileX = startX * tileSize;
+
     for (let x = startX; x <= endX; x++) {
       let tileY = startY * tileSize;
+
       for (let y = startY; y <= endY; y++) {
         const tileBB = new Float32Array([
           tileX,
@@ -465,15 +470,14 @@ export class ZoomMap {
           tileY,
           tileY + tileSize, // Y bounds
         ]);
-        tiles.push({
-          zxy: new Uint32Array([z, x, y]),
-          tileBB: tileBB,
-          viewBB: viewBB,
-        });
+        tiles.push({ z, x, y, tileBB, viewBB });
         tileY += tileSize;
       }
+
       tileX += tileSize;
     }
+
+    // logger.debug(JSON.stringify(tiles));
 
     return tiles;
   }
@@ -542,7 +546,9 @@ export class ZoomMap {
 
     const tileSize = this.getRenderCache("currentTileSize");
     const canvasCenter = this.getRenderCache("currentCanvasCenter");
+
     coordCache.newCache(tileSize);
+    this.gridIndex.clear();
 
     const textItems = {};
 
@@ -555,6 +561,12 @@ export class ZoomMap {
       // Get tile from cache or PMTiles file
       const tileObj = this.tileCache.getTile(tile.z, tile.x, tile.y);
       if (!tileObj) continue;
+
+      const visibleSectors = getVisibleSectors(
+        tile.tileBB,
+        tile.viewBB,
+        TILE_GRID_SIZE
+      );
 
       coordCache.baseTile.x =
         tile.x * tileSize - (canvasCenter.x - this.canvasW / 2);
@@ -573,7 +585,7 @@ export class ZoomMap {
           const feature = layer.features(j, featureTemp);
 
           const coverage = feature.coverage();
-          if ((coverage & tile.quadrants) === 0) continue;
+          if ((coverage & visibleSectors) === 0) continue;
 
           // Load properties
           const name = feature.name() || feature.nameEn();
@@ -599,18 +611,21 @@ export class ZoomMap {
           const geometry = feature.geometryArray();
 
           if (featType === GeomType.POINT) {
-            let point;
+            let point, textX, textY;
 
             for (const pointStart of parsePoint(geometry)) {
               point = mapPointCoords(geometry, pointStart, coordCache);
-              if (
-                this.zoom >= 15 &&
-                (point.x < 0 ||
-                  point.x > this.canvasW ||
-                  point.y < 0 ||
-                  point.y > this.canvasH)
-              )
-                continue;
+
+              const size = style["font-size"] || 20;
+              textX = point.x + 8;
+              textY = point.y - size - 4;
+              if (!this.gridIndex.placeText(name, textX, textY, size)) continue;
+
+              if (name && !(name in textItems)) {
+                textItems[name] = {
+                  coord: { x: textX, y: textY },
+                };
+              }
 
               this.canvas.drawCircle({
                 center_x: point.x,
@@ -620,16 +635,6 @@ export class ZoomMap {
               });
             }
 
-            if (name && !(name in textItems)) {
-              const size = style["font-size"] || 20;
-
-              textItems[name] = {
-                coord: {
-                  x: point.x + 8,
-                  y: point.y - size - 4,
-                },
-              };
-            }
             continue;
           }
 

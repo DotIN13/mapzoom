@@ -24,7 +24,7 @@ export class Feature {
     }
     coverage() {
         const offset = this.bb.__offset(this.bb_pos, 6);
-        return offset ? this.bb.readUint8(this.bb_pos + offset) : 0;
+        return offset ? this.bb.readUint16(this.bb_pos + offset) : 0;
     }
     name(optionalEncoding) {
         const offset = this.bb.__offset(this.bb_pos, 8);
@@ -77,7 +77,7 @@ export class Feature {
         builder.addFieldInt32(0, id, 0);
     }
     static addCoverage(builder, coverage) {
-        builder.addFieldInt8(1, coverage, 0);
+        builder.addFieldInt16(1, coverage, 0);
     }
     static addName(builder, nameOffset) {
         builder.addFieldOffset(2, nameOffset, 0);

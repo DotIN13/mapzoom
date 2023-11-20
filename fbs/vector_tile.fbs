@@ -29,7 +29,7 @@ table Value {
 
 table Feature {
     id:uint32 = 0;
-    coverage:ubyte = 0;
+    coverage:uint16 = 0;
 
     // Fixed properties
     name:string;

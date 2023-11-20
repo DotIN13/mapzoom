@@ -133,3 +133,34 @@ export function lonlat(array) {
     lat: array[1],
   };
 }
+
+export function getVisibleSectors(tileBB, viewBB, gridSize) {
+  const sectorW = (tileBB[1] - tileBB[0]) / gridSize;
+  const sectorH = (tileBB[3] - tileBB[2]) / gridSize;
+
+  // Calculate visible columns
+  const colStart = Math.max(0, Math.floor((viewBB[0] - tileBB[0]) / sectorW));
+  const colEnd = Math.min(
+    gridSize,
+    Math.ceil((viewBB[1] - tileBB[0]) / sectorW)
+  );
+  let visibleCols = (1 << colEnd) - (1 << colStart);
+
+  // Calculate visible rows
+  const rowStart = Math.max(0, Math.floor((viewBB[2] - tileBB[2]) / sectorH));
+  const rowEnd = Math.min(
+    gridSize,
+    Math.ceil((viewBB[3] - tileBB[2]) / sectorH)
+  );
+  let visibleRows = (1 << rowEnd) - (1 << rowStart);
+
+  // Combine row and column visibility to get the final result
+  let result = 0;
+  for (let i = 0; i < gridSize; i++) {
+    if (visibleRows & (1 << i)) {
+      result |= visibleCols << (i * gridSize);
+    }
+  }
+
+  return result;
+}

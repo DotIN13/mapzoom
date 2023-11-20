@@ -13,8 +13,8 @@ import { Tile } from "./vector-tile-js/vector-tile";
 export class TileCache {
   constructor() {
     this.mapId = `example-v${VERSION}`;
-    this.pmtiles = new PMTiles("data://download/example.pmtiles");
-    // this.pmtiles = new PMTiles("assets://map/shanghai-20231118-mini-fbs.pmtiles");
+    // this.pmtiles = new PMTiles("data://download/example.pmtiles");
+    this.pmtiles = new PMTiles("assets://map/shanghai-20231119-mini-fbs.pmtiles");
   }
 
   getTile(z, x, y) {
