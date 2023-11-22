@@ -1,7 +1,6 @@
 import * as ui from "@zos/ui";
 import * as router from "@zos/router";
 import { px } from "@zos/utils";
-import { renameSync, readdirSync } from "@zos/fs";
 
 import { BasePage } from "@zeppos/zml/base-page";
 
@@ -89,7 +88,7 @@ Page(
           this.textWidget.setProperty(ui.prop.TEXT, "Downloading...");
 
           this.request({
-            method: "download.map",
+            method: "GET_MAP",
           }).catch((e) => {
             logger.error(e);
             this.textWidget.setProperty(ui.prop.TEXT, "Download error.");

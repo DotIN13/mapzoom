@@ -1,5 +1,7 @@
 {
   "dependencies": {
+    "flatbuffers": "^23.5.26",
     "typescript": "^5.2.2"
-  }
+  },
+  "type": "module"
 }

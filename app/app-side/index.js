@@ -20,11 +20,12 @@ AppSideService(
     },
     onReceivedFile(file) {
       logger.log(`received file: ${file}`);
-    },    
+    },
     async onRequest(req, res) {
-      const [, action] = req.method.split(".");
-      if (action == "map") {
-        const { fileUrl = "https://x0.at/qDOu.pmtiles" } = req.params || {};
+      const { method: action, params } = req;
+
+      if (action == "GET_MAP") {
+        const { fileUrl = "https://x0.at/qDOu.pmtiles" } = params || {};
         const filePath = "data://example.pmtiles";
         const downloadTask = this.downloadFile(encodeURI(fileUrl), filePath);
 
@@ -34,6 +35,33 @@ AppSideService(
         };
 
         res(null, { status: "success", data: "" });
+        return;
+      }
+
+      if (action == "GET_TILE") {
+        const { url } = params || {};
+
+        fetch({
+          url,
+          method: "GET",
+          headers: {
+            "Content-Type": "application/x-protobuf",
+            "Accept-Encoding": "gzip",
+          },
+        })
+          .then((resp) => resp.arrayBuffer())
+          .then((resp) => {
+            res(null, Buffer.from(resp));
+          })
+          .catch((e) => {
+            logger.warn(e.message);
+
+            return res(null, {
+              status: "error",
+              message: e.message,
+            });
+          });
+
         return;
       }
 
