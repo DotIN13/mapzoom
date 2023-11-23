@@ -1,3 +1,4 @@
+import { TILE_EXTENT } from "./globals";
 import { TagType } from "./vector-tile-js/vector-tile";
 
 /******************* Tiles *********************/

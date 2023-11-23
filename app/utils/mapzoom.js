@@ -73,22 +73,23 @@ export class ZoomMap {
     this.canvases = canvases;
     this.mainCanvas = 0;
 
-    this.trackpad = trackpad;
-    this.frametimeCounter = frametimeCounter;
-
-    this.followGPS = false;
-    this.geoLocation = null;
-
-    // Set up initial center and zoom level
-    this.center = lonLatToPixelCoordinates(initialCenter, CENTER_STORAGE_SCALE);
-    this.initialCenter = { ...this.center };
-    this.canvasCenter = { ...this.center };
-
     this.tileCache = new TileCache(page);
     this.renderCache = new Map();
     this.gridIndex = new GridIndex();
 
+    this.trackpad = trackpad;
+    this.frametimeCounter = frametimeCounter;
+    this.createWidgets();
+
+    this.followGPS = false;
+    this.geoLocation = null;
+
+    // Set up initial center
     this.zoom = initialZoom;
+    this.center = lonLatToPixelCoordinates(initialCenter, CENTER_STORAGE_SCALE);
+    this.initialCenter = { ...this.center };
+    this.canvasCenter = { ...this.center };
+
     this.canvasW = canvasW;
     this.canvasH = canvasH;
     this.displayW = displayW;
@@ -96,7 +97,6 @@ export class ZoomMap {
 
     isRendering = false;
 
-    this.createWidgets();
     this.bindWidgets();
   }
 
@@ -150,7 +150,7 @@ export class ZoomMap {
   }
 
   get geoLocation() {
-    return this._geoLocation;
+    return this._geoLocation || null;
   }
 
   /**
@@ -159,20 +159,24 @@ export class ZoomMap {
   set geoLocation(lonlat) {
     if (!lonlat) return;
 
-    this._geoLocation = lonlat;
-    const newCenter = lonLatToPixelCoordinates(lonlat, this.zoom);
+    this._geoLocation = lonLatToPixelCoordinates(lonlat, this.zoom);
 
-    // Update canvas center if following GPS
-    if (this.followGPS) this.updateCenter(newCenter, { redraw: true });
+    const canvasCenter = this.getRenderCache("currentCanvasCenter");
+    const offsetX = this._geoLocation.x - canvasCenter.x;
+    const offsetY = this._geoLocation.y - canvasCenter.y;
 
     // Update user location marker
-    const canvasCenter = this.getRenderCache("currentCanvasCenter");
-    markerX = newCenter.x - (canvasCenter.x - this.canvasW / 2);
-    markerY = newCenter.y - (canvasCenter.y - this.canvasH / 2);
+    const markerX = this.canvasW / 2 + offsetX;
+    const markerY = this.canvasH / 2 + offsetY;
 
-    // logger.debug(lonlat.lon, lonlat.lat, markerX, markerY);
-    halfMarker = this.userMarkerProps.radius / 2;
-    if (markerX < -halfMarker || markerX > this.canvasW + halfMarker) return;
+    // Update canvas center if following GPS
+    if (this.followGPS && (Math.abs(offsetX) > 40 || Math.abs(offsetY) > 40)) {
+      this.updateCenter(this._geoLocation, { redraw: true });
+    }
+
+    // Do not draw marker if off-screen
+    // halfMarker = this.userMarkerProps.radius / 2;
+    // if (markerX < -halfMarker || markerX > this.canvasW + halfMarker) return;
 
     this.userMarker.setProperty(ui.prop.MORE, {
       ...this.userMarkerProps,
@@ -294,7 +298,7 @@ export class ZoomMap {
         if (isRendering) return;
 
         if (key == KEY_SHORTCUT && keyEvent === KEY_EVENT_CLICK) {
-          this.updateCenter(this.initialCenter, { redraw: true });
+          this.followGPS = true;
           return true;
         }
 
@@ -388,6 +392,7 @@ export class ZoomMap {
       offset = scaleCoordinates(offset, CENTER_STORAGE_SCALE, this.zoom);
       this.moveCanvas(this.mainCanvas, offset);
       this.moveCanvas(this.textCanvas, offset);
+      this.moveUserMarker(offset);
       return;
     }
 
@@ -395,8 +400,8 @@ export class ZoomMap {
     this.canvasCenter = { ...newCenter };
     this.renderCache.delete("currentCanvasCenter");
 
-    this.moveCanvas(this.altCanvas, { x: 0, y: 0 }); // Move the now main canvas to screen center
     this.toggleCanvas(); // Render on the other canvas
+    this.moveCanvas(this.mainCanvas, { x: 0, y: 0 }); // Move the now main canvas to screen center
     this.render();
 
     // Keep the alt canvas in its original location
@@ -418,14 +423,25 @@ export class ZoomMap {
   }
 
   moveCanvas(canvas, offset) {
-    originalX = this.displayH / 2 - this.canvasH / 2;
-    originalY = this.displayW / 2 - this.canvasW / 2;
+    const originalX = this.displayH / 2 - this.canvasH / 2;
+    const originalY = this.displayW / 2 - this.canvasW / 2;
 
     canvas.setProperty(ui.prop.MORE, {
       x: originalX + offset.x,
       y: originalY + offset.y,
       w: this.canvasW,
       h: this.canvasH,
+    });
+  }
+
+  moveUserMarker(offset) {
+    if (this.geoLocation === null) return;
+
+    this.userMarker.setProperty(ui.prop.MORE, {
+      ...this.userMarkerProps,
+      center_x: this.geoLocation.x + offset.x,
+      center_y: this.geoLocation.y + offset.y,
+      alpha: 240,
     });
   }
 
@@ -576,6 +592,7 @@ export class ZoomMap {
       this.outcastCanvas(this.altCanvas);
       this.altCanvas.clear(this.defaultCanvasStyle);
       this.moveCanvas(this.mainCanvas, { x: 0, y: 0 });
+
       this.drawText();
       return;
     }
