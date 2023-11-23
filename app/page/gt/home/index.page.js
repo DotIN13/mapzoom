@@ -20,7 +20,7 @@ import { ZoomMap } from "../../../utils/mapzoom";
 import { logger } from "../../../utils/logger";
 
 const geolocation = new Geolocation();
-let canvas, trackpad, frametimeCounter, zoomMap;
+let canvases, trackpad, frametimeCounter, zoomMap;
 
 Page(
   BasePage({
@@ -44,7 +44,11 @@ Page(
       const zoom = 10;
 
       // Create canvas
-      canvas = ui.createWidget(ui.widget.CANVAS, CANVAS_STYLE);
+      canvases = [
+        ui.createWidget(ui.widget.CANVAS, CANVAS_STYLE),
+        ui.createWidget(ui.widget.CANVAS, CANVAS_STYLE),
+        ui.createWidget(ui.widget.CANVAS, CANVAS_STYLE), // Text layer
+      ];
       trackpad = ui.createWidget(ui.widget.FILL_RECT, TRACKPAD_STYLE);
       frametimeCounter = ui.createWidget(
         ui.widget.TEXT,
@@ -53,7 +57,7 @@ Page(
 
       zoomMap = new ZoomMap(
         this,
-        canvas,
+        canvases,
         trackpad,
         frametimeCounter,
         center,

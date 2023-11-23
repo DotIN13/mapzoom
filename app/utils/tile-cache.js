@@ -2,6 +2,9 @@ import { connectStatus } from "@zos/ble";
 
 import * as flatbuffers from "flatbuffers";
 
+// import pako from "pako";
+// import gzipDecompressor from "./gzip-decompressor";
+
 import {
   DEBUG,
   VERSION,
@@ -27,10 +30,12 @@ export class TileCache {
   getTile(z, x, y) {
     let decompressed;
 
-    if (connectStatus()) {
+    if (false) {
       decompressed = this.getTileFromUrl(z, x, y);
     } else {
-      decompressed = new Promise((res) => res(this.pmtiles.getZxy(z, x, y)));
+      decompressed = new Promise((resolve) =>
+        resolve(this.pmtiles.getZxy(z, x, y))
+      );
     }
 
     return decompressed.then((data) => {

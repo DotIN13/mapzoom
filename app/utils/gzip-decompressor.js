@@ -1,4 +1,4 @@
-export default class GzipDecompressor {
+class GzipDecompressor {
   constructor() {
     this.fleb = new Uint8Array([
       0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5,
@@ -370,3 +370,5 @@ export default class GzipDecompressor {
     );
   }
 }
+
+export default new GzipDecompressor();

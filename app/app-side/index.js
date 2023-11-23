@@ -51,7 +51,10 @@ AppSideService(
         })
           .then((resp) => resp.arrayBuffer())
           .then((resp) => {
-            res(null, Buffer.from(resp));
+            resp = Buffer.from(resp);
+            logger.log("Tile data size:", resp.length);
+
+            res(null, resp);
           })
           .catch((e) => {
             logger.warn(e.message);

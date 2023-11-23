@@ -8,14 +8,13 @@ import {
   closeSync,
 } from "@zos/fs";
 
-import GzipDecompressor from "./gzip-decompressor";
+import gzipDecompressor from "./gzip-decompressor";
 // import snappyJS from "snappyjs";
 // import pako from "pako";
 
 import { logger } from "./logger";
 import { DIR_CACHE_SIZE } from "./globals";
 
-const gzipDecompressor = new GzipDecompressor();
 const HEADER_SIZE_BYTES = 127; // Or the appropriate header size for PMTiles
 
 function readVarInt(p) {
@@ -36,6 +35,7 @@ function readVarInt(p) {
 function decompress(compressed, compression_type) {
   if (compression_type == 0x05) return snappyJS?.uncompress(compressed);
   if (compression_type == 0x02) {
+    // return pako.inflate(compressed);
     return gzipDecompressor.gunzipSync(new Uint8Array(compressed));
   }
   if (compression_type == 0x01) return compressed;

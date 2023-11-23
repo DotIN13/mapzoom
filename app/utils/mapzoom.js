@@ -9,7 +9,6 @@ import {
   KEY_HOME,
   KEY_EVENT_CLICK,
 } from "@zos/interaction";
-import { EventBus } from "@zos/utils";
 
 import {
   DEVICE_HEIGHT,
@@ -33,7 +32,14 @@ import {
   getVisibleSectors,
 } from "./coordinates";
 import { mapStyle } from "./map-style";
-import { parsePoint, parseLineString, parsePolygon } from "./geometry";
+import {
+  parsePoint,
+  parseLineString,
+  parsePolygon,
+  mapPointCoords,
+  mapLineStringCoords,
+  mapPolygonCoords,
+} from "./geometry";
 import { CoordCache } from "./coord-cache";
 import { GeomType, Feature, Layer } from "./vector-tile-js/vector-tile";
 
@@ -41,53 +47,20 @@ let isRendering = false; // Global Render Indicator
 let coordCache = new CoordCache();
 let textItems = {};
 
-function mapPointCoords(geometry, begin, cache) {
-  let x = cache.cache[geometry[begin] + 128];
-  let y = cache.cache[geometry[begin + 1] + 128];
-
-  if (isNaN(x)) x = (geometry[begin] / TILE_EXTENT) * cache.tileSize;
-  if (isNaN(y)) y = (geometry[begin + 1] / TILE_EXTENT) * cache.tileSize;
-
-  return { x: x + cache.baseTile.x, y: y + cache.baseTile.y };
-}
-
-function mapLineStringCoords(geometry, range, cache) {
-  const [i, j] = range;
-
-  for (let k = i; k < j; k += 2) {
-    let x = cache.cache[geometry[k] + 128];
-    let y = cache.cache[geometry[k + 1] + 128];
-
-    if (isNaN(x)) x = (geometry[k] / TILE_EXTENT) * cache.tileSize;
-    if (isNaN(y)) y = (geometry[k + 1] / TILE_EXTENT) * cache.tileSize;
-
-    geometry[k] = x + cache.baseTile.x;
-    geometry[k + 1] = y + cache.baseTile.y;
-  }
-}
-
-function mapPolygonCoords(geometry, range, cache) {
-  const [i, j] = range;
-
-  let ring = [];
-
-  for (let k = i; k < j; k += 2) {
-    let x = cache.cache[geometry[k] + 128];
-    let y = cache.cache[geometry[k + 1] + 128];
-
-    if (isNaN(x)) x = (geometry[k] / TILE_EXTENT) * cache.tileSize;
-    if (isNaN(y)) y = (geometry[k + 1] / TILE_EXTENT) * cache.tileSize;
-
-    ring.push({ x: x + cache.baseTile.x, y: y + cache.baseTile.y });
-  }
-
-  return ring;
-}
+/**
+ * Three canvases setup.
+ * When panning, the alt canvas should now be off-screen. Move the main canvas along finger movements.
+ * On end of user input, move alt canvas to center, toggle main canvas, render on the current main canvas.
+ * Then cast the alt canvas back off-screen.
+ *
+ * When zooming, the alt canvas is off-screen. Directly render new canvas on alt canvas, then move it to center.
+ * Toggle main canvas, move alt canvas off-screen.
+ */
 
 export class ZoomMap {
   constructor(
     page,
-    canvas,
+    canvases,
     trackpad,
     frametimeCounter,
     initialCenter,
@@ -97,7 +70,9 @@ export class ZoomMap {
     displayW = 480,
     displayH = 480
   ) {
-    this.canvas = canvas;
+    this.canvases = canvases;
+    this.mainCanvas = 0;
+
     this.trackpad = trackpad;
     this.frametimeCounter = frametimeCounter;
 
@@ -123,9 +98,26 @@ export class ZoomMap {
 
     this.createWidgets();
     this.bindWidgets();
+  }
 
-    this.eventBus = new EventBus();
-    this.eventBus.on("render", (clear) => this.renderNextTile(clear));
+  get mainCanvas() {
+    return this.canvases[this._canvasIndex];
+  }
+
+  get altCanvas() {
+    return this.canvases[this._canvasIndex === 0 ? 1 : 0];
+  }
+
+  get textCanvas() {
+    return this.canvases[2];
+  }
+
+  set mainCanvas(val) {
+    this._canvasIndex = val;
+  }
+
+  toggleCanvas() {
+    this.mainCanvas = this._canvasIndex === 0 ? 1 : 0;
   }
 
   get defaultCanvasStyle() {
@@ -289,7 +281,9 @@ export class ZoomMap {
             this.zoom += wheelDegrees * ZOOM_SPEED_FACTOR;
             wheelDegrees = 0;
 
-            this.render();
+            // When zooming in, toggle canvas to render on the off-screen canvas
+            this.toggleCanvas();
+            this.render(true);
           }, ZOOM_THROTTLING_DELAY + 1);
         }
       },
@@ -338,7 +332,8 @@ export class ZoomMap {
       const currentTime = Date.now();
       if (currentTime - this.lastCenterUpdate < PAN_THROTTLING_DELAY) return;
 
-      this.updateCenter(this.newCenter(e, lastPosition), { redraw: false }); // Update center without immediate rendering
+      // Update center without immediate rendering
+      this.updateCenter(this.newCenter(e, lastPosition), { redraw: false });
 
       this.lastCenterUpdate = currentTime;
       lastPosition = { x: e.x, y: e.y };
@@ -387,16 +382,28 @@ export class ZoomMap {
 
     this.center = newCenter;
 
+    // During panning, move both main and text canvas
     if (!opts.redraw) {
       let offset = this.calculateOffset();
       offset = scaleCoordinates(offset, CENTER_STORAGE_SCALE, this.zoom);
-      return this.moveCanvas(offset);
+      this.moveCanvas(this.mainCanvas, offset);
+      this.moveCanvas(this.textCanvas, offset);
+      return;
     }
 
+    // After panning, initialize a redraw
     this.canvasCenter = { ...newCenter };
     this.renderCache.delete("currentCanvasCenter");
+
+    this.moveCanvas(this.altCanvas, { x: 0, y: 0 }); // Move the now main canvas to screen center
+    this.toggleCanvas(); // Render on the other canvas
     this.render();
-    this.moveCanvas({ x: 0, y: 0 });
+
+    // Keep the alt canvas in its original location
+  }
+
+  outcastCanvas(canvas) {
+    this.moveCanvas(canvas, { x: -DEVICE_WIDTH, y: -DEVICE_HEIGHT });
   }
 
   /**
@@ -410,11 +417,11 @@ export class ZoomMap {
     };
   }
 
-  moveCanvas(offset) {
+  moveCanvas(canvas, offset) {
     originalX = this.displayH / 2 - this.canvasH / 2;
     originalY = this.displayW / 2 - this.canvasW / 2;
 
-    this.canvas.setProperty(ui.prop.MORE, {
+    canvas.setProperty(ui.prop.MORE, {
       x: originalX + offset.x,
       y: originalY + offset.y,
       w: this.canvasW,
@@ -489,7 +496,7 @@ export class ZoomMap {
   }
 
   drawDebugBackground() {
-    this.canvas.drawRect({
+    this.mainCanvas.drawRect({
       x1: 0,
       y1: 0,
       x2: this.canvasW,
@@ -501,7 +508,7 @@ export class ZoomMap {
   // Debug: draw tile bounding box
   drawDebugBoundingBox() {
     const tileSize = this.getRenderCache("currentTileSize");
-    this.canvas.strokeRect({
+    this.mainCanvas.strokeRect({
       x1: coordCache.baseTile.x,
       y1: coordCache.baseTile.y,
       x2: coordCache.baseTile.x + tileSize,
@@ -510,17 +517,22 @@ export class ZoomMap {
     });
   }
 
-  drawText(text, coord, size = 20, color = 0xfefefe) {
-    this.canvas.drawText({
-      x: coord.x,
-      y: coord.y,
-      text_size: size,
-      color,
-      text,
-    });
+  drawText(size = 20, color = 0xfefefe) {
+    this.moveCanvas(this.textCanvas, { x: 0, y: 0 });
+    this.textCanvas.clear(this.defaultCanvasStyle);
+
+    for (const [text, item] of Object.entries(textItems)) {
+      this.textCanvas.drawText({
+        x: item.coord.x,
+        y: item.coord.y,
+        text_size: size,
+        color,
+        text,
+      });
+    }
   }
 
-  render() {
+  render(clear = false) {
     if (isRendering) return; // Prevent multiple renders
 
     // Set render indicators
@@ -528,7 +540,7 @@ export class ZoomMap {
     const startTime = Date.now();
 
     try {
-      this.commitRender();
+      this.commitRender(clear);
     } catch (e) {
       logger.error(e);
     }
@@ -539,12 +551,12 @@ export class ZoomMap {
     this.frametimeCounter.setProperty(ui.prop.TEXT, `${elapsedTime}ms`);
   }
 
-  commitRender() {
+  commitRender(clear = false) {
     // First, calculate the tiles intersecting with the viewport
     this.queue = this.viewportTiles();
     if (this.queue.length === 0) return;
 
-    this.canvas.setPaint({ color: 0xffff00, line_width: 2 });
+    this.mainCanvas.setPaint({ color: 0xffff00, line_width: 2 });
 
     const tileSize = this.getRenderCache("currentTileSize");
 
@@ -552,27 +564,27 @@ export class ZoomMap {
     this.gridIndex.clear();
     textItems = {};
 
-    this.eventBus.emit("render", true);
+    this.renderNextTile(clear);
   }
 
   renderNextTile(clear = false) {
     const tile = this.queue.pop(); // Render tiles from the queue
+
+    // Draw text after all tiles are rendered
     if (tile === undefined) {
       // logger.debug(JSON.stringify(textItems));
-
-      // Draw text
-      for (const [text, item] of Object.entries(textItems)) {
-        this.drawText(text, item.coord);
-      }
-
+      this.outcastCanvas(this.altCanvas);
+      this.altCanvas.clear(this.defaultCanvasStyle);
+      this.moveCanvas(this.mainCanvas, { x: 0, y: 0 });
+      this.drawText();
       return;
     }
 
-    if (clear) this.canvas.clear(this.defaultCanvasStyle);
+    if (clear) this.mainCanvas.clear(this.defaultCanvasStyle);
 
     // If there is a tile to render
     this.tileCache.getTile(tile.z, tile.x, tile.y).then((tileObj) => {
-      if (!tileObj) return this.eventBus.emit("render", false);
+      if (!tileObj) return this.renderNextTile(false);
 
       const tileSize = this.getRenderCache("currentTileSize");
       const canvasCenter = this.getRenderCache("currentCanvasCenter");
@@ -622,7 +634,7 @@ export class ZoomMap {
 
           if (style.visible === false) continue;
 
-          this.canvas.setPaint({
+          this.mainCanvas.setPaint({
             color: style["line-color"] || 0xeeeeee,
             line_width: style["line-width"] || 2,
           });
@@ -646,7 +658,7 @@ export class ZoomMap {
                 };
               }
 
-              this.canvas.drawCircle({
+              this.mainCanvas.drawCircle({
                 center_x: point.x,
                 center_y: point.y,
                 radius: style["circle-radius"] || 4,
@@ -667,7 +679,7 @@ export class ZoomMap {
               for (let k = lineRange[0]; k < lineRange[1] - 2; k += 2) {
                 if (k - mid < m) m = k;
 
-                this.canvas.drawLine({
+                this.mainCanvas.drawLine({
                   x1: geometry[k],
                   y1: geometry[k + 1],
                   x2: geometry[k + 2],
@@ -679,13 +691,16 @@ export class ZoomMap {
 
             if (name && !(name in textItems)) {
               const size = style["font-size"] || 20;
+              const textX = geometry[m] - (size * name.length) / 2;
+              const textY = geometry[m + 1];
 
-              textItems[name] = {
-                coord: {
-                  x: geometry[m] - (size * name.length) / 2,
-                  y: geometry[m + 1],
-                },
-              };
+              if (this.gridIndex.placeText(name, textX, textY, size))
+                textItems[name] = {
+                  coord: {
+                    x: textX,
+                    y: textY,
+                  },
+                };
             }
 
             continue;
@@ -694,7 +709,7 @@ export class ZoomMap {
           if (featType === GeomType.POLYGON) {
             for (const { ringRange, isExterior } of parsePolygon(geometry)) {
               const coords = mapPolygonCoords(geometry, ringRange, coordCache);
-              this.canvas.drawPoly({
+              this.mainCanvas.drawPoly({
                 data_array: coords,
                 color: style["fill-color"] || 0x3499ff,
               });
@@ -706,8 +721,10 @@ export class ZoomMap {
         }
       }
 
+      tileObj = null;
+
       // Move on to the next tile
-      this.eventBus.emit("render", false);
+      return this.renderNextTile(false);
     });
   }
 }
