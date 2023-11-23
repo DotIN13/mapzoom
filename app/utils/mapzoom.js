@@ -553,6 +553,7 @@ export class ZoomMap {
 
     // Set render indicators
     isRendering = true;
+    this.trackpad.setEnable(false);
     const startTime = Date.now();
 
     try {
@@ -586,14 +587,17 @@ export class ZoomMap {
   renderNextTile(clear = false) {
     const tile = this.queue.pop(); // Render tiles from the queue
 
-    // Draw text after all tiles are rendered
+    // All tiles drawn
     if (tile === undefined) {
       // logger.debug(JSON.stringify(textItems));
       this.outcastCanvas(this.altCanvas);
       this.altCanvas.clear(this.defaultCanvasStyle);
       this.moveCanvas(this.mainCanvas, { x: 0, y: 0 });
 
+      // Draw text after all tiles are rendered
       this.drawText();
+
+      this.trackpad.setEnable(true);
       return;
     }
 
