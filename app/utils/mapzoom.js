@@ -9,6 +9,7 @@ import {
   KEY_HOME,
   KEY_EVENT_CLICK,
 } from "@zos/interaction";
+import { EventBus } from "@zos/utils";
 
 import {
   DEVICE_HEIGHT,
@@ -38,6 +39,7 @@ import { GeomType, Feature, Layer } from "./vector-tile-js/vector-tile";
 
 let isRendering = false; // Global Render Indicator
 let coordCache = new CoordCache();
+let textItems = {};
 
 function mapPointCoords(geometry, begin, cache) {
   let x = cache.cache[geometry[begin] + 128];
@@ -121,6 +123,9 @@ export class ZoomMap {
 
     this.createWidgets();
     this.bindWidgets();
+
+    this.eventBus = new EventBus();
+    this.eventBus.on("render", (clear) => this.renderNextTile(clear));
   }
 
   get defaultCanvasStyle() {
@@ -483,25 +488,6 @@ export class ZoomMap {
     return tiles;
   }
 
-  render() {
-    if (isRendering) return; // Prevent multiple renders
-
-    // Set render indicators
-    isRendering = true;
-    const startTime = Date.now();
-
-    try {
-      this.commitRender();
-    } catch (e) {
-      logger.error(e);
-    }
-
-    isRendering = false;
-
-    const elapsedTime = Date.now() - startTime;
-    this.frametimeCounter.setProperty(ui.prop.TEXT, `${elapsedTime}ms`);
-  }
-
   drawDebugBackground() {
     this.canvas.drawRect({
       x1: 0,
@@ -534,172 +520,194 @@ export class ZoomMap {
     });
   }
 
+  render() {
+    if (isRendering) return; // Prevent multiple renders
+
+    // Set render indicators
+    isRendering = true;
+    const startTime = Date.now();
+
+    try {
+      this.commitRender();
+    } catch (e) {
+      logger.error(e);
+    }
+
+    isRendering = false;
+
+    const elapsedTime = Date.now() - startTime;
+    this.frametimeCounter.setProperty(ui.prop.TEXT, `${elapsedTime}ms`);
+  }
+
   commitRender() {
     // First, calculate the tiles intersecting with the viewport
-    const tiles = this.viewportTiles();
+    this.queue = this.viewportTiles();
+    if (this.queue.length === 0) return;
 
-    // Clear canvas before drawing
-    this.canvas.clear(this.defaultCanvasStyle);
     this.canvas.setPaint({ color: 0xffff00, line_width: 2 });
 
-    // Background color for debugging purpose
-    // this.drawDebugBackground();
-
     const tileSize = this.getRenderCache("currentTileSize");
-    const canvasCenter = this.getRenderCache("currentCanvasCenter");
 
     coordCache.newCache(tileSize);
     this.gridIndex.clear();
+    textItems = {};
 
-    const textItems = {};
+    this.eventBus.emit("render", true);
+  }
 
-    // For each tile, interpolate the pixel coordinates of the features and draw them on the canvas.
-    for (const tile of tiles) {
-      // Get tile from cache or PMTiles file
-      this.tileCache.getTile(tile.z, tile.x, tile.y).then((tileObj) => {
-        if (!tileObj) return;
+  renderNextTile(clear = false) {
+    const tile = this.queue.pop(); // Render tiles from the queue
+    if (tile === undefined) {
+      // logger.debug(JSON.stringify(textItems));
 
-        const layerTemp = new Layer();
-        const featureTemp = new Feature();
-        const featPropsTemp = {};
+      // Draw text
+      for (const [text, item] of Object.entries(textItems)) {
+        this.drawText(text, item.coord);
+      }
 
-        const visibleSectors = getVisibleSectors(
-          tile.tileBB,
-          tile.viewBB,
-          TILE_GRID_SIZE
-        );
+      return;
+    }
 
-        coordCache.baseTile.x =
-          tile.x * tileSize - (canvasCenter.x - this.canvasW / 2);
-        coordCache.baseTile.y =
-          tile.y * tileSize - (canvasCenter.y - this.canvasH / 2);
+    if (clear) this.canvas.clear(this.defaultCanvasStyle);
 
-        // Iterate through features in the decoded tile and draw them
-        for (let i = 0; i < tileObj.layersLength(); i++) {
-          const layer = tileObj.layers(i, layerTemp);
+    // If there is a tile to render
+    this.tileCache.getTile(tile.z, tile.x, tile.y).then((tileObj) => {
+      if (!tileObj) return this.eventBus.emit("render", false);
 
-          const layerName = layer.name();
-          const styleBuilder = mapStyle[layerName];
+      const tileSize = this.getRenderCache("currentTileSize");
+      const canvasCenter = this.getRenderCache("currentCanvasCenter");
 
-          // Iterate through features in the layer
-          for (let j = 0; j < layer.featuresLength(); j++) {
-            const feature = layer.features(j, featureTemp);
+      const layerTemp = new Layer();
+      const featureTemp = new Feature();
+      const featPropsTemp = {};
 
-            const coverage = feature.coverage();
-            if ((coverage & visibleSectors) === 0) continue;
+      const visibleSectors = getVisibleSectors(
+        tile.tileBB,
+        tile.viewBB,
+        TILE_GRID_SIZE
+      );
 
-            // Load properties
-            const name = feature.name() || feature.nameEn();
-            featPropsTemp["name"] = name;
+      coordCache.baseTile.x =
+        tile.x * tileSize - (canvasCenter.x - this.canvasW / 2);
+      coordCache.baseTile.y =
+        tile.y * tileSize - (canvasCenter.y - this.canvasH / 2);
 
-            const featType = feature.type();
-            featPropsTemp["type"] = featType;
+      // Iterate through features in the decoded tile and draw them
+      for (let i = 0; i < tileObj.layersLength(); i++) {
+        const layer = tileObj.layers(i, layerTemp);
 
-            featPropsTemp["pmap:kind"] = feature.pmapKind();
-            featPropsTemp["pmap:min_zoom"] = feature.pmapMinZoom();
+        const layerName = layer.name();
+        const styleBuilder = mapStyle[layerName];
 
-            const style = styleBuilder
-              ? styleBuilder(this.zoom, featPropsTemp)
-              : {};
+        // Iterate through features in the layer
+        for (let j = 0; j < layer.featuresLength(); j++) {
+          const feature = layer.features(j, featureTemp);
 
-            if (style.visible === false) continue;
+          const coverage = feature.coverage();
+          if ((coverage & visibleSectors) === 0) continue;
 
-            this.canvas.setPaint({
-              color: style["line-color"] || 0xeeeeee,
-              line_width: style["line-width"] || 2,
-            });
+          // Load properties
+          const name = feature.name() || feature.nameEn();
+          featPropsTemp["name"] = name;
 
-            const geometry = feature.geometryArray();
+          const featType = feature.type();
+          featPropsTemp["type"] = featType;
 
-            if (featType === GeomType.POINT) {
-              let point, textX, textY;
+          featPropsTemp["pmap:kind"] = feature.pmapKind();
+          featPropsTemp["pmap:min_zoom"] = feature.pmapMinZoom();
 
-              for (const pointStart of parsePoint(geometry)) {
-                point = mapPointCoords(geometry, pointStart, coordCache);
+          const style = styleBuilder
+            ? styleBuilder(this.zoom, featPropsTemp)
+            : {};
 
-                const size = style["font-size"] || 20;
-                textX = point.x + 8;
-                textY = point.y - size - 4;
-                if (!this.gridIndex.placeText(name, textX, textY, size))
-                  continue;
+          if (style.visible === false) continue;
 
-                if (name && !(name in textItems)) {
-                  textItems[name] = {
-                    coord: { x: textX, y: textY },
-                  };
-                }
+          this.canvas.setPaint({
+            color: style["line-color"] || 0xeeeeee,
+            line_width: style["line-width"] || 2,
+          });
 
-                this.canvas.drawCircle({
-                  center_x: point.x,
-                  center_y: point.y,
-                  radius: style["circle-radius"] || 4,
-                  color: style["fill-color"] || 0xdedede,
-                });
-              }
+          const geometry = feature.geometryArray();
 
-              continue;
-            }
+          if (featType === GeomType.POINT) {
+            let point, textX, textY;
 
-            if (featType === GeomType.LINESTRING) {
-              const mid = Math.floor(geometry.length / 3);
-              let m = Infinity;
+            for (const pointStart of parsePoint(geometry)) {
+              point = mapPointCoords(geometry, pointStart, coordCache);
 
-              for (const lineRange of parseLineString(geometry)) {
-                mapLineStringCoords(geometry, lineRange, coordCache);
-
-                for (let k = lineRange[0]; k < lineRange[1] - 2; k += 2) {
-                  if (k - mid < m) m = k;
-
-                  this.canvas.drawLine({
-                    x1: geometry[k],
-                    y1: geometry[k + 1],
-                    x2: geometry[k + 2],
-                    y2: geometry[k + 3],
-                    color: style["line-color"] || 0x444444,
-                  });
-                }
-              }
+              const size = style["font-size"] || 20;
+              textX = point.x + 8;
+              textY = point.y - size - 4;
+              if (!this.gridIndex.placeText(name, textX, textY, size)) continue;
 
               if (name && !(name in textItems)) {
-                const size = style["font-size"] || 20;
-
                 textItems[name] = {
-                  coord: {
-                    x: geometry[m] - (size * name.length) / 2,
-                    y: geometry[m + 1],
-                  },
+                  coord: { x: textX, y: textY },
                 };
               }
 
-              continue;
+              this.canvas.drawCircle({
+                center_x: point.x,
+                center_y: point.y,
+                radius: style["circle-radius"] || 4,
+                color: style["fill-color"] || 0xdedede,
+              });
             }
 
-            if (featType === GeomType.POLYGON) {
-              for (const { ringRange, isExterior } of parsePolygon(geometry)) {
-                const coords = mapPolygonCoords(
-                  geometry,
-                  ringRange,
-                  coordCache
-                );
-                this.canvas.drawPoly({
-                  data_array: coords,
-                  color: style["fill-color"] || 0x3499ff,
+            continue;
+          }
+
+          if (featType === GeomType.LINESTRING) {
+            const mid = Math.floor(geometry.length / 3);
+            let m = Infinity;
+
+            for (const lineRange of parseLineString(geometry)) {
+              mapLineStringCoords(geometry, lineRange, coordCache);
+
+              for (let k = lineRange[0]; k < lineRange[1] - 2; k += 2) {
+                if (k - mid < m) m = k;
+
+                this.canvas.drawLine({
+                  x1: geometry[k],
+                  y1: geometry[k + 1],
+                  x2: geometry[k + 2],
+                  y2: geometry[k + 3],
+                  color: style["line-color"] || 0x444444,
                 });
               }
-              continue;
             }
 
-            logger.warn(`Unsupported feature type: ${featType}`);
+            if (name && !(name in textItems)) {
+              const size = style["font-size"] || 20;
+
+              textItems[name] = {
+                coord: {
+                  x: geometry[m] - (size * name.length) / 2,
+                  y: geometry[m + 1],
+                },
+              };
+            }
+
+            continue;
           }
+
+          if (featType === GeomType.POLYGON) {
+            for (const { ringRange, isExterior } of parsePolygon(geometry)) {
+              const coords = mapPolygonCoords(geometry, ringRange, coordCache);
+              this.canvas.drawPoly({
+                data_array: coords,
+                color: style["fill-color"] || 0x3499ff,
+              });
+            }
+            continue;
+          }
+
+          logger.warn(`Unsupported feature type: ${featType}`);
         }
-      });
-    }
+      }
 
-    // logger.debug(JSON.stringify(textItems));
-
-    // Draw text
-    for (const [text, item] of Object.entries(textItems)) {
-      this.drawText(text, item.coord);
-    }
+      // Move on to the next tile
+      this.eventBus.emit("render", false);
+    });
   }
 }
