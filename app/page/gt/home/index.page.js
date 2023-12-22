@@ -41,7 +41,7 @@ Page(
 
       // Set default map center and zoom level
       const center = { lon: 121.5, lat: 31.295 };
-      const zoom = 10;
+      const zoom = 7.6;
 
       // Create canvas
       canvases = [
@@ -68,6 +68,11 @@ Page(
         DEVICE_HEIGHT
       );
       zoomMap.render();
+
+      zoomMap.geoLocation = {
+        lon: 121.48328974565532,
+        lat: 31.047363611358993,
+      };
 
       // Geolocation updates
       const callback = () => {

@@ -39,31 +39,18 @@ AppSideService(
       }
 
       if (action == "GET_TILE") {
-        const { url } = params || {};
+        const { url, filePath } = params;
+        const downloadTask = this.downloadFile(encodeURI(url), filePath, 6000);
 
-        fetch({
-          url,
-          method: "GET",
-          headers: {
-            "Content-Type": "application/x-protobuf",
-            "Accept-Encoding": "gzip",
-          },
-        })
-          .then((resp) => resp.arrayBuffer())
-          .then((resp) => {
-            resp = Buffer.from(resp);
-            logger.log("Tile data size:", resp.length);
-
-            res(null, resp);
-          })
-          .catch((e) => {
-            logger.warn(e.message);
-
-            return res(null, {
-              status: "error",
-              message: e.message,
-            });
+        downloadTask.onSuccess = (e) => {
+          // logger.debug(e.filePath, e.tempFilePath, e.statusCode);
+          this.transferFile(e.filePath, {
+            type: "application/octet-stream",
+            name: filePath,
           });
+        };
+
+        res(null, { status: "success", data: "" });
 
         return;
       }

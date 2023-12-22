@@ -9,6 +9,7 @@ import {
   KEY_HOME,
   KEY_EVENT_CLICK,
 } from "@zos/interaction";
+import { EventBus } from "@zos/utils";
 
 import {
   DEVICE_HEIGHT,
@@ -20,7 +21,7 @@ import {
   ZOOM_SPEED_FACTOR,
   PAN_THROTTLING_DELAY,
   ZOOM_THROTTLING_DELAY,
-  CENTER_STORAGE_SCALE,
+  STORAGE_SCALE,
 } from "./globals";
 import { logger } from "./logger";
 import { TileCache } from "./tile-cache";
@@ -76,19 +77,23 @@ export class ZoomMap {
     this.tileCache = new TileCache(page);
     this.renderCache = new Map();
     this.gridIndex = new GridIndex();
+    this.eventBus = new EventBus();
 
     this.trackpad = trackpad;
     this.frametimeCounter = frametimeCounter;
     this.createWidgets();
 
     this.followGPS = false;
-    this.geoLocation = null;
+    this.geoLocation = undefined;
 
     // Set up initial center
     this.zoom = initialZoom;
-    this.center = lonLatToPixelCoordinates(initialCenter, CENTER_STORAGE_SCALE);
+    this.center = lonLatToPixelCoordinates(initialCenter, STORAGE_SCALE);
     this.initialCenter = { ...this.center };
     this.canvasCenter = { ...this.center };
+
+    // Set up initial user marker location
+    this.markerXY = { x: canvasW / 2, y: canvasH / 2 };
 
     this.canvasW = canvasW;
     this.canvasH = canvasH;
@@ -97,7 +102,7 @@ export class ZoomMap {
 
     isRendering = false;
 
-    this.bindWidgets();
+    this.bindWidgets(); // Depends on this.zoom definition
   }
 
   get mainCanvas() {
@@ -150,7 +155,7 @@ export class ZoomMap {
   }
 
   get geoLocation() {
-    return this._geoLocation || null;
+    return this._geoLocation || undefined;
   }
 
   /**
@@ -158,30 +163,46 @@ export class ZoomMap {
    */
   set geoLocation(lonlat) {
     if (!lonlat) return;
+    if (isDragging) return; // Do nothing when panning
 
-    this._geoLocation = lonLatToPixelCoordinates(lonlat, this.zoom);
-
-    const canvasCenter = this.getRenderCache("currentCanvasCenter");
-    const offsetX = this._geoLocation.x - canvasCenter.x;
-    const offsetY = this._geoLocation.y - canvasCenter.y;
-
-    // Update user location marker
-    const markerX = this.canvasW / 2 + offsetX;
-    const markerY = this.canvasH / 2 + offsetY;
-
-    // Update canvas center if following GPS
-    if (this.followGPS && (Math.abs(offsetX) > 40 || Math.abs(offsetY) > 40)) {
-      this.updateCenter(this._geoLocation, { redraw: true });
-    }
+    this._geoLocation = lonLatToPixelCoordinates(lonlat, STORAGE_SCALE);
 
     // Do not draw marker if off-screen
     // halfMarker = this.userMarkerProps.radius / 2;
     // if (markerX < -halfMarker || markerX > this.canvasW + halfMarker) return;
 
+    this.placeUserMarker();
+  }
+
+  // Update markerXY based on current geoLocation and canvas center coordinates,
+  // then redraw the user marker.
+  placeUserMarker() {
+    const geoLocation = this.getRenderCache("currentGeoLocation");
+    if (geoLocation === undefined) return; // Do nothing if no geolocation is available
+
+    const canvasCenter = this.getRenderCache("currentCanvasCenter");
+    const offsetX = geoLocation.x - canvasCenter.x;
+    const offsetY = geoLocation.y - canvasCenter.y;
+
+    // Update canvas center when following GPS and the marker offset is exceeding the threshold.
+    // In this case, update the canvas and draw marker in the center.
+    if (this.followGPS && (Math.abs(offsetX) > 40 || Math.abs(offsetY) > 40)) {
+      this.updateCenter(geoLocation, { redraw: true });
+      this.markerXY.x = this.canvasW / 2;
+      this.markerXY.y = this.canvasH / 2;
+    } else {
+      // If the map is not following GPS, or the marker offset is within threshold,
+      // update user location marker.
+      this.markerXY.x = this.canvasW / 2 + offsetX;
+      this.markerXY.y = this.canvasH / 2 + offsetY;
+    }
+
+    logger.debug(this.markerXY.x, this.markerXY.y);
+
     this.userMarker.setProperty(ui.prop.MORE, {
       ...this.userMarkerProps,
-      center_x: markerX,
-      center_y: markerY,
+      center_x: this.markerXY.x,
+      center_y: this.markerXY.y,
       alpha: 240,
     });
   }
@@ -192,11 +213,12 @@ export class ZoomMap {
     let val = null;
 
     if (key == "currentCanvasCenter") {
-      val = scaleCoordinates(
-        this.canvasCenter,
-        CENTER_STORAGE_SCALE,
-        this.zoom
-      );
+      val = scaleCoordinates(this.canvasCenter, STORAGE_SCALE, this.zoom);
+    }
+
+    if (key == "currentGeoLocation") {
+      val = undefined;
+      val = scaleCoordinates(this.geoLocation, STORAGE_SCALE, this.zoom);
     }
 
     if (key == "currentTileSize") {
@@ -288,6 +310,8 @@ export class ZoomMap {
             // When zooming in, toggle canvas to render on the off-screen canvas
             this.toggleCanvas();
             this.render(true);
+
+            this.placeUserMarker();
           }, ZOOM_THROTTLING_DELAY + 1);
         }
       },
@@ -360,6 +384,8 @@ export class ZoomMap {
       isDragging = false;
       isGesture = false;
       this.updateCenter(this.center, { redraw: true });
+
+      this.placeUserMarker();
       lastPosition = null;
     });
   }
@@ -369,7 +395,7 @@ export class ZoomMap {
       x: moveEvent.x - lastPosition.x,
       y: moveEvent.y - lastPosition.y,
     };
-    delta = scaleCoordinates(delta, this.zoom, CENTER_STORAGE_SCALE);
+    delta = scaleCoordinates(delta, this.zoom, STORAGE_SCALE);
 
     return {
       x: this.center.x - delta.x,
@@ -384,27 +410,32 @@ export class ZoomMap {
   updateCenter(newCenter, opts = { redraw: false }) {
     if (isRendering) return;
 
+    // The new screen center,
+    // offset will be calculated between this and the canvas center
     this.center = newCenter;
 
-    // During panning, move both main and text canvas
+    // When updating center during panning,
+    // move the canvases and markers and do nothing else.
     if (!opts.redraw) {
       let offset = this.calculateOffset();
-      offset = scaleCoordinates(offset, CENTER_STORAGE_SCALE, this.zoom);
+      offset = scaleCoordinates(offset, STORAGE_SCALE, this.zoom);
       this.moveCanvas(this.mainCanvas, offset);
       this.moveCanvas(this.textCanvas, offset);
       this.moveUserMarker(offset);
       return;
     }
 
-    // After panning, initialize a redraw
+    // When updating center after panning, initialize a full redraw.
+    // Set the canvas center to the current view center.
     this.canvasCenter = { ...newCenter };
     this.renderCache.delete("currentCanvasCenter");
 
     this.toggleCanvas(); // Render on the other canvas
-    this.moveCanvas(this.mainCanvas, { x: 0, y: 0 }); // Move the now main canvas to screen center
-    this.render();
 
-    // Keep the alt canvas in its original location
+    // Move the now main canvas to screen center,
+    // and keep the alt canvas in its place.
+    this.moveCanvas(this.mainCanvas, { x: 0, y: 0 });
+    this.render(); // Always clear canvas before full redraw
   }
 
   outcastCanvas(canvas) {
@@ -435,12 +466,12 @@ export class ZoomMap {
   }
 
   moveUserMarker(offset) {
-    if (this.geoLocation === null) return;
+    if (this.geoLocation === undefined) return;
 
     this.userMarker.setProperty(ui.prop.MORE, {
       ...this.userMarkerProps,
-      center_x: this.geoLocation.x + offset.x,
-      center_y: this.geoLocation.y + offset.y,
+      center_x: this.markerXY.x + offset.x,
+      center_y: this.markerXY.y + offset.y,
       alpha: 240,
     });
   }
@@ -459,11 +490,7 @@ export class ZoomMap {
     if (this.zoom > maxZoom) {
       const tail = this.zoom - Math.floor(this.zoom);
       const zoom = maxZoom + tail;
-      canvasCenter = scaleCoordinates(
-        this.canvasCenter,
-        CENTER_STORAGE_SCALE,
-        zoom
-      );
+      canvasCenter = scaleCoordinates(this.canvasCenter, STORAGE_SCALE, zoom);
       tileSize = TILE_SIZE * Math.pow(2, tail);
       z = Math.floor(maxZoom);
     } else {
@@ -581,7 +608,7 @@ export class ZoomMap {
     this.gridIndex.clear();
     textItems = {};
 
-    this.renderNextTile(clear);
+    this.eventBus.emit("next-tile", clear);
   }
 
   renderNextTile(clear = false) {
@@ -745,7 +772,7 @@ export class ZoomMap {
       tileObj = null;
 
       // Move on to the next tile
-      return this.renderNextTile(false);
+      this.eventBus.emit("next-tile", false);
     });
   }
 }

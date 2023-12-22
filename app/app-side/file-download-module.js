@@ -9,10 +9,14 @@ export const fileDownloadModule = {
   async onRunFileDownload() {
     logger.log("download run");
   },
-  downloadFile(url, filePath = `untitled-download-${fileNameStamp()}`) {
+  downloadFile(
+    url,
+    filePath = `untitled-download-${fileNameStamp()}`,
+    timeout = 60000
+  ) {
     const task = this.download(url, {
       headers: {},
-      timeout: 60000,
+      timeout,
       filePath,
     });
 

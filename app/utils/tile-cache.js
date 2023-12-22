@@ -30,7 +30,7 @@ export class TileCache {
   getTile(z, x, y) {
     let decompressed;
 
-    if (connectStatus()) {
+    if (false) {
       decompressed = this.getTileFromUrl(z, x, y);
     } else {
       decompressed = new Promise((resolve) =>
@@ -52,12 +52,8 @@ export class TileCache {
         method: "GET_TILE",
         params: {
           url: `http://192.168.5.121:8080/tiles/shanghai-20231119-mini-fbs/${z}/${x}/${y}.mvt`,
+          filePath: `data://${z}-${x}-${y}.mvt`,
         },
-      })
-      .then((res) => {
-        if (res.status === "error") throw Error(res.message);
-
-        return Buffer.from(res);
       })
       .catch((e) => logger.warn(e));
   }
