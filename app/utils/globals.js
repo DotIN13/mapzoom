@@ -32,3 +32,9 @@ export const PAN_THROTTLING_DELAY = 20; // Throttle delay of 20ms
 export const ZOOM_THROTTLING_DELAY = 360; // Throttle delay of 360ms
 
 export const STORAGE_SCALE = 10; // Scale factor for center coordinates storage
+
+// User Marker
+export const MARKER_GROUP_SIZE = 160;
+export const MARKER_GROUP_HALF_SIZE = MARKER_GROUP_SIZE / 2;
+export const MARKER_SIZE = 30;
+export const MARKER_SIGHT_SIZE = MARKER_SIZE * 4.61;

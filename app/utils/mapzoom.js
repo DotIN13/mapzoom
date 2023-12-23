@@ -9,7 +9,7 @@ import {
   KEY_HOME,
   KEY_EVENT_CLICK,
 } from "@zos/interaction";
-import { EventBus } from "@zos/utils";
+import { EventBus, px } from "@zos/utils";
 
 import {
   DEVICE_HEIGHT,
@@ -22,6 +22,10 @@ import {
   PAN_THROTTLING_DELAY,
   ZOOM_THROTTLING_DELAY,
   STORAGE_SCALE,
+  MARKER_GROUP_SIZE,
+  MARKER_GROUP_HALF_SIZE,
+  MARKER_SIZE,
+  MARKER_SIGHT_SIZE,
 } from "./globals";
 import { logger } from "./logger";
 import { TileCache } from "./tile-cache";
@@ -71,17 +75,29 @@ export class ZoomMap {
     displayW = 480,
     displayH = 480
   ) {
+    // Dimensions
+    this.canvasW = canvasW;
+    this.canvasH = canvasH;
+    this.displayW = displayW;
+    this.displayH = displayH;
+
+    // Widgets
     this.canvases = canvases;
+    this.trackpad = trackpad;
+    this.frametimeCounter = frametimeCounter;
     this.mainCanvas = 0;
 
+    // Set up initial user marker location
+    this.markerXY = { x: canvasW / 2, y: canvasH / 2 };
+
+    // Caches
     this.tileCache = new TileCache(page, this);
     this.renderCache = new Map();
     this.gridIndex = new GridIndex();
+
     this.eventBus = new EventBus();
 
-    this.trackpad = trackpad;
-    this.frametimeCounter = frametimeCounter;
-    this.createWidgets();
+    this.createWidgets(); // Depends on canvas dimensions
 
     this.followGPS = false;
     this.geoLocation = undefined;
@@ -91,14 +107,6 @@ export class ZoomMap {
     this.center = lonLatToPixelCoordinates(initialCenter, STORAGE_SCALE);
     this.initialCenter = { ...this.center };
     this.canvasCenter = { ...this.center };
-
-    // Set up initial user marker location
-    this.markerXY = { x: canvasW / 2, y: canvasH / 2 };
-
-    this.canvasW = canvasW;
-    this.canvasH = canvasH;
-    this.displayW = displayW;
-    this.displayH = displayH;
 
     isRendering = false;
 
@@ -174,6 +182,15 @@ export class ZoomMap {
     this.placeUserMarker();
   }
 
+  /**
+   * @param {Number} angle compass angle
+   */
+  set compassAngle(angle) {
+    if (!angle) return;
+
+    this.userMarkerSight.setProperty(ui.prop.ANGLE, angle);
+  }
+
   // Update markerXY based on current geoLocation and canvas center coordinates,
   // then redraw the user marker.
   placeUserMarker() {
@@ -201,8 +218,8 @@ export class ZoomMap {
 
     this.userMarker.setProperty(ui.prop.MORE, {
       ...this.userMarkerProps,
-      center_x: this.markerXY.x,
-      center_y: this.markerXY.y,
+      x: px(this.markerXY.x - MARKER_GROUP_HALF_SIZE),
+      y: px(this.markerXY.y - MARKER_GROUP_HALF_SIZE),
       alpha: 240,
     });
   }
@@ -217,7 +234,8 @@ export class ZoomMap {
     }
 
     if (key == "currentGeoLocation") {
-      val = undefined;
+      if (this.geoLocation === undefined) return undefined;
+
       val = scaleCoordinates(this.geoLocation, STORAGE_SCALE, this.zoom);
     }
 
@@ -248,21 +266,52 @@ export class ZoomMap {
       color: 0xffffff,
       enable: false,
     };
+
     this.zoomIndicator = ui.createWidget(
       ui.widget.TEXT,
       this.zoomIndicatorProps
     );
 
     // Create user location marker
+    // Initialize the marker outside of the viewport
     this.userMarkerProps = {
-      center_x: 240,
-      center_y: 240,
-      radius: 10,
-      color: 0xea4335,
-      alpha: 0,
+      x: px(-MARKER_GROUP_HALF_SIZE),
+      y: px(-MARKER_GROUP_HALF_SIZE),
+      w: px(MARKER_GROUP_SIZE),
+      h: px(MARKER_GROUP_SIZE),
       enable: false,
     };
-    this.userMarker = ui.createWidget(ui.widget.CIRCLE, this.userMarkerProps);
+
+    this.userMarkerCircleProps = {
+      x: px(MARKER_GROUP_HALF_SIZE - MARKER_SIZE / 2),
+      y: px(MARKER_GROUP_HALF_SIZE - MARKER_SIZE / 2),
+      w: px(MARKER_SIZE),
+      h: px(MARKER_SIZE),
+      alpha: 240,
+      auto_scale: true,
+      src: "image/user.png",
+      enable: false,
+    };
+
+    this.userMarkerSightProps = {
+      x: px(MARKER_GROUP_HALF_SIZE - MARKER_SIGHT_SIZE / 2),
+      y: px(MARKER_GROUP_HALF_SIZE - MARKER_SIGHT_SIZE / 2),
+      w: px(MARKER_SIGHT_SIZE),
+      h: px(MARKER_SIGHT_SIZE),
+      center_x: px(MARKER_SIGHT_SIZE / 2),
+      center_y: px(MARKER_SIGHT_SIZE / 2),
+      auto_scale: true,
+      src: "image/user-sight.png",
+      angle: 0,
+      enable: false,
+    };
+
+    this.userMarker = ui.createWidget(ui.widget.GROUP, this.userMarkerProps);
+    this.userMarkerSight = this.userMarker.createWidget(
+      ui.widget.IMG,
+      this.userMarkerSightProps
+    );
+    this.userMarker.createWidget(ui.widget.IMG, this.userMarkerCircleProps);
   }
 
   addListeners() {
@@ -325,6 +374,7 @@ export class ZoomMap {
 
         if (key == KEY_SHORTCUT && keyEvent === KEY_EVENT_CLICK) {
           this.followGPS = true;
+          this.placeUserMarker();
           return true;
         }
 
@@ -475,8 +525,8 @@ export class ZoomMap {
 
     this.userMarker.setProperty(ui.prop.MORE, {
       ...this.userMarkerProps,
-      center_x: this.markerXY.x + offset.x,
-      center_y: this.markerXY.y + offset.y,
+      x: px(this.markerXY.x + offset.x - MARKER_GROUP_HALF_SIZE),
+      y: px(this.markerXY.y + offset.y - MARKER_GROUP_HALF_SIZE),
       alpha: 240,
     });
   }
@@ -618,7 +668,6 @@ export class ZoomMap {
 
   // Eventbus callback, render the next tile in the queue
   nextTile(clear = false) {
-    logger.debug(this.queue.length);
     if (this.queue.length === 0) {
       // logger.debug(JSON.stringify(textItems));
       this.outcastCanvas(this.altCanvas);

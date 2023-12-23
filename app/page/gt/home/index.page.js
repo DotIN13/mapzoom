@@ -1,7 +1,8 @@
 import * as ui from "@zos/ui";
 import { offDigitalCrown } from "@zos/interaction";
 import { onGesture, offGesture, GESTURE_RIGHT } from "@zos/interaction";
-import { Geolocation } from "@zos/sensor";
+import { Geolocation, Compass } from "@zos/sensor";
+
 import { setScrollLock } from "@zos/page";
 import { BasePage } from "@zeppos/zml/base-page";
 import "fast-text-encoding";
@@ -20,6 +21,8 @@ import { ZoomMap } from "../../../utils/mapzoom";
 import { logger } from "../../../utils/logger";
 
 const geolocation = new Geolocation();
+const compass = new Compass();
+
 let canvases, trackpad, frametimeCounter, zoomMap;
 
 Page(
@@ -75,8 +78,17 @@ Page(
         lat: 31.047363611358993,
       };
 
+      const compassCallback = () => {
+        if (compass.getStatus()) {
+          const angle = compass.getDirectionAngle();
+          zoomMap.compassAngle = angle;
+        }
+      };
+      compass.onChange(compassCallback);
+      compass.start();
+
       // Geolocation updates
-      const callback = () => {
+      const geoLocationCallback = () => {
         if (geolocation.getStatus() === "A") {
           lat = geolocation.getLatitude();
           lon = geolocation.getLongitude();
@@ -87,13 +99,16 @@ Page(
       };
 
       geolocation.start();
-      geolocation.onChange(callback);
+      geolocation.onChange(geoLocationCallback);
     },
 
     onDestroy() {
       logger.debug("page onDestroy invoked");
 
       zoomMap = null;
+
+      compass.offChange();
+      compass.stop();
 
       geolocation.offChange();
       geolocation.stop();
