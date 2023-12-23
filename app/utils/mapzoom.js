@@ -74,7 +74,7 @@ export class ZoomMap {
     this.canvases = canvases;
     this.mainCanvas = 0;
 
-    this.tileCache = new TileCache(page);
+    this.tileCache = new TileCache(page, this);
     this.renderCache = new Map();
     this.gridIndex = new GridIndex();
     this.eventBus = new EventBus();
@@ -102,7 +102,7 @@ export class ZoomMap {
 
     isRendering = false;
 
-    this.bindWidgets(); // Depends on this.zoom definition
+    this.addListeners(); // Depends on this.zoom definition
   }
 
   get mainCanvas() {
@@ -197,7 +197,7 @@ export class ZoomMap {
       this.markerXY.y = this.canvasH / 2 + offsetY;
     }
 
-    logger.debug(this.markerXY.x, this.markerXY.y);
+    // logger.debug(this.markerXY.x, this.markerXY.y);
 
     this.userMarker.setProperty(ui.prop.MORE, {
       ...this.userMarkerProps,
@@ -265,7 +265,7 @@ export class ZoomMap {
     this.userMarker = ui.createWidget(ui.widget.CIRCLE, this.userMarkerProps);
   }
 
-  bindWidgets() {
+  addListeners() {
     let isDragging = false;
     let isGesture = false;
     let lastPosition = null;
@@ -275,6 +275,7 @@ export class ZoomMap {
     let wheelDegrees = 0;
     let zoomTimeout = null;
 
+    // Handle crown wheel zooming
     onDigitalCrown({
       callback: (key, degree) => {
         if (isRendering) return;
@@ -317,6 +318,7 @@ export class ZoomMap {
       },
     });
 
+    // Handle shortcut key GPS following
     onKey({
       callback: (key, keyEvent) => {
         if (isRendering) return;
@@ -330,6 +332,7 @@ export class ZoomMap {
       },
     });
 
+    // Trackpad panning
     this.trackpad.addEventListener(ui.event.CLICK_DOWN, (e) => {
       if (isRendering) return;
 
@@ -388,6 +391,8 @@ export class ZoomMap {
       this.placeUserMarker();
       lastPosition = null;
     });
+
+    this.eventBus.on("render", (clear) => this.nextTile(clear));
   }
 
   newCenter(moveEvent, lastPosition) {
@@ -608,14 +613,13 @@ export class ZoomMap {
     this.gridIndex.clear();
     textItems = {};
 
-    this.eventBus.emit("next-tile", clear);
+    this.eventBus.emit("render", clear);
   }
 
-  renderNextTile(clear = false) {
-    const tile = this.queue.pop(); // Render tiles from the queue
-
-    // All tiles drawn
-    if (tile === undefined) {
+  // Eventbus callback, render the next tile in the queue
+  nextTile(clear = false) {
+    logger.debug(this.queue.length);
+    if (this.queue.length === 0) {
       // logger.debug(JSON.stringify(textItems));
       this.outcastCanvas(this.altCanvas);
       this.altCanvas.clear(this.defaultCanvasStyle);
@@ -628,151 +632,153 @@ export class ZoomMap {
       return;
     }
 
+    const tileQuery = this.queue.pop();
+    this.tileCache.getTile(tileQuery).then((tileData) => {
+      this.renderTile(tileData, tileQuery, clear);
+    });
+  }
+
+  renderTile(tileData, tileQuery, clear = false) {
     if (clear) this.mainCanvas.clear(this.defaultCanvasStyle);
 
-    // If there is a tile to render
-    this.tileCache.getTile(tile.z, tile.x, tile.y).then((tileObj) => {
-      if (!tileObj) return this.renderNextTile(false);
+    // Return if no tile data was available
+    if (!tileData) return this.eventBus.emit("render", false);
 
-      const tileSize = this.getRenderCache("currentTileSize");
-      const canvasCenter = this.getRenderCache("currentCanvasCenter");
+    const tileSize = this.getRenderCache("currentTileSize");
+    const canvasCenter = this.getRenderCache("currentCanvasCenter");
 
-      const layerTemp = new Layer();
-      const featureTemp = new Feature();
-      const featPropsTemp = {};
+    const layerTemp = new Layer();
+    const featureTemp = new Feature();
+    const featPropsTemp = {};
 
-      const visibleSectors = getVisibleSectors(
-        tile.tileBB,
-        tile.viewBB,
-        TILE_GRID_SIZE
-      );
+    const visibleSectors = getVisibleSectors(
+      tileQuery.tileBB,
+      tileQuery.viewBB,
+      TILE_GRID_SIZE
+    );
 
-      coordCache.baseTile.x =
-        tile.x * tileSize - (canvasCenter.x - this.canvasW / 2);
-      coordCache.baseTile.y =
-        tile.y * tileSize - (canvasCenter.y - this.canvasH / 2);
+    coordCache.baseTile.x =
+      tileQuery.x * tileSize - (canvasCenter.x - this.canvasW / 2);
+    coordCache.baseTile.y =
+      tileQuery.y * tileSize - (canvasCenter.y - this.canvasH / 2);
 
-      // Iterate through features in the decoded tile and draw them
-      for (let i = 0; i < tileObj.layersLength(); i++) {
-        const layer = tileObj.layers(i, layerTemp);
+    // Iterate through features in the decoded tile and draw them
+    for (let i = 0; i < tileData.layersLength(); i++) {
+      const layer = tileData.layers(i, layerTemp);
 
-        const layerName = layer.name();
-        const styleBuilder = mapStyle[layerName];
+      const layerName = layer.name();
+      const styleBuilder = mapStyle[layerName];
 
-        // Iterate through features in the layer
-        for (let j = 0; j < layer.featuresLength(); j++) {
-          const feature = layer.features(j, featureTemp);
+      // Iterate through features in the layer
+      for (let j = 0; j < layer.featuresLength(); j++) {
+        const feature = layer.features(j, featureTemp);
 
-          const coverage = feature.coverage();
-          if ((coverage & visibleSectors) === 0) continue;
+        const coverage = feature.coverage();
+        if ((coverage & visibleSectors) === 0) continue;
 
-          // Load properties
-          const name = feature.name() || feature.nameEn();
-          featPropsTemp["name"] = name;
+        // Load properties
+        const name = feature.name() || feature.nameEn();
+        featPropsTemp["name"] = name;
 
-          const featType = feature.type();
-          featPropsTemp["type"] = featType;
+        const featType = feature.type();
+        featPropsTemp["type"] = featType;
 
-          featPropsTemp["pmap:kind"] = feature.pmapKind();
-          featPropsTemp["pmap:min_zoom"] = feature.pmapMinZoom();
+        featPropsTemp["pmap:kind"] = feature.pmapKind();
+        featPropsTemp["pmap:min_zoom"] = feature.pmapMinZoom();
 
-          const style = styleBuilder
-            ? styleBuilder(this.zoom, featPropsTemp)
-            : {};
+        const style = styleBuilder
+          ? styleBuilder(this.zoom, featPropsTemp)
+          : {};
 
-          if (style.visible === false) continue;
+        if (style.visible === false) continue;
 
-          this.mainCanvas.setPaint({
-            color: style["line-color"] || 0xeeeeee,
-            line_width: style["line-width"] || 2,
-          });
+        this.mainCanvas.setPaint({
+          color: style["line-color"] || 0xeeeeee,
+          line_width: style["line-width"] || 2,
+        });
 
-          const geometry = feature.geometryArray();
+        const geometry = feature.geometryArray();
 
-          if (featType === GeomType.POINT) {
-            let point, textX, textY;
+        if (featType === GeomType.POINT) {
+          let point, textX, textY;
 
-            for (const pointStart of parsePoint(geometry)) {
-              point = mapPointCoords(geometry, pointStart, coordCache);
+          for (const pointStart of parsePoint(geometry)) {
+            point = mapPointCoords(geometry, pointStart, coordCache);
 
-              const size = style["font-size"] || 20;
-              textX = point.x + 8;
-              textY = point.y - size - 4;
-              if (!this.gridIndex.placeText(name, textX, textY, size)) continue;
-
-              if (name && !(name in textItems)) {
-                textItems[name] = {
-                  coord: { x: textX, y: textY },
-                };
-              }
-
-              this.mainCanvas.drawCircle({
-                center_x: point.x,
-                center_y: point.y,
-                radius: style["circle-radius"] || 4,
-                color: style["fill-color"] || 0xdedede,
-              });
-            }
-
-            continue;
-          }
-
-          if (featType === GeomType.LINESTRING) {
-            const mid = Math.floor(geometry.length / 3);
-            let m = Infinity;
-
-            for (const lineRange of parseLineString(geometry)) {
-              mapLineStringCoords(geometry, lineRange, coordCache);
-
-              for (let k = lineRange[0]; k < lineRange[1] - 2; k += 2) {
-                if (k - mid < m) m = k;
-
-                this.mainCanvas.drawLine({
-                  x1: geometry[k],
-                  y1: geometry[k + 1],
-                  x2: geometry[k + 2],
-                  y2: geometry[k + 3],
-                  color: style["line-color"] || 0x444444,
-                });
-              }
-            }
+            const size = style["font-size"] || 20;
+            textX = point.x + 8;
+            textY = point.y - size - 4;
+            if (!this.gridIndex.placeText(name, textX, textY, size)) continue;
 
             if (name && !(name in textItems)) {
-              const size = style["font-size"] || 20;
-              const textX = geometry[m] - (size * name.length) / 2;
-              const textY = geometry[m + 1];
-
-              if (this.gridIndex.placeText(name, textX, textY, size))
-                textItems[name] = {
-                  coord: {
-                    x: textX,
-                    y: textY,
-                  },
-                };
+              textItems[name] = {
+                coord: { x: textX, y: textY },
+              };
             }
 
-            continue;
+            this.mainCanvas.drawCircle({
+              center_x: point.x,
+              center_y: point.y,
+              radius: style["circle-radius"] || 4,
+              color: style["fill-color"] || 0xdedede,
+            });
           }
 
-          if (featType === GeomType.POLYGON) {
-            for (const { ringRange, isExterior } of parsePolygon(geometry)) {
-              const coords = mapPolygonCoords(geometry, ringRange, coordCache);
-              this.mainCanvas.drawPoly({
-                data_array: coords,
-                color: style["fill-color"] || 0x3499ff,
+          continue;
+        }
+
+        if (featType === GeomType.LINESTRING) {
+          const mid = Math.floor(geometry.length / 3);
+          let m = Infinity;
+
+          for (const lineRange of parseLineString(geometry)) {
+            mapLineStringCoords(geometry, lineRange, coordCache);
+
+            for (let k = lineRange[0]; k < lineRange[1] - 2; k += 2) {
+              if (k - mid < m) m = k;
+
+              this.mainCanvas.drawLine({
+                x1: geometry[k],
+                y1: geometry[k + 1],
+                x2: geometry[k + 2],
+                y2: geometry[k + 3],
+                color: style["line-color"] || 0x444444,
               });
             }
-            continue;
           }
 
-          logger.warn(`Unsupported feature type: ${featType}`);
+          if (name && !(name in textItems)) {
+            const size = style["font-size"] || 20;
+            const textX = geometry[m] - (size * name.length) / 2;
+            const textY = geometry[m + 1];
+
+            if (this.gridIndex.placeText(name, textX, textY, size))
+              textItems[name] = {
+                coord: {
+                  x: textX,
+                  y: textY,
+                },
+              };
+          }
+
+          continue;
         }
+
+        if (featType === GeomType.POLYGON) {
+          for (const { ringRange, isExterior } of parsePolygon(geometry)) {
+            const coords = mapPolygonCoords(geometry, ringRange, coordCache);
+            this.mainCanvas.drawPoly({
+              data_array: coords,
+              color: style["fill-color"] || 0x3499ff,
+            });
+          }
+          continue;
+        }
+
+        logger.warn(`Unsupported feature type: ${featType}`);
       }
+    }
 
-      tileObj = null;
-
-      // Move on to the next tile
-      this.eventBus.emit("next-tile", false);
-    });
+    this.eventBus.emit("render", false);
   }
 }

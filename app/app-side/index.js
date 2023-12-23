@@ -42,15 +42,37 @@ AppSideService(
         const { url, filePath } = params;
         const downloadTask = this.downloadFile(encodeURI(url), filePath, 6000);
 
-        downloadTask.onSuccess = (e) => {
-          // logger.debug(e.filePath, e.tempFilePath, e.statusCode);
-          this.transferFile(e.filePath, {
-            type: "application/octet-stream",
-            name: filePath,
+        downloadTask.onFail = (e) => {
+          res(null, {
+            status: "error",
+            data: { filePath: null },
           });
         };
 
-        res(null, { status: "success", data: "" });
+        downloadTask.onSuccess = (e) => {
+          // Respond with error if no 200 OK was received
+          if (e.statusCode !== 200) {
+            logger.debug(e.filePath, e.tempFilePath, e.statusCode);
+            return res(null, {
+              status: "error",
+              data: { filePath: null },
+            });
+          }
+
+          const transferTask = this.transferFile(e.filePath, {
+            type: "application/octet-stream",
+            name: filePath,
+          });
+
+          transferTask.on("change", (e) => {
+            if (e.target.readyState === "transferred") {
+              res(null, {
+                status: "success",
+                data: { filePath: e.target.filePath },
+              });
+            }
+          });
+        };
 
         return;
       }

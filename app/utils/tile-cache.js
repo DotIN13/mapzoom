@@ -1,4 +1,5 @@
 import { connectStatus } from "@zos/ble";
+import { openSync, readSync, statSync, O_RDONLY, closeSync } from "@zos/fs";
 
 import * as flatbuffers from "flatbuffers";
 
@@ -16,8 +17,9 @@ import { PMTiles } from "./pmtiles";
 import { Tile } from "./vector-tile-js/vector-tile";
 
 export class TileCache {
-  constructor(page) {
+  constructor(page, map) {
     this.page = page;
+    this.map = map;
     this.mapId = `example-v${VERSION}`;
     this.pmtiles = new PMTiles("data://download/example.pmtiles");
     // this.pmtiles = new PMTiles("assets://map/shanghai-20231119-mini-fbs.pmtiles");
@@ -27,34 +29,66 @@ export class TileCache {
     return this.pmtiles?.header?.maxZoom || 15;
   }
 
-  getTile(z, x, y) {
-    let decompressed;
-
-    if (false) {
-      decompressed = this.getTileFromUrl(z, x, y);
+  getTile(tileQuery) {
+    if (connectStatus()) {
+      return this.getTileFromUrl(tileQuery);
     } else {
-      decompressed = new Promise((resolve) =>
-        resolve(this.pmtiles.getZxy(z, x, y))
-      );
+      return this.getTileFromPmtiles(tileQuery);
     }
-
-    return decompressed.then((data) => {
-      if (!data) return null;
-
-      const buf = new flatbuffers.ByteBuffer(data);
-      return Tile.getRootAsTile(buf);
-    });
   }
 
-  getTileFromUrl(z, x, y) {
+  getTileFromPmtiles(tileQuery) {
+    const { z, x, y } = tileQuery;
+
+    return new Promise((resolve) => {
+      const data = this.pmtiles.getZxy(z, x, y);
+      if (!data) return resolve(null);
+
+      const buf = new flatbuffers.ByteBuffer(data);
+      resolve(Tile.getRootAsTile(buf));
+    }).catch((e) => logger.warn("Get Tile from PMTiles error", e));
+  }
+
+  getTileFromUrl(tileQuery) {
+    const { z, x, y } = tileQuery;
+
     return this.page
       .request({
         method: "GET_TILE",
         params: {
-          url: `http://192.168.5.121:8080/tiles/shanghai-20231119-mini-fbs/${z}/${x}/${y}.mvt`,
+          url: `http://192.168.1.119:8080/shanghai-20231119-mini-fbs/${z}/${x}/${y}.mvt`,
           filePath: `data://${z}-${x}-${y}.mvt`,
         },
       })
-      .catch((e) => logger.warn(e));
+      .then((res) => {
+        const {
+          status,
+          data: { filePath },
+        } = res;
+        if (status !== "success" || !filePath) return null; // Early exit if file transfer failed
+
+        const stats = statSync({ path: filePath });
+        if (stats === undefined) logger.warn("Map tile not found.");
+        if (stats === undefined) return null;
+
+        const fd = openSync({
+          path: filePath,
+          flag: O_RDONLY,
+        });
+
+        const buffer = new ArrayBuffer(stats.size);
+
+        readSync({
+          fd,
+          buffer,
+          options: { offset: 0, length: stats.size, position: 0 },
+        });
+
+        closeSync({ fd });
+
+        const buf = new flatbuffers.ByteBuffer(Buffer.from(buffer));
+        return Tile.getRootAsTile(buf);
+      })
+      .catch((e) => logger.warn("Get Tile from URL error", e));
   }
 }

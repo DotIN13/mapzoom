@@ -28,6 +28,7 @@ Page(
       logger.debug("page onInit invoked");
       setScrollLock({ lock: true });
     },
+
     build() {
       logger.debug("page build invoked");
 
@@ -88,6 +89,7 @@ Page(
       geolocation.start();
       geolocation.onChange(callback);
     },
+
     onDestroy() {
       logger.debug("page onDestroy invoked");
 
