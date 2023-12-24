@@ -21,8 +21,13 @@ export class TileCache {
     this.page = page;
     this.map = map;
     this.mapId = `example-v${VERSION}`;
-    this.pmtiles = new PMTiles("data://download/example.pmtiles");
-    // this.pmtiles = new PMTiles("assets://map/shanghai-20231119-mini-fbs.pmtiles");
+
+    const app = getApp();
+    const { localStorage } = app._options.globalData;
+    const activeMap =
+      localStorage.getItem("active-map") || "shanghai_chn_6bd2.pmtiles";
+
+    this.pmtiles = new PMTiles(`data://download/pmtiles/${activeMap}`);
   }
 
   get maxZoom() {
@@ -30,7 +35,7 @@ export class TileCache {
   }
 
   getTile(tileQuery) {
-    if (connectStatus()) {
+    if (false) {
       return this.getTileFromUrl(tileQuery);
     } else {
       return this.getTileFromPmtiles(tileQuery);
@@ -41,11 +46,11 @@ export class TileCache {
     const { z, x, y } = tileQuery;
 
     return new Promise((resolve) => {
-      const data = this.pmtiles.getZxy(z, x, y);
+      const data = this.pmtiles?.getZxy(z, x, y);
       if (!data) return resolve(null);
 
       const buf = new flatbuffers.ByteBuffer(data);
-      resolve(Tile.getRootAsTile(buf));
+      return resolve(Tile.getRootAsTile(buf));
     }).catch((e) => logger.warn("Get Tile from PMTiles error", e));
   }
 

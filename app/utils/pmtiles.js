@@ -2,6 +2,8 @@ import {
   openSync,
   openAssetsSync,
   readSync,
+  readdirSync,
+  renameSync,
   statAssetsSync,
   statSync,
   O_RDONLY,

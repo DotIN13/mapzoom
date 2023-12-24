@@ -12,7 +12,7 @@
     "@zeppos/device-types": "^3.0.0"
   },
   "dependencies": {
-    "@zeppos/zml": "^0.0.9",
+    "@zeppos/zml": "^0.0.23",
     "fast-text-encoding": "^1.0.6",
     "fflate": "^0.8.1",
     "flatbuffers": "^23.5.26",

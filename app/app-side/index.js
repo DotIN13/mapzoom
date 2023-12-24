@@ -21,21 +21,89 @@ AppSideService(
     onReceivedFile(file) {
       logger.log(`received file: ${file}`);
     },
+    onSettingsChange({ key, newValue, oldValue }) {
+      // logger.log(key, newValue);
+      if (!newValue) return;
+
+      if (key === "download") {
+        settings.settingsStorage.removeItem(key);
+
+        this.call({
+          method: "DOWNLOAD_MAP",
+          params: newValue,
+        });
+      }
+
+      if (key === "activate") {
+        settings.settingsStorage.removeItem(key);
+
+        this.call({
+          method: "ACTIVATE_MAP",
+          params: newValue,
+        });
+      }
+
+      if (key === "delete") {
+        settings.settingsStorage.removeItem(key);
+
+        this.call({
+          method: "DELETE_MAP",
+          params: newValue,
+        });
+      }
+    },
     async onRequest(req, res) {
       const { method: action, params } = req;
 
       if (action == "GET_MAP") {
-        const { fileUrl = "https://x0.at/qDOu.pmtiles" } = params || {};
-        const filePath = "data://example.pmtiles";
-        const downloadTask = this.downloadFile(encodeURI(fileUrl), filePath);
+        let mapEntry, url, filePath;
+
+        try {
+          mapEntry = JSON.parse(params);
+
+          const { filename } = mapEntry;
+          filePath = `data://pmtiles/${filename}`;
+
+          // Fetch OSS file url
+          const res = await fetch({
+            url: `https://mapzoom.wannaexpresso.com/api/download-map?filePath=${filename}`,
+            // url: `http://localhost:3000/api/download-map?filePath=${filename}`,
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Origin: "https://zepp-os.zepp.com",
+            },
+          });
+          const resJSON = await res.json();
+          if (resJSON.status !== "success")
+            throw Error("Unable to fetch file URL", res.message);
+
+          url = resJSON.url;
+        } catch (err) {
+          logger.error(err);
+          return res(null, { status: "error", message: err });
+        }
+
+        const downloadTask = this.downloadFile(url, filePath);
 
         downloadTask.onSuccess = (e) => {
           // logger.debug(e.filePath, e.tempFilePath, e.statusCode);
-          this.transferFile(e.filePath, { type: "pmtiles", name: filePath });
+
+          // Respond with error if no 200 OK was received
+          if (e.statusCode !== 200) {
+            return res(null, {
+              status: "error",
+              data: { filePath: null },
+            });
+          }
+
+          this.transferFile(e.filePath, {
+            type: "application/vnd.pmtiles",
+            name: filePath,
+          });
         };
 
-        res(null, { status: "success", data: "" });
-        return;
+        return res(null, { status: "success", data: "" });
       }
 
       if (action == "GET_TILE") {
@@ -50,9 +118,10 @@ AppSideService(
         };
 
         downloadTask.onSuccess = (e) => {
+          // logger.debug(e.filePath, e.tempFilePath, e.statusCode);
+
           // Respond with error if no 200 OK was received
           if (e.statusCode !== 200) {
-            logger.debug(e.filePath, e.tempFilePath, e.statusCode);
             return res(null, {
               status: "error",
               data: { filePath: null },
@@ -77,7 +146,7 @@ AppSideService(
         return;
       }
 
-      res(null, { status: "error", message: "unknown action" });
+      res(null, { status: "error", message: "Unknown action" });
     },
   })
 );
