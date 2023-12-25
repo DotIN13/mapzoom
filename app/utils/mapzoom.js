@@ -173,14 +173,11 @@ export class ZoomMap {
    */
   set geoLocation(lonlat) {
     if (!lonlat) return;
-    if (isPanning) return; // Do nothing when panning
+
+    // Always clear cache upon location updates
+    this.renderCache.delete("currentGeoLocation");
 
     this._geoLocation = lonLatToPixelCoordinates(lonlat, STORAGE_SCALE);
-
-    // Do not draw marker if off-screen
-    // halfMarker = this.userMarkerProps.radius / 2;
-    // if (markerX < -halfMarker || markerX > this.canvasW + halfMarker) return;
-
     this.updateUserMarker();
   }
 
@@ -276,7 +273,6 @@ export class ZoomMap {
       ...this.userMarkerProps,
       x: px(this.markerXY.x - MARKER_GROUP_HALF_SIZE),
       y: px(this.markerXY.y - MARKER_GROUP_HALF_SIZE),
-      alpha: 240,
     });
   }
 
@@ -438,7 +434,7 @@ export class ZoomMap {
       center_x: downloadCenterX,
       center_y: downloadCenterY,
       radius: 36,
-      color: 0xEBF1FF,
+      color: 0xebf1ff,
       alpha: 80,
     });
 
@@ -481,7 +477,7 @@ export class ZoomMap {
         center_x: 36,
         center_y: 36,
         radius: 36,
-        color: 0xEBF1FF,
+        color: 0xebf1ff,
         alpha: 80,
       }
     );
@@ -536,7 +532,7 @@ export class ZoomMap {
       center_x: 36,
       center_y: 36,
       radius: 36,
-      color: 0xEBF1FF,
+      color: 0xebf1ff,
       alpha: 80,
     };
 
@@ -575,19 +571,14 @@ export class ZoomMap {
     let wheelDegrees = 0;
     let zoomTimeout = null;
 
-    function zoomDelta(e, zoom) {
+    function zoomDelta(e, _zoom) {
       // When finger moving up, y goes smaller, but we need the delta to grow larger
-      let delta = -(e.y - DEVICE_HEIGHT / 2) / (DEVICE_HEIGHT / 2 - 35); // Deduct the slider padding
-      delta = Math.max(-1, delta);
-      delta = Math.min(1, delta);
+      let deltaScale = -(e.y - DEVICE_HEIGHT / 2) / (DEVICE_HEIGHT / 2 - 35); // Deduct the slider padding
+      deltaScale = Math.max(-1, deltaScale);
+      deltaScale = Math.min(1, deltaScale);
 
-      const angleDelta = -90 * delta;
-
-      if (delta > 0) {
-        delta = (MAX_DISPLAY_ZOOM - zoom) * delta;
-      } else {
-        delta = zoom * delta;
-      }
+      const delta = 5 * deltaScale;
+      const angleDelta = -90 * deltaScale;
       return { delta, angleDelta };
     }
 
@@ -648,13 +639,14 @@ export class ZoomMap {
             // If the wheel is still spinning, don't update the zoom level
             if (wheelDegrees == 0) return;
 
-            const currentTime = Date.now();
+            const currentTime = Date.now(); // Throttling
             if (currentTime - lastZoomUpdate < ZOOM_THROTTLING_DELAY) return;
-
-            wheelDegrees = 0;
 
             // Update zoom level
             this.zoomAndRedraw(wheelDegrees * ZOOM_SPEED_FACTOR);
+
+            // Reset wheel degrees after map redraw
+            wheelDegrees = 0;
           }, ZOOM_THROTTLING_DELAY + 1);
         }
       },
@@ -717,12 +709,12 @@ export class ZoomMap {
       });
       if (isZooming) return;
 
-      // last position is only useful for panning
-      lastPosition = { x: e.x, y: e.y };
-
       // Otherwise, user is panning
-      isPanning = true;
       this.followGPS = false;
+      isPanning = true;
+
+      // last position is currently only useful for panning
+      lastPosition = { x: e.x, y: e.y };
     });
 
     this.trackpad.addEventListener(ui.event.MOVE, (e) => {
@@ -816,7 +808,7 @@ export class ZoomMap {
     const buttonY = buttonProps.y;
     const buttonW = buttonProps.w;
     const buttonH = buttonProps.h;
-    const padding = 10;
+    const padding = 20;
 
     if (
       event.x < buttonX - padding ||
@@ -918,7 +910,6 @@ export class ZoomMap {
       ...this.userMarkerProps,
       x: px(this.markerXY.x + offset.x - MARKER_GROUP_HALF_SIZE),
       y: px(this.markerXY.y + offset.y - MARKER_GROUP_HALF_SIZE),
-      alpha: 240,
     });
   }
 

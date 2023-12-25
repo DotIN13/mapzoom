@@ -146,7 +146,7 @@ AppSideService(
         return;
       }
 
-      if (method === "INIT_COMMS") {
+      if (action === "INIT_COMMS") {
         return res(null, { status: "success" });
       }
 
