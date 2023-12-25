@@ -97,7 +97,7 @@ Page(
         text_style: ui.text_style.WRAP,
         alpha: 0x99,
         enable: false,
-        text: "Click the button below to download the example map.",
+        text: "No maps to download.",
       });
 
       // Back button
@@ -133,6 +133,9 @@ Page(
       //     });
       //   },
       // });
+
+      // Do nothing if no download tasks were assigned
+      if (!this.downloadParams || this.downloadParams === "") return;
 
       this.textWidget.setProperty(ui.prop.TEXT, "Downloading...");
 

@@ -175,7 +175,7 @@ export class ZoomMap {
     // halfMarker = this.userMarkerProps.radius / 2;
     // if (markerX < -halfMarker || markerX > this.canvasW + halfMarker) return;
 
-    this.placeUserMarker();
+    this.updateUserMarker();
   }
 
   /**
@@ -187,9 +187,22 @@ export class ZoomMap {
     this.userMarkerSight.setProperty(ui.prop.ANGLE, angle);
   }
 
+  get followGPS() {
+    return this._followGPS;
+  }
+
+  set followGPS(val) {
+    this._followGPS = val;
+
+    const exploreButtonSrc = val
+      ? "image/explore-48.png"
+      : "image/explore-off-48.png";
+    this.exploreButton.setProperty(ui.prop.SRC, exploreButtonSrc);
+  }
+
   // Update markerXY based on current geoLocation and canvas center coordinates,
   // then redraw the user marker.
-  placeUserMarker() {
+  updateUserMarker() {
     const geoLocation = this.getRenderCache("currentGeoLocation");
     if (geoLocation === undefined) return; // Do nothing if no geolocation is available
 
@@ -200,6 +213,7 @@ export class ZoomMap {
     // Update canvas center when following GPS and the marker offset is exceeding the threshold.
     // In this case, update the canvas and draw marker in the center.
     if (this.followGPS && (Math.abs(offsetX) > 40 || Math.abs(offsetY) > 40)) {
+      logger.debug(geoLocation.x, geoLocation.y)
       this.updateCenter(geoLocation, { redraw: true });
       this.markerXY.x = this.canvasW / 2;
       this.markerXY.y = this.canvasH / 2;
@@ -342,6 +356,40 @@ export class ZoomMap {
       ui.widget.TEXT,
       this.zoomIndicatorProps
     );
+
+    // Create Download Button
+    this.downloadButtonProps = {
+      // Place the download button at 5 o'clock
+      x: px(Math.sin(40 * Math.PI / 180) * (240 - 45) + 240 - 48 / 2),
+      y: px(Math.cos(40 * Math.PI / 180) * (240 - 45) + 240 - 48 / 2),
+      w: px(48),
+      h: px(48),
+      auto_scale: true,
+      src: "image/download-48.png",
+      enable: true,
+    };
+
+    this.downloadButton = ui.createWidget(
+      ui.widget.IMG,
+      this.downloadButtonProps
+    );
+
+    // Create Explore Button
+    this.exploreButtonProps = {
+      // Place the download button at 4 o'clock
+      x: px(Math.sin(60 * Math.PI / 180) * (240 - 45) + 240 - 42 / 2),
+      y: px(Math.cos(60 * Math.PI / 180) * (240 - 45) + 240 - 42 / 2),
+      w: px(42),
+      h: px(42),
+      auto_scale: true,
+      src: "image/explore-48.png",
+      enable: true,
+    };
+
+    this.exploreButton = ui.createWidget(
+      ui.widget.IMG,
+      this.exploreButtonProps
+    );
   }
 
   addListeners() {
@@ -388,7 +436,7 @@ export class ZoomMap {
             this.toggleCanvas();
             this.render(true);
 
-            this.placeUserMarker();
+            this.updateUserMarker();
           }, ZOOM_THROTTLING_DELAY + 1);
         }
       },
@@ -401,7 +449,7 @@ export class ZoomMap {
 
         if (key == KEY_SHORTCUT && keyEvent === KEY_EVENT_CLICK) {
           this.followGPS = true;
-          this.placeUserMarker();
+          this.updateUserMarker();
           return true;
         }
 
@@ -455,8 +503,7 @@ export class ZoomMap {
         dragTrace.x[0] > DEVICE_WIDTH * 0.8 &&
         e.x < DEVICE_WIDTH * 0.4
       ) {
-        router.replace({ url: "page/gt/map-transfer/index.page" });
-        return;
+        return router.replace({ url: "page/gt/map-transfer/index.page" });
       }
 
       dragTrace = { x: [], y: [] };
@@ -465,11 +512,21 @@ export class ZoomMap {
       isGesture = false;
       this.updateCenter(this.center, { redraw: true });
 
-      this.placeUserMarker();
+      this.updateUserMarker();
       lastPosition = null;
     });
 
     this.eventBus.on("render", (clear) => this.nextTile(clear));
+
+    // Download button
+    this.downloadButton.addEventListener(ui.event.CLICK_DOWN, (e) =>
+      router.replace({ url: "page/gt/map-transfer/index.page" })
+    );
+
+    this.exploreButton.addEventListener(ui.event.CLICK_DOWN, (e) => {
+      this.followGPS = !this.followGPS;
+      this.updateUserMarker();
+    });
   }
 
   newCenter(moveEvent, lastPosition) {
@@ -615,7 +672,7 @@ export class ZoomMap {
       tileX += tileSize;
     }
 
-    // logger.debug(JSON.stringify(tiles));
+    logger.debug(JSON.stringify(tiles));
 
     return tiles;
   }
