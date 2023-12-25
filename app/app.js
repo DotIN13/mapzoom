@@ -61,7 +61,7 @@ App(
         logger.debug("rmSync", result === 0 ? "success" : "failed");
       }
     },
-    onDestroy(opts) {
+    onDestroy() {
       resetDropWristScreenOff();
     },
   })

@@ -20,6 +20,7 @@ import {
   ZOOM_SPEED_FACTOR,
   PAN_THROTTLING_DELAY,
   ZOOM_THROTTLING_DELAY,
+  MAX_DISPLAY_ZOOM,
   STORAGE_SCALE,
   MARKER_GROUP_SIZE,
   MARKER_GROUP_HALF_SIZE,
@@ -67,7 +68,6 @@ export class ZoomMap {
   constructor(
     page,
     canvases,
-    trackpad,
     initialCenter,
     initialZoom,
     canvasW = 480,
@@ -83,7 +83,6 @@ export class ZoomMap {
 
     // Widgets
     this.canvases = canvases;
-    this.trackpad = trackpad;
     this.mainCanvas = 0;
 
     // Set up initial user marker location
@@ -150,7 +149,7 @@ export class ZoomMap {
     if (this._zoom == level) return;
 
     level = Math.max(0, level);
-    level = Math.min(20, level);
+    level = Math.min(MAX_DISPLAY_ZOOM, level);
     this._zoom = level;
 
     this.updateScaleBar();
@@ -167,7 +166,7 @@ export class ZoomMap {
    */
   set geoLocation(lonlat) {
     if (!lonlat) return;
-    if (isDragging) return; // Do nothing when panning
+    if (isPanning) return; // Do nothing when panning
 
     this._geoLocation = lonLatToPixelCoordinates(lonlat, STORAGE_SCALE);
 
@@ -195,8 +194,8 @@ export class ZoomMap {
     this._followGPS = val;
 
     const exploreButtonSrc = val
-      ? "image/explore-48.png"
-      : "image/explore-off-48.png";
+      ? "image/explore-96.png"
+      : "image/explore-off-96.png";
     this.exploreButton.setProperty(ui.prop.SRC, exploreButtonSrc);
   }
 
@@ -356,6 +355,38 @@ export class ZoomMap {
       this.zoomIndicatorProps
     );
 
+    // Create a sliding arc below all buttons
+    const sliderTrackPadding = 85;
+    this.sliderTrackProps = {
+      x: px(sliderTrackPadding / 2),
+      y: px(sliderTrackPadding / 2),
+      w: px(480 - sliderTrackPadding),
+      h: px(480 - sliderTrackPadding),
+      start_angle: -88,
+      end_angle: 88,
+      color: 0xffdbc9,
+      line_width: 14,
+    };
+
+    this.sliderTrack = ui.createWidget(ui.widget.ARC, this.sliderTrackProps);
+    this.sliderTrack.setProperty(ui.prop.VISIBLE, false); // Slider invisible by default
+
+    // Create another sliding arc that covers the background slider
+    const zoomSliderPadding = 35;
+    this.zoomSliderProps = {
+      x: px(zoomSliderPadding / 2),
+      y: px(zoomSliderPadding / 2),
+      w: px(480 - zoomSliderPadding),
+      h: px(480 - zoomSliderPadding),
+      start_angle: -90,
+      end_angle: 90,
+      color: 0xd87739,
+      line_width: 72, // Double the radius of buttons
+    };
+
+    this.zoomSlider = ui.createWidget(ui.widget.ARC, this.zoomSliderProps);
+    this.zoomSlider.setProperty(ui.prop.VISIBLE, false); // Slider invisible by default
+
     // Create Download Button
     const downloadCenterX = Math.sin((30 * Math.PI) / 180) * (240 - 53) + 240;
     const downloadCenterY = Math.cos((30 * Math.PI) / 180) * (240 - 53) + 240;
@@ -363,15 +394,15 @@ export class ZoomMap {
     this.downloadButtonProps = {
       // Place the download button at 5 o'clock
       x: px(downloadCenterX - 52 / 2 - 1),
-      y: px(downloadCenterY - 52 / 2 - .5),
+      y: px(downloadCenterY - 52 / 2 - 0.5),
       w: px(52),
       h: px(52),
       auto_scale: true,
-      src: "image/download-48.png",
+      src: "image/download-96.png",
       enable: true,
     };
 
-    ui.createWidget(ui.widget.CIRCLE, {
+    this.downloadButtonBg = ui.createWidget(ui.widget.CIRCLE, {
       center_x: downloadCenterX,
       center_y: downloadCenterY,
       radius: 36,
@@ -391,15 +422,15 @@ export class ZoomMap {
     this.exploreButtonProps = {
       // Place the download button at 4 o'clock
       x: px(exploreCenterX - 46 / 2 - 1),
-      y: px(exploreCenterY - 46 / 2 - .5),
+      y: px(exploreCenterY - 46 / 2 - 0.5),
       w: px(46),
       h: px(46),
       auto_scale: true,
-      src: "image/explore-48.png",
+      src: "image/explore-96.png",
       enable: true,
     };
 
-    ui.createWidget(ui.widget.CIRCLE, {
+    this.exploreButtonBg = ui.createWidget(ui.widget.CIRCLE, {
       center_x: exploreCenterX,
       center_y: exploreCenterY,
       radius: 36,
@@ -411,17 +442,73 @@ export class ZoomMap {
       ui.widget.IMG,
       this.exploreButtonProps
     );
+
+    // Zoom button
+    // Create Explore Button
+    const zoomCenterX = 240 - 53 + 240;
+    const zoomCenterY = 240;
+
+    this.zoomButtonProps = {
+      // Place the download button at 4 o'clock
+      x: px(zoomCenterX - 46 / 2 - 0.5),
+      y: px(zoomCenterY - 46 / 2 - 0.5),
+      w: px(46),
+      h: px(46),
+      auto_scale: true,
+      src: "image/zoom-96.png",
+      enable: false, // No direct interactions with the button
+    };
+
+    this.zoomButtonBg = ui.createWidget(ui.widget.CIRCLE, {
+      center_x: zoomCenterX,
+      center_y: zoomCenterY,
+      radius: 36,
+      color: 0xffffff,
+      alpha: 80,
+    });
+
+    this.zoomButton = ui.createWidget(ui.widget.IMG, this.zoomButtonProps);
+
+    // Place trackpad above all other widgets
+    this.trackpadProps = {
+      x: 0,
+      y: 0,
+      w: DEVICE_WIDTH,
+      h: DEVICE_HEIGHT,
+      radius: 0,
+      alpha: 0,
+      color: 0xffffff,
+    };
+
+    this.trackpad = ui.createWidget(ui.widget.FILL_RECT, this.trackpadProps);
   }
 
   addListeners() {
-    let isDragging = false;
+    let isPanning = false;
     let isGesture = false;
+    let isZooming = false; // Zooming with button
     let lastPosition = null;
     let dragTrace = { x: [], y: [] };
 
     let lastZoomUpdate = null;
     let wheelDegrees = 0;
     let zoomTimeout = null;
+
+    function zoomDelta(e, zoom) {
+      // When finger moving up, y goes smaller, but we need the delta to grow larger
+      let delta = -(e.y - DEVICE_HEIGHT / 2) / (DEVICE_HEIGHT / 2 - 35); // Deduct the slider padding
+      delta = Math.max(-1, delta);
+      delta = Math.min(1, delta);
+
+      const angleDelta = -90 * delta;
+
+      if (delta > 0) {
+        delta = (MAX_DISPLAY_ZOOM - zoom) * delta;
+      } else {
+        delta = zoom * delta;
+      }
+      return { delta, angleDelta };
+    }
 
     // Handle crown wheel zooming
     onDigitalCrown({
@@ -482,10 +569,25 @@ export class ZoomMap {
     this.trackpad.addEventListener(ui.event.CLICK_DOWN, (e) => {
       if (isRendering) return;
 
-      isDragging = true;
+      // Determine if a button is clicked
+      let res = false;
 
+      res = this.buttonOnClick(e, this.downloadButtonProps, () =>
+        router.replace({ url: "page/gt/map-transfer/index.page" })
+      );
+      if (res) return;
+
+      res = this.buttonOnClick(e, this.exploreButtonProps, () => {
+        this.followGPS = !this.followGPS;
+        this.updateUserMarker();
+      });
+      if (res) return;
+
+      // If no button clicked, move on to drag tracing
       dragTrace.x.push(e.x);
       dragTrace.y.push(e.y);
+
+      // Determine if the user is performing a gesture
       if (
         Math.sqrt((e.x - HALF_HEIGHT) ** 2 + (e.y - HALF_HEIGHT) ** 2) >
         HALF_HEIGHT - 30
@@ -494,24 +596,56 @@ export class ZoomMap {
         return;
       }
 
-      this.followGPS = false;
+      this.toggleAllButtons(false); // Disable all buttons to avoid interference with panning or zooming
+
+      // Determine if the user is pressing the zoom button
+      isZooming = this.buttonOnClick(e, this.zoomButtonProps, () => {
+        this.sliderTrack.setProperty(ui.prop.VISIBLE, true);
+        this.zoomSlider.setProperty(ui.prop.VISIBLE, true);
+        this.downloadButton.setProperty(ui.prop.VISIBLE, false);
+        this.downloadButtonBg.setProperty(ui.prop.VISIBLE, false);
+        this.exploreButton.setProperty(ui.prop.VISIBLE, false);
+        this.exploreButtonBg.setProperty(ui.prop.VISIBLE, false);
+
+        this.zoomSlider.setProperty(ui.prop.START_ANGLE, 0);
+      });
+      if (isZooming) return;
+
+      // last position is only useful for panning
       lastPosition = { x: e.x, y: e.y };
+
+      // Otherwise, user is panning
+      isPanning = true;
+      this.followGPS = false;
     });
 
     this.trackpad.addEventListener(ui.event.MOVE, (e) => {
       if (isRendering) return;
-      if (!isDragging || !lastPosition) return;
 
       dragTrace.x.push(e.x);
       dragTrace.y.push(e.y);
-      if (isGesture) return;
+      if (isGesture) return; // Do nothing else if gesture
 
       const currentTime = Date.now();
+      this.lastCenterUpdate ||= Date.now();
       if (currentTime - this.lastCenterUpdate < PAN_THROTTLING_DELAY) return;
 
+      // If zooming
+      if (isZooming) {
+        // When zooming, update the scale bar according to the distance
+        // between the current position and the center.
+        let { delta, angleDelta } = zoomDelta(e, this.zoom);
+        this.updateScaleBar(this.zoom + delta);
+        angleDelta = Math.min(67, angleDelta); // Avoid collapsing the arc
+        this.zoomSlider.setProperty(ui.prop.START_ANGLE, angleDelta);
+        return;
+      }
+
+      // If panning
       // Update center without immediate rendering
       this.updateCenter(this.newCenter(e, lastPosition), { redraw: false });
 
+      // If panning, log current position
       this.lastCenterUpdate = currentTime;
       lastPosition = { x: e.x, y: e.y };
     });
@@ -519,6 +653,7 @@ export class ZoomMap {
     this.trackpad.addEventListener(ui.event.CLICK_UP, (e) => {
       if (isRendering) return;
 
+      // If gesture
       if (
         isGesture &&
         dragTrace.x[0] > DEVICE_WIDTH * 0.8 &&
@@ -529,25 +664,66 @@ export class ZoomMap {
 
       dragTrace = { x: [], y: [] };
 
-      isDragging = false;
-      isGesture = false;
-      this.updateCenter(this.center, { redraw: true });
+      // If panning
+      if (isPanning) {
+        this.updateCenter(this.center, { redraw: true });
+        this.updateUserMarker();
+      }
 
-      this.updateUserMarker();
+      // If zooming
+      if (isZooming) {
+        this.sliderTrack.setProperty(ui.prop.VISIBLE, false);
+        this.zoomSlider.setProperty(ui.prop.VISIBLE, false);
+        this.downloadButton.setProperty(ui.prop.VISIBLE, true);
+        this.downloadButtonBg.setProperty(ui.prop.VISIBLE, true);
+        this.exploreButton.setProperty(ui.prop.VISIBLE, true);
+        this.exploreButtonBg.setProperty(ui.prop.VISIBLE, true);
+
+        const { delta } = zoomDelta(e, this.zoom);
+        this.zoom += delta;
+
+        // When zooming, toggle canvas to render on the off-screen canvas
+        this.toggleCanvas();
+        this.render(true);
+
+        this.updateUserMarker();
+      }
+
+      this.toggleAllButtons(true); // Restore button functionalities
+
+      isPanning = false;
+      isGesture = false;
+      isZooming = false;
       lastPosition = null;
     });
 
     this.eventBus.on("render", (clear) => this.nextTile(clear));
+  }
 
-    // Download button
-    this.downloadButton.addEventListener(ui.event.CLICK_DOWN, (e) =>
-      router.replace({ url: "page/gt/map-transfer/index.page" })
-    );
+  // Determine if the given button is clicked
+  buttonOnClick(event, buttonProps, callback = undefined) {
+    const buttonX = buttonProps.x;
+    const buttonY = buttonProps.y;
+    const buttonW = buttonProps.w;
+    const buttonH = buttonProps.h;
+    const padding = 10;
 
-    this.exploreButton.addEventListener(ui.event.CLICK_DOWN, (e) => {
-      this.followGPS = !this.followGPS;
-      this.updateUserMarker();
-    });
+    if (
+      event.x < buttonX - padding ||
+      event.x > buttonX + buttonW + padding ||
+      event.y < buttonY - padding ||
+      event.y > buttonY + buttonH + padding
+    ) {
+      return false;
+    }
+
+    if (callback) callback();
+    return true;
+  }
+
+  toggleAllButtons(enable = false) {
+    this.downloadButton.setEnable(enable);
+    this.exploreButton.setEnable(enable);
   }
 
   newCenter(moveEvent, lastPosition) {
