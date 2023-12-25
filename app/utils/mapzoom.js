@@ -2,9 +2,7 @@ import * as ui from "@zos/ui";
 import * as router from "@zos/router";
 import {
   onDigitalCrown,
-  offDigitalCrown,
   onKey,
-  KEY_DOWN,
   KEY_SHORTCUT,
   KEY_HOME,
   KEY_EVENT_CLICK,

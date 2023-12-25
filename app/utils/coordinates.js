@@ -1,5 +1,5 @@
 import { TILE_SIZE, PRECISION_FACTOR } from "./globals";
-import { logger } from "./logger";
+// import { logger } from "./logger";
 
 export function assets(type) {
   return (path) => type + "/" + path;

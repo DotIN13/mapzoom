@@ -1,4 +1,3 @@
-import { connectStatus } from "@zos/ble";
 import { openSync, readSync, statSync, O_RDONLY, closeSync } from "@zos/fs";
 
 import * as flatbuffers from "flatbuffers";
@@ -6,13 +5,8 @@ import * as flatbuffers from "flatbuffers";
 // import pako from "pako";
 // import gzipDecompressor from "./gzip-decompressor";
 
-import {
-  DEBUG,
-  VERSION,
-  MEM_TILE_CACHE_SIZE,
-  LOCAL_TILE_CACHE_SIZE,
-} from "./globals";
-import { logger, timer } from "./logger";
+import { VERSION } from "./globals";
+import { logger } from "./logger";
 import { PMTiles } from "./pmtiles";
 import { Tile } from "./vector-tile-js/vector-tile";
 

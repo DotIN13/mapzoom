@@ -1,6 +1,5 @@
 import * as ui from "@zos/ui";
 import { getText } from "@zos/i18n";
-import { getDeviceInfo } from "@zos/device";
 import { px } from "@zos/utils";
 
 import { DEVICE_WIDTH, DEVICE_HEIGHT } from "../../../utils/globals";
