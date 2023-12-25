@@ -103,9 +103,9 @@ Page(
       // Back button
       const backButton = ui.createWidget(ui.widget.BUTTON, {
         x: px(22),
-        y: (DEVICE_HEIGHT - px(32)) / 2,
-        w: -1,
-        h: -1,
+        y: px((DEVICE_HEIGHT - 64) / 2),
+        w: px(64),
+        h: px(64),
         normal_src: "image/left-arrow.png",
         press_src: "image/left-arrow.png",
         click_func: () => {
