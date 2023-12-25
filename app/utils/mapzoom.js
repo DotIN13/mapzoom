@@ -10,6 +10,7 @@ import {
 import { EventBus, px } from "@zos/utils";
 
 import {
+  DEBUG,
   DEVICE_HEIGHT,
   DEVICE_WIDTH,
   HALF_HEIGHT,
@@ -24,13 +25,14 @@ import {
   MARKER_GROUP_HALF_SIZE,
   MARKER_SIZE,
   MARKER_SIGHT_SIZE,
+  SCALE_LENGTH_IN_METERS,
+  TILE_WIDTH_IN_METERS,
 } from "./globals";
 import { logger } from "./logger";
 import { TileCache } from "./tile-cache";
 import GridIndex from "./grid-index";
 import {
   scaleCoordinates,
-  roundToPrecision,
   lonLatToPixelCoordinates,
   getVisibleSectors,
 } from "./coordinates";
@@ -44,6 +46,7 @@ import {
   mapPolygonCoords,
 } from "./geometry";
 import { CoordCache } from "./coord-cache";
+import { scaleBarCoordinates, scaleBarLabel } from "./scale-bar";
 import { GeomType, Feature, Layer } from "./vector-tile-js/vector-tile";
 
 let isRendering = false; // Global Render Indicator
@@ -65,7 +68,6 @@ export class ZoomMap {
     page,
     canvases,
     trackpad,
-    frametimeCounter,
     initialCenter,
     initialZoom,
     canvasW = 480,
@@ -82,7 +84,6 @@ export class ZoomMap {
     // Widgets
     this.canvases = canvases;
     this.trackpad = trackpad;
-    this.frametimeCounter = frametimeCounter;
     this.mainCanvas = 0;
 
     // Set up initial user marker location
@@ -152,10 +153,7 @@ export class ZoomMap {
     level = Math.min(20, level);
     this._zoom = level;
 
-    this.zoomIndicator?.setProperty(
-      ui.prop.TEXT,
-      `z${roundToPrecision(level)}`
-    );
+    this.updateScaleBar();
 
     this.renderCache.clear();
   }
@@ -251,25 +249,26 @@ export class ZoomMap {
     return val;
   }
 
-  createWidgets() {
-    this.zoomIndicatorProps = {
-      x: 0,
-      y: DEVICE_HEIGHT - 80,
-      w: DEVICE_WIDTH,
-      h: 20,
-      align_h: ui.align.CENTER_H,
-      align_v: ui.align.CENTER_V,
-      text_size: 20,
-      text: `z${roundToPrecision(this.zoom)}`,
-      color: 0xffffff,
-      enable: false,
-    };
+  updateScaleBar(zoom = null) {
+    zoom ||= this.zoom;
+    zoom = Math.max(0, zoom);
+    zoom = Math.min(zoom, 26);
 
-    this.zoomIndicator = ui.createWidget(
-      ui.widget.TEXT,
-      this.zoomIndicatorProps
+    this.scaleBar?.clear();
+    this.scaleBar?.addLine({
+      data: scaleBarCoordinates(zoom),
+      count: 4,
+    });
+
+    const lengthInMeters = SCALE_LENGTH_IN_METERS[Math.round(zoom)];
+
+    this.zoomIndicator?.setProperty(
+      ui.prop.TEXT,
+      `${scaleBarLabel(lengthInMeters)}`
     );
+  }
 
+  createWidgets() {
     // Create user location marker
     // Initialize the marker outside of the viewport
     this.userMarkerProps = {
@@ -310,6 +309,39 @@ export class ZoomMap {
       this.userMarkerSightProps
     );
     this.userMarker.createWidget(ui.widget.IMG, this.userMarkerCircleProps);
+
+    // Map scale indicator
+    this.scaleBarProps = {
+      x: px(35 - 1), // Left margin; substract 1 to avoid clipping
+      y: px((DEVICE_HEIGHT - 20) / 2), // Top margin
+      w: px(120), // Width
+      h: px(20), // Height
+      line_color: 0xdedede,
+      line_width: 2,
+    };
+
+    this.scaleBar = ui.createWidget(
+      ui.widget.GRADKIENT_POLYLINE,
+      this.scaleBarProps
+    );
+
+    // Text indicator below the scale bar
+    this.zoomIndicatorProps = {
+      x: px(35), // Left margin; same as scale bar
+      y: px(DEVICE_HEIGHT / 2 + 10),
+      w: px(120),
+      h: px(20),
+      align_h: ui.align.LEFT,
+      align_v: ui.align.CENTER_V,
+      text_size: 16,
+      color: 0xefefef,
+      enable: false,
+    };
+
+    this.zoomIndicator = ui.createWidget(
+      ui.widget.TEXT,
+      this.zoomIndicatorProps
+    );
   }
 
   addListeners() {
@@ -338,10 +370,7 @@ export class ZoomMap {
           wheelDegrees -= degree; // degree is negative when rolling up
 
           const newZoom = this.zoom + wheelDegrees * ZOOM_SPEED_FACTOR;
-          this.zoomIndicator.setProperty(
-            ui.prop.TEXT,
-            `z${roundToPrecision(newZoom)}`
-          );
+          this.updateScaleBar(newZoom);
 
           if (zoomTimeout) clearTimeout(zoomTimeout);
           zoomTimeout = setTimeout(() => {
@@ -355,7 +384,7 @@ export class ZoomMap {
             this.zoom += wheelDegrees * ZOOM_SPEED_FACTOR;
             wheelDegrees = 0;
 
-            // When zooming in, toggle canvas to render on the off-screen canvas
+            // When zooming, toggle canvas to render on the off-screen canvas
             this.toggleCanvas();
             this.render(true);
 
@@ -645,7 +674,7 @@ export class ZoomMap {
     isRendering = false;
 
     const elapsedTime = Date.now() - startTime;
-    this.frametimeCounter.setProperty(ui.prop.TEXT, `${elapsedTime}ms`);
+    if (DEBUG) logger.debug(`Render started in ${elapsedTime}ms`);
   }
 
   commitRender(clear = false) {

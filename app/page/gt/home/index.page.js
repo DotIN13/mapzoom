@@ -23,7 +23,7 @@ import { logger } from "../../../utils/logger";
 const geolocation = new Geolocation();
 const compass = new Compass();
 
-let canvases, trackpad, frametimeCounter, zoomMap;
+let canvases, trackpad, zoomMap;
 
 Page(
   BasePage({
@@ -53,16 +53,11 @@ Page(
         ui.createWidget(ui.widget.CANVAS, CANVAS_STYLE), // Text layer
       ];
       trackpad = ui.createWidget(ui.widget.FILL_RECT, TRACKPAD_STYLE);
-      frametimeCounter = ui.createWidget(
-        ui.widget.TEXT,
-        FRAMETIME_COUNTER_STYLE
-      );
 
       zoomMap = new ZoomMap(
         this,
         canvases,
         trackpad,
-        frametimeCounter,
         center,
         zoom,
         CANVAS_WIDTH,

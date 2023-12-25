@@ -1,5 +1,3 @@
 ## TODO
 
-1. Draw text labels on a separate canvas layer to avoid constant re-rendering.
-2. Move user marker during panning.
-3. Support pinching.
+1. Cache map download requests in settingsStorage, start transfering when user enters the download page.
