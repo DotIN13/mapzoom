@@ -5,7 +5,11 @@ AppSettingsPage({
   },
   downloadMap(mapKey) {
     // Logic to download/update the map file
-    this.state.maps[mapKey].downloaded = true;
+    const mapEntry = this.state.maps[mapKey];
+    mapEntry.downloaded = true;
+    mapEntry.localFilename = mapEntry.filename;
+    mapEntry.localCreatedAt = mapEntry.createdAt;
+    mapEntry.localVersion = mapEntry.version;
 
     // Send download instructions to the side service
     this.state.props.settingsStorage.setItem(
@@ -111,6 +115,7 @@ AppSettingsPage({
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  padding: "10px 10px",
                 },
               },
               [
@@ -131,7 +136,7 @@ AppSettingsPage({
                       display: "flex",
                       justifyContent: "end",
                       alignItems: "center",
-                      gap: "8px",
+                      gap: "10px",
                     },
                   },
                   [
@@ -165,7 +170,8 @@ AppSettingsPage({
                       Button({
                         label: mapDetails.active ? "Using" : "Use",
                         style: iosButtonStyle("default"),
-                        onClick: () => this.setActiveMap(mapKey),
+                        onClick: () =>
+                          !mapDetails.active && this.setActiveMap(mapKey),
                       }),
                   ]
                 ),
@@ -184,9 +190,9 @@ AppSettingsPage({
 
 function iosButtonStyle(type) {
   const baseStyle = {
-    fontSize: "12px",
+    fontSize: "14px",
     borderRadius: "15px",
-    padding: "0 5px",
+    padding: "3px 10px",
     textAlign: "center",
     margin: "0",
   };
@@ -210,7 +216,7 @@ function mergeMaps(onlineMaps, localMaps) {
       onlineMaps[key].downloaded = localMap.downloaded;
       onlineMaps[key].active = localMap.active;
       onlineMaps[key].localFilename = localMap.localFilename;
-      onlineMaps[key].localDate = localMap.localDate;
+      onlineMaps[key].localCreatedAt = localMap.localCreatedAt;
       onlineMaps[key].localVersion = localMap.localVersion;
 
       // Compare versions to check for updates
@@ -221,7 +227,7 @@ function mergeMaps(onlineMaps, localMaps) {
       }
     } else {
       // Map doesn't exist online, add the local map to the online maps object
-      onlineMaps[key] = { ...localMap, updateAvailable: false };
+      onlineMaps[key] = localMap;
     }
   });
 
