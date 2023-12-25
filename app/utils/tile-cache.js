@@ -28,6 +28,22 @@ export class TileCache {
     return this.pmtiles?.header?.maxZoom || 15;
   }
 
+  validCenter(center) {
+    const { lon, lat } = center;
+    // Should both be numbers
+    return typeof lon === "number" && typeof lat === "number";
+  }
+
+  get center() {
+    const center = {
+      lon: this.pmtiles?.header?.centerLon,
+      lat: this.pmtiles?.header?.centerLat,
+    };
+    if (this.validCenter(center)) return center;
+
+    return null;
+  }
+
   getTile(tileQuery) {
     if (false) {
       return this.getTileFromUrl(tileQuery);

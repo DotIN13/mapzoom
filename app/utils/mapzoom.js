@@ -93,12 +93,19 @@ export class ZoomMap {
     this.renderCache = new Map();
     this.gridIndex = new GridIndex();
 
+    // Read center from pmtiles
+    if (this.tileCache.center) {
+      initialCenter = this.tileCache.center;
+      initialZoom = 7.6;
+    }
+
     this.eventBus = new EventBus();
 
     this.createWidgets(); // Depends on canvas dimensions
 
     this.followGPS = false;
     this.geoLocation = undefined;
+    this.geoStatus = { status: null, timestamp: Date.now() };
 
     // Set up initial center
     this.zoom = initialZoom;
@@ -197,6 +204,47 @@ export class ZoomMap {
       ? "image/explore-96.png"
       : "image/explore-off-96.png";
     this.exploreButton.setProperty(ui.prop.SRC, exploreButtonSrc);
+
+    if (val) {
+      this.updateGeoStatus();
+      this.geoInterval ||= setInterval(() => this.updateGeoStatus(), 5000);
+    } else {
+      this.geoInterval && clearInterval(this.geoInterval);
+      this.geoInterval = undefined;
+
+      this.exploreButton.setProperty(ui.prop.VISIBLE, true);
+      this.exploreButtonAnimated.setProperty(ui.prop.VISIBLE, false);
+    }
+  }
+
+  updateGeoStatus(newStatus = null) {
+    if (newStatus)
+      this.geoStatus = { status: newStatus, timestamp: Date.now() };
+
+    // Check if status is stale
+    const stale = this.geoStatus.timestamp - Date.now() > 10000;
+    if (!newStatus && stale) this.geoStatus.status = false;
+
+    if (!this.followGPS) return;
+
+    const status = this.geoStatus.status;
+
+    this.exploreButton.setProperty(ui.prop.VISIBLE, status === "A");
+    this.exploreButtonAnimated.setProperty(ui.prop.VISIBLE, status !== "A");
+
+    const isRunning = this.exploreButtonAnimated.getProperty(
+      ui.prop.ANIM_IS_RUNINNG
+    );
+
+    logger.debug(status, isRunning);
+
+    if ((status === "A" && !isRunning) || (status !== "A" && isRunning)) return;
+
+    // Toggle animation if not in the right state
+    this.exploreButtonAnimated.setProperty(
+      ui.prop.ANIM_STATUS,
+      isRunning ? ui.anim_status.STOP : ui.anim_status.START
+    );
   }
 
   // Update markerXY based on current geoLocation and canvas center coordinates,
@@ -364,28 +412,12 @@ export class ZoomMap {
       h: px(480 - sliderTrackPadding),
       start_angle: -88,
       end_angle: 88,
-      color: 0xffdbc9,
+      color: 0xcde5ff,
       line_width: 14,
     };
 
     this.sliderTrack = ui.createWidget(ui.widget.ARC, this.sliderTrackProps);
     this.sliderTrack.setProperty(ui.prop.VISIBLE, false); // Slider invisible by default
-
-    // Create another sliding arc that covers the background slider
-    const zoomSliderPadding = 35;
-    this.zoomSliderProps = {
-      x: px(zoomSliderPadding / 2),
-      y: px(zoomSliderPadding / 2),
-      w: px(480 - zoomSliderPadding),
-      h: px(480 - zoomSliderPadding),
-      start_angle: -90,
-      end_angle: 90,
-      color: 0xd87739,
-      line_width: 72, // Double the radius of buttons
-    };
-
-    this.zoomSlider = ui.createWidget(ui.widget.ARC, this.zoomSliderProps);
-    this.zoomSlider.setProperty(ui.prop.VISIBLE, false); // Slider invisible by default
 
     // Create Download Button
     const downloadCenterX = Math.sin((30 * Math.PI) / 180) * (240 - 53) + 240;
@@ -406,7 +438,7 @@ export class ZoomMap {
       center_x: downloadCenterX,
       center_y: downloadCenterY,
       radius: 36,
-      color: 0xffffff,
+      color: 0xEBF1FF,
       alpha: 80,
     });
 
@@ -419,10 +451,23 @@ export class ZoomMap {
     const exploreCenterX = Math.sin((60 * Math.PI) / 180) * (240 - 53) + 240;
     const exploreCenterY = Math.cos((60 * Math.PI) / 180) * (240 - 53) + 240;
 
+    this.exploreButtonGroupProps = {
+      x: px(exploreCenterX - 72 / 2),
+      y: px(exploreCenterY - 72 / 2),
+      w: px(72),
+      h: px(72),
+      enable: true,
+    };
+
+    this.exploreButtonGroup = ui.createWidget(
+      ui.widget.GROUP,
+      this.exploreButtonGroupProps
+    );
+
     this.exploreButtonProps = {
       // Place the download button at 4 o'clock
-      x: px(exploreCenterX - 46 / 2 - 1),
-      y: px(exploreCenterY - 46 / 2 - 0.5),
+      x: px(36 - 46 / 2 - 1),
+      y: px(36 - 46 / 2),
       w: px(46),
       h: px(46),
       auto_scale: true,
@@ -430,28 +475,56 @@ export class ZoomMap {
       enable: true,
     };
 
-    this.exploreButtonBg = ui.createWidget(ui.widget.CIRCLE, {
-      center_x: exploreCenterX,
-      center_y: exploreCenterY,
-      radius: 36,
-      color: 0xffffff,
-      alpha: 80,
-    });
+    this.exploreButtonBg = this.exploreButtonGroup.createWidget(
+      ui.widget.CIRCLE,
+      {
+        center_x: 36,
+        center_y: 36,
+        radius: 36,
+        color: 0xEBF1FF,
+        alpha: 80,
+      }
+    );
 
-    this.exploreButton = ui.createWidget(
+    this.exploreButton = this.exploreButtonGroup.createWidget(
       ui.widget.IMG,
       this.exploreButtonProps
     );
 
+    this.exploreButtonAnimated = ui.createWidget(ui.widget.IMG_ANIM, {
+      anim_path: "image/explore-46-anim",
+      anim_prefix: "frame",
+      anim_ext: "png",
+      anim_fps: 22,
+      anim_size: 30,
+      repeat_count: 0,
+      anim_status: ui.anim_status.STOP,
+      x: this.exploreButtonGroupProps.x + this.exploreButtonProps.x,
+      y: this.exploreButtonGroupProps.y + this.exploreButtonProps.y,
+    });
+
     // Zoom button
     // Create Explore Button
-    const zoomCenterX = 240 - 53 + 240;
-    const zoomCenterY = 240;
+    const zoomCenterX = 240 - 53 - 36 + 240;
+    const zoomCenterY = 240 - 72 / 2;
+
+    this.zoomButtonGroupProps = {
+      x: px(zoomCenterX),
+      y: px(zoomCenterY),
+      w: px(72),
+      h: px(72),
+      enable: true,
+    };
+
+    this.zoomButtonGroup = ui.createWidget(
+      ui.widget.GROUP,
+      this.zoomButtonGroupProps
+    );
 
     this.zoomButtonProps = {
       // Place the download button at 4 o'clock
-      x: px(zoomCenterX - 46 / 2 - 0.5),
-      y: px(zoomCenterY - 46 / 2 - 0.5),
+      x: px(36 - 46 / 2 - 0.5),
+      y: px(36 - 46 / 2 - 0.5),
       w: px(46),
       h: px(46),
       auto_scale: true,
@@ -459,15 +532,23 @@ export class ZoomMap {
       enable: false, // No direct interactions with the button
     };
 
-    this.zoomButtonBg = ui.createWidget(ui.widget.CIRCLE, {
-      center_x: zoomCenterX,
-      center_y: zoomCenterY,
+    this.zoomButtonBgProps = {
+      center_x: 36,
+      center_y: 36,
       radius: 36,
-      color: 0xffffff,
+      color: 0xEBF1FF,
       alpha: 80,
-    });
+    };
 
-    this.zoomButton = ui.createWidget(ui.widget.IMG, this.zoomButtonProps);
+    this.zoomButtonBg = this.zoomButtonGroup.createWidget(
+      ui.widget.CIRCLE,
+      this.zoomButtonBgProps
+    );
+
+    this.zoomButton = this.zoomButtonGroup.createWidget(
+      ui.widget.IMG,
+      this.zoomButtonProps
+    );
 
     // Place trackpad above all other widgets
     this.trackpadProps = {
@@ -510,6 +591,40 @@ export class ZoomMap {
       return { delta, angleDelta };
     }
 
+    function moveZoomButton(
+      angleDelta,
+      widgetProps,
+      buttonGroup,
+      buttonBgProps,
+      buttonBg
+    ) {
+      const circleCenterX = DEVICE_WIDTH / 2; // Center X coordinate of the circle (watch screen)
+      const circleCenterY = DEVICE_HEIGHT / 2; // Center Y coordinate of the circle (watch screen)
+      const radius = circleCenterX - 53; // Radius of the circle (slightly less than half the screen width)
+      const buttonWidth = widgetProps.w; // Width of the button
+
+      // Convert angleDelta from degrees to radians
+      const radians = (angleDelta * Math.PI) / 180;
+
+      // Calculate new position of the button
+      // We adjust by 90 degrees (Math.PI / 2 radians) to start from the bottom of the screen
+      const newX = circleCenterX + radius * Math.cos(radians) - buttonWidth / 2;
+      const newY = circleCenterY + radius * Math.sin(radians) - buttonWidth / 2;
+
+      // Update zoom button properties
+      buttonGroup.setProperty(ui.prop.MORE, {
+        ...widgetProps,
+        x: px(newX),
+        y: px(newY),
+      });
+
+      buttonBg.setProperty(ui.prop.MORE, {
+        ...buttonBgProps,
+        color: 0x005fae,
+        alpha: 200,
+      });
+    }
+
     // Handle crown wheel zooming
     onDigitalCrown({
       callback: (key, degree) => {
@@ -536,15 +651,10 @@ export class ZoomMap {
             const currentTime = Date.now();
             if (currentTime - lastZoomUpdate < ZOOM_THROTTLING_DELAY) return;
 
-            // Update zoom level
-            this.zoom += wheelDegrees * ZOOM_SPEED_FACTOR;
             wheelDegrees = 0;
 
-            // When zooming, toggle canvas to render on the off-screen canvas
-            this.toggleCanvas();
-            this.render(true);
-
-            this.updateUserMarker();
+            // Update zoom level
+            this.zoomAndRedraw(wheelDegrees * ZOOM_SPEED_FACTOR);
           }, ZOOM_THROTTLING_DELAY + 1);
         }
       },
@@ -577,7 +687,7 @@ export class ZoomMap {
       );
       if (res) return;
 
-      res = this.buttonOnClick(e, this.exploreButtonProps, () => {
+      res = this.buttonOnClick(e, this.exploreButtonGroupProps, () => {
         this.followGPS = !this.followGPS;
         this.updateUserMarker();
       });
@@ -599,15 +709,11 @@ export class ZoomMap {
       this.toggleAllButtons(false); // Disable all buttons to avoid interference with panning or zooming
 
       // Determine if the user is pressing the zoom button
-      isZooming = this.buttonOnClick(e, this.zoomButtonProps, () => {
+      isZooming = this.buttonOnClick(e, this.zoomButtonGroupProps, () => {
         this.sliderTrack.setProperty(ui.prop.VISIBLE, true);
-        this.zoomSlider.setProperty(ui.prop.VISIBLE, true);
         this.downloadButton.setProperty(ui.prop.VISIBLE, false);
         this.downloadButtonBg.setProperty(ui.prop.VISIBLE, false);
-        this.exploreButton.setProperty(ui.prop.VISIBLE, false);
-        this.exploreButtonBg.setProperty(ui.prop.VISIBLE, false);
-
-        this.zoomSlider.setProperty(ui.prop.START_ANGLE, 0);
+        this.exploreButtonGroup.setProperty(ui.prop.VISIBLE, false);
       });
       if (isZooming) return;
 
@@ -636,8 +742,13 @@ export class ZoomMap {
         // between the current position and the center.
         let { delta, angleDelta } = zoomDelta(e, this.zoom);
         this.updateScaleBar(this.zoom + delta);
-        angleDelta = Math.min(67, angleDelta); // Avoid collapsing the arc
-        this.zoomSlider.setProperty(ui.prop.START_ANGLE, angleDelta);
+        moveZoomButton(
+          angleDelta,
+          this.zoomButtonGroupProps,
+          this.zoomButtonGroup,
+          this.zoomButtonBgProps,
+          this.zoomButtonBg
+        );
         return;
       }
 
@@ -673,20 +784,19 @@ export class ZoomMap {
       // If zooming
       if (isZooming) {
         this.sliderTrack.setProperty(ui.prop.VISIBLE, false);
-        this.zoomSlider.setProperty(ui.prop.VISIBLE, false);
         this.downloadButton.setProperty(ui.prop.VISIBLE, true);
         this.downloadButtonBg.setProperty(ui.prop.VISIBLE, true);
-        this.exploreButton.setProperty(ui.prop.VISIBLE, true);
-        this.exploreButtonBg.setProperty(ui.prop.VISIBLE, true);
+        this.exploreButtonGroup.setProperty(ui.prop.VISIBLE, true);
+
+        // Revert to original zoom button position
+        this.zoomButtonGroup.setProperty(
+          ui.prop.MORE,
+          this.zoomButtonGroupProps
+        );
+        this.zoomButtonBg.setProperty(ui.prop.MORE, this.zoomButtonBgProps);
 
         const { delta } = zoomDelta(e, this.zoom);
-        this.zoom += delta;
-
-        // When zooming, toggle canvas to render on the off-screen canvas
-        this.toggleCanvas();
-        this.render(true);
-
-        this.updateUserMarker();
+        this.zoomAndRedraw(delta);
       }
 
       this.toggleAllButtons(true); // Restore button functionalities
@@ -909,6 +1019,18 @@ export class ZoomMap {
         text,
       });
     }
+  }
+
+  zoomAndRedraw(delta) {
+    if (Math.abs(delta) < 0.1) return;
+
+    this.zoom += delta;
+
+    // When zooming, toggle canvas to render on the off-screen canvas
+    this.toggleCanvas();
+    this.render(true);
+
+    this.updateUserMarker();
   }
 
   render(clear = false) {

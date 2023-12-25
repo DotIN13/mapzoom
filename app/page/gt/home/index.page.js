@@ -8,10 +8,7 @@ import { BasePage } from "@zeppos/zml/base-page";
 import "fast-text-encoding";
 
 import {
-  TEXT_STYLE,
   CANVAS_STYLE,
-  TRACKPAD_STYLE,
-  FRAMETIME_COUNTER_STYLE,
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
 } from "zosLoader:./index.page.[pf].layout.js";
@@ -44,7 +41,7 @@ Page(
 
       // Set default map center and zoom level
       const center = { lon: 121.5, lat: 31.295 };
-      const zoom = 7.6;
+      const zoom = 0.0;
 
       // Create canvas
       canvases = [
@@ -65,10 +62,11 @@ Page(
       );
       zoomMap.render();
 
-      zoomMap.geoLocation = {
-        lon: 121.48328974565532,
-        lat: 31.047363611358993,
-      };
+      // Debug
+      // zoomMap.geoLocation = {
+      //   lon: 121.48328974565532,
+      //   lat: 31.047363611358993,
+      // };
 
       const compassCallback = () => {
         if (compass.getStatus()) {
@@ -81,7 +79,10 @@ Page(
 
       // Geolocation updates
       const geoLocationCallback = () => {
-        if (geolocation.getStatus() === "A") {
+        const status = geolocation.getStatus();
+        zoomMap.updateGeoStatus(status);
+
+        if (status === "A") {
           lat = geolocation.getLatitude();
           lon = geolocation.getLongitude();
           if (typeof lat != "number" || typeof lon != "number") return;
