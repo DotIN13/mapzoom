@@ -15,11 +15,19 @@ App(
     },
     onCreate() {
       pauseDropWristScreenOff({ duration: 0 });
+
+      // Hack for a bug in the current implementation of @zeppos/zml,
+      // where calls are not received if the device haven't requested first.
+      this.request({
+        method: "INIT_COMMS",
+      }).catch((err) => {
+        logger.error(err);
+      });
     },
     onCall(req) {
       let { method, params } = req;
 
-      // logger.debug(method)
+      logger.debug("Receive call:", method);
 
       // On DOWNLOAD_MAP, directly navigate to map-transfer page
       if (method === "DOWNLOAD_MAP") {

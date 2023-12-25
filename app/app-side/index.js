@@ -1,4 +1,4 @@
-import { BaseSideService } from "@zeppos/zml/base-side";
+import { BaseSideService, settingsLib } from "@zeppos/zml/base-side";
 
 import { fileDownloadModule } from "./file-download-module";
 import { fileTransferModule } from "./file-transfer-module";
@@ -26,7 +26,7 @@ AppSideService(
       if (!newValue) return;
 
       if (key === "download") {
-        settings.settingsStorage.removeItem(key);
+        settingsLib.removeItem(key);
 
         this.call({
           method: "DOWNLOAD_MAP",
@@ -35,7 +35,7 @@ AppSideService(
       }
 
       if (key === "activate") {
-        settings.settingsStorage.removeItem(key);
+        settingsLib.removeItem(key);
 
         this.call({
           method: "ACTIVATE_MAP",
@@ -44,7 +44,7 @@ AppSideService(
       }
 
       if (key === "delete") {
-        settings.settingsStorage.removeItem(key);
+        settingsLib.removeItem(key);
 
         this.call({
           method: "DELETE_MAP",
@@ -55,7 +55,7 @@ AppSideService(
     async onRequest(req, res) {
       const { method: action, params } = req;
 
-      if (action == "GET_MAP") {
+      if (action === "GET_MAP") {
         let mapEntry, url, filePath;
 
         try {
@@ -106,7 +106,7 @@ AppSideService(
         return res(null, { status: "success", data: "" });
       }
 
-      if (action == "GET_TILE") {
+      if (action === "GET_TILE") {
         const { url, filePath } = params;
         const downloadTask = this.downloadFile(encodeURI(url), filePath, 6000);
 
@@ -144,6 +144,10 @@ AppSideService(
         };
 
         return;
+      }
+
+      if (method === "INIT_COMMS") {
+        return res(null, { status: "success" });
       }
 
       res(null, { status: "error", message: "Unknown action" });

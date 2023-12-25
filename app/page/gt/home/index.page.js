@@ -31,7 +31,6 @@ Page(
       logger.debug("page onInit invoked");
       setScrollLock({ lock: true });
     },
-
     build() {
       logger.debug("page build invoked");
 

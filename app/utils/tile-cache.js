@@ -50,7 +50,7 @@ export class TileCache {
       if (!data) return resolve(null);
 
       const buf = new flatbuffers.ByteBuffer(data);
-      return resolve(Tile.getRootAsTile(buf));
+      resolve(Tile.getRootAsTile(buf));
     }).catch((e) => logger.warn("Get Tile from PMTiles error", e));
   }
 
