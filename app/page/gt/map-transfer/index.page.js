@@ -14,7 +14,7 @@ Page(
 
     onInit(params) {
       console.log("Map transfer page init invoked.");
-      this.downloadParams = params;
+      this.downloadParams = params === "undefined" ? undefined : params;
     },
 
     onReceivedFile(fileHandler) {
@@ -86,9 +86,9 @@ Page(
       }
 
       this.textWidget = ui.createWidget(ui.widget.TEXT, {
-        x: px(72),
+        x: px(80),
         y: px(DEVICE_HEIGHT / 2 - 220 / 2),
-        w: px(DEVICE_WIDTH - 2 * 72),
+        w: px(DEVICE_WIDTH - 2 * 80),
         h: px(220),
         color: 0xffffff,
         text_size: px(32),

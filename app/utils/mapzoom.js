@@ -203,9 +203,9 @@ export class ZoomMap {
   // Update markerXY based on current geoLocation and canvas center coordinates,
   // then redraw the user marker.
   updateUserMarker() {
-    const geoLocation = this.getRenderCache("currentGeoLocation");
-    if (geoLocation === undefined) return; // Do nothing if no geolocation is available
+    if (this.geoLocation === undefined) return; // Do nothing if no geolocation is available
 
+    const geoLocation = this.getRenderCache("currentGeoLocation");
     const canvasCenter = this.getRenderCache("currentCanvasCenter");
     const offsetX = geoLocation.x - canvasCenter.x;
     const offsetY = geoLocation.y - canvasCenter.y;
@@ -213,8 +213,7 @@ export class ZoomMap {
     // Update canvas center when following GPS and the marker offset is exceeding the threshold.
     // In this case, update the canvas and draw marker in the center.
     if (this.followGPS && (Math.abs(offsetX) > 40 || Math.abs(offsetY) > 40)) {
-      logger.debug(geoLocation.x, geoLocation.y)
-      this.updateCenter(geoLocation, { redraw: true });
+      this.updateCenter(this.geoLocation, { redraw: true }); // Must use coordinates scaled with STORAGE_SCALE
       this.markerXY.x = this.canvasW / 2;
       this.markerXY.y = this.canvasH / 2;
     } else {
@@ -358,16 +357,27 @@ export class ZoomMap {
     );
 
     // Create Download Button
+    const downloadCenterX = Math.sin((30 * Math.PI) / 180) * (240 - 53) + 240;
+    const downloadCenterY = Math.cos((30 * Math.PI) / 180) * (240 - 53) + 240;
+
     this.downloadButtonProps = {
       // Place the download button at 5 o'clock
-      x: px(Math.sin(40 * Math.PI / 180) * (240 - 45) + 240 - 48 / 2),
-      y: px(Math.cos(40 * Math.PI / 180) * (240 - 45) + 240 - 48 / 2),
-      w: px(48),
-      h: px(48),
+      x: px(downloadCenterX - 52 / 2 - 1),
+      y: px(downloadCenterY - 52 / 2 - .5),
+      w: px(52),
+      h: px(52),
       auto_scale: true,
       src: "image/download-48.png",
       enable: true,
     };
+
+    ui.createWidget(ui.widget.CIRCLE, {
+      center_x: downloadCenterX,
+      center_y: downloadCenterY,
+      radius: 36,
+      color: 0xffffff,
+      alpha: 80,
+    });
 
     this.downloadButton = ui.createWidget(
       ui.widget.IMG,
@@ -375,16 +385,27 @@ export class ZoomMap {
     );
 
     // Create Explore Button
+    const exploreCenterX = Math.sin((60 * Math.PI) / 180) * (240 - 53) + 240;
+    const exploreCenterY = Math.cos((60 * Math.PI) / 180) * (240 - 53) + 240;
+
     this.exploreButtonProps = {
       // Place the download button at 4 o'clock
-      x: px(Math.sin(60 * Math.PI / 180) * (240 - 45) + 240 - 42 / 2),
-      y: px(Math.cos(60 * Math.PI / 180) * (240 - 45) + 240 - 42 / 2),
-      w: px(42),
-      h: px(42),
+      x: px(exploreCenterX - 46 / 2 - 1),
+      y: px(exploreCenterY - 46 / 2 - .5),
+      w: px(46),
+      h: px(46),
       auto_scale: true,
       src: "image/explore-48.png",
       enable: true,
     };
+
+    ui.createWidget(ui.widget.CIRCLE, {
+      center_x: exploreCenterX,
+      center_y: exploreCenterY,
+      radius: 36,
+      color: 0xffffff,
+      alpha: 80,
+    });
 
     this.exploreButton = ui.createWidget(
       ui.widget.IMG,
@@ -544,7 +565,7 @@ export class ZoomMap {
 
   /**
    * Update center based on given Web Mercator pixel coordinates.
-   * @param {Object} newCenter - New center coordinates in Web Mercator pixel format.
+   * @param {Object} newCenter - New center coordinates in Web Mercator pixel format, must be scaled with STORAGE_SCALE.
    */
   updateCenter(newCenter, opts = { redraw: false }) {
     if (isRendering) return;
@@ -672,7 +693,7 @@ export class ZoomMap {
       tileX += tileSize;
     }
 
-    logger.debug(JSON.stringify(tiles));
+    // logger.debug(JSON.stringify(tiles));
 
     return tiles;
   }
