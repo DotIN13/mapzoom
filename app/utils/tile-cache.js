@@ -1,4 +1,5 @@
 import { openSync, readSync, statSync, O_RDONLY, closeSync } from "@zos/fs";
+import { log } from "@zos/utils";
 
 import * as flatbuffers from "flatbuffers";
 
@@ -6,9 +7,10 @@ import * as flatbuffers from "flatbuffers";
 // import gzipDecompressor from "./gzip-decompressor";
 
 import { VERSION } from "./globals";
-import { logger } from "./logger";
 import { PMTiles } from "./pmtiles";
 import { Tile } from "./vector-tile-js/vector-tile";
+
+const logger = log.getLogger("zenn-map-tile-cache");
 
 export class TileCache {
   constructor(page, map) {

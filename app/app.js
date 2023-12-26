@@ -4,10 +4,11 @@ import { LocalStorage } from "@zos/storage";
 import { showToast } from "@zos/interaction";
 import { getText } from "@zos/i18n";
 import { rmSync } from "@zos/fs";
+import { log } from "@zos/utils";
 
 import { BaseApp } from "@zeppos/zml/base-app";
 
-import { logger } from "./utils/logger";
+const logger = log.getLogger("zenn-map-app");
 
 const localStorage = new LocalStorage();
 

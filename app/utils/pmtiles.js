@@ -7,13 +7,15 @@ import {
   O_RDONLY,
   closeSync,
 } from "@zos/fs";
+import { log } from "@zos/utils";
 
 import gzipDecompressor from "./gzip-decompressor";
 // import snappyJS from "snappyjs";
 // import pako from "pako";
 
-import { logger } from "./logger";
 import { DIR_CACHE_SIZE } from "./globals";
+
+const logger = log.getLogger("zenn-map-pmtiles");
 
 const HEADER_SIZE_BYTES = 127; // Or the appropriate header size for PMTiles
 

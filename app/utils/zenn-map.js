@@ -7,7 +7,7 @@ import {
   KEY_HOME,
   KEY_EVENT_CLICK,
 } from "@zos/interaction";
-import { EventBus, px } from "@zos/utils";
+import { EventBus, px, log } from "@zos/utils";
 
 import {
   DEBUG,
@@ -27,7 +27,6 @@ import {
   MARKER_SIGHT_SIZE,
   SCALE_LENGTH_IN_METERS,
 } from "./globals";
-import { logger } from "./logger";
 import { TileCache } from "./tile-cache";
 import GridIndex from "./grid-index";
 import {
@@ -47,6 +46,8 @@ import {
 import { CoordCache } from "./coord-cache";
 import { scaleBarCoordinates, scaleBarLabel } from "./scale-bar";
 import { GeomType, Feature, Layer } from "./vector-tile-js/vector-tile";
+
+const logger = log.getLogger("zenn-map-zenn-map");
 
 let isRendering = false; // Global Render Indicator
 let coordCache = new CoordCache();

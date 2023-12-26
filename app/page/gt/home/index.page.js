@@ -2,6 +2,7 @@ import * as ui from "@zos/ui";
 import { offDigitalCrown } from "@zos/interaction";
 import { onGesture, offGesture, GESTURE_RIGHT } from "@zos/interaction";
 import { Geolocation, Compass } from "@zos/sensor";
+import { log } from "@zos/utils";
 
 import { setScrollLock } from "@zos/page";
 import { BasePage } from "@zeppos/zml/base-page";
@@ -15,7 +16,8 @@ import {
 
 import { DEVICE_WIDTH, DEVICE_HEIGHT } from "../../../utils/globals";
 import { ZennMap } from "../../../utils/zenn-map";
-import { logger } from "../../../utils/logger";
+
+const logger = log.getLogger("zenn-map-home");
 
 const geolocation = new Geolocation();
 const compass = new Compass();

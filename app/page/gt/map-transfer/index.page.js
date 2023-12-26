@@ -1,13 +1,14 @@
 import * as ui from "@zos/ui";
 import * as router from "@zos/router";
-import { px } from "@zos/utils";
+import { px, log } from "@zos/utils";
 import { mkdirSync, readdirSync, renameSync } from "@zos/fs";
 import { getText } from "@zos/i18n";
 
 import { BasePage } from "@zeppos/zml/base-page";
 
 import { DEVICE_HEIGHT, DEVICE_WIDTH } from "../../../utils/globals";
-import { logger } from "../../../utils/logger";
+
+const logger = log.getLogger("zenn-map-map-transfer");
 
 Page(
   BasePage({
