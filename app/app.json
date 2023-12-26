@@ -1,8 +1,8 @@
 {
   "configVersion": "v3",
   "app": {
-    "appId": 20287,
-    "appName": "MapZoom",
+    "appId": 1037690,
+    "appName": "ZenMap",
     "appType": "app",
     "version": {
       "code": 1,
@@ -10,7 +10,7 @@
     },
     "icon": "icon.png",
     "vender": "DotIN13",
-    "description": "MapZoom"
+    "description": "ZenMap, an intuitive navigation tool designed to effortlessly guide your explorations."
   },
   "permissions": [
     "data:os.device.info",
@@ -54,7 +54,10 @@
   },
   "i18n": {
     "en-US": {
-      "appName": "MapZoom"
+      "appName": "ZenMap"
+    },
+    "zh-CN": {
+      "appName": "知莫地图"
     }
   },
   "defaultLanguage": "en-US"
