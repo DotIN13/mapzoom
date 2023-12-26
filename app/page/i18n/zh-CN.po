@@ -5,6 +5,9 @@ msgstr "知莫地图"
 msgid "mapTransferIntro"
 msgstr "请打开手机Zepp APP，进入本APP设置界面下载地图。"
 
+msgid "mapDownloading"
+msgstr "下载中..."
+
 msgid "transferred"
 msgstr "已传输"
 

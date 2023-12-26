@@ -220,6 +220,7 @@ export class ZennMap {
     const stale = this.geoStatus.timestamp - Date.now() > 10000;
     if (!newStatus && stale) this.geoStatus.status = false;
 
+    // No animations if not following GPS location
     if (!this.followGPS) return;
 
     const status = this.geoStatus.status;
@@ -231,11 +232,9 @@ export class ZennMap {
       ui.prop.ANIM_IS_RUNINNG
     );
 
-    logger.debug(status, isRunning);
-
+    // Toggle animation if the animation state doesn't match the geo status
     if ((status === "A" && !isRunning) || (status !== "A" && isRunning)) return;
 
-    // Toggle animation if not in the right state
     this.exploreButtonAnimated.setProperty(
       ui.prop.ANIM_STATUS,
       isRunning ? ui.anim_status.STOP : ui.anim_status.START
@@ -254,11 +253,21 @@ export class ZennMap {
 
     // Update canvas center when following GPS and the marker offset is exceeding the threshold.
     // In this case, update the canvas and draw marker in the center.
+    // P.S. Must use coordinates scaled with STORAGE_SCALE when updating center
+    if (this.followGPS) {
+      this.updateCenter(this.geoLocation, {
+        redraw: false,
+        moveMarker: false,
+      });
+    }
+
     if (this.followGPS && (Math.abs(offsetX) > 40 || Math.abs(offsetY) > 40)) {
       this.updateCenter(this.geoLocation, { redraw: true }); // Must use coordinates scaled with STORAGE_SCALE
       this.markerXY.x = this.canvasW / 2;
       this.markerXY.y = this.canvasH / 2;
-    } else {
+    }
+
+    if (!this.followGPS) {
       // If the map is not following GPS, or the marker offset is within threshold,
       // update user location marker.
       this.markerXY.x = this.canvasW / 2 + offsetX;
@@ -843,7 +852,7 @@ export class ZennMap {
    * Update center based on given Web Mercator pixel coordinates.
    * @param {Object} newCenter - New center coordinates in Web Mercator pixel format, must be scaled with STORAGE_SCALE.
    */
-  updateCenter(newCenter, opts = { redraw: false }) {
+  updateCenter(newCenter, opts = { redraw: false, moveMarker: true }) {
     if (isRendering) return;
 
     // The new screen center,
@@ -857,7 +866,7 @@ export class ZennMap {
       offset = scaleCoordinates(offset, STORAGE_SCALE, this.zoom);
       this.moveCanvas(this.mainCanvas, offset);
       this.moveCanvas(this.textCanvas, offset);
-      this.moveUserMarker(offset);
+      if (opts.moveMarker) this.moveUserMarker(offset);
       return;
     }
 

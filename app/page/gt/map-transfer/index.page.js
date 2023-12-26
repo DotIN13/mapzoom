@@ -50,44 +50,53 @@ Page(
             getText("mapTransferFinishing")
           );
 
-          const result = renameSync({
-            oldPath: fileHandler.filePath,
-            newPath: `data://download/pmtiles/${fileHandler.fileName}`,
-          });
-
-          if (result === 0) {
-            logger.debug("renameSync success");
-            this.textWidget.setProperty(
-              ui.prop.TEXT,
-              getText("mapDownloadComplete")
-            );
-          } else {
-            this.textWidget.setProperty(
+          const mkdirResult = this.createMapDir();
+          if (!mkdirResult)
+            return this.textWidget.setProperty(
               ui.prop.TEXT,
               getText("mapDownloadFailed")
             );
-          }
+
+          const renameResult = renameSync({
+            oldPath: fileHandler.filePath,
+            newPath: `data://download/pmtiles/${fileHandler.fileName}`,
+          });
+          if (renameResult !== 0)
+            return this.textWidget.setProperty(
+              ui.prop.TEXT,
+              getText("mapDownloadFailed")
+            );
+
+          logger.debug("renameSync success");
+          this.textWidget.setProperty(
+            ui.prop.TEXT,
+            getText("mapDownloadComplete")
+          );
         }
       });
+    },
+
+    createMapDir() {
+      const readRes = readdirSync({
+        path: "data://download/pmtiles",
+      });
+      if (readRes === 0) return true;
+
+      // Create the directory if it does not exist
+      logger.debug("PMTiles directory doesn't exist, creating...");
+      const result = mkdirSync({
+        path: "data://download/pmtiles",
+      });
+      logger.debug("mkdirSync", result === 0 ? "success" : "failed");
+      if (result === 0) return true;
+
+      return false;
     },
 
     build() {
       console.log("Map transfer page build invoked.");
 
-      const readRes = readdirSync({
-        path: "data://download/pmtiles",
-      });
-
-      // Create the directory if it does not exist
-      if (readRes === undefined) {
-        logger.debug("PMTiles directory doesn't exist, creating...");
-
-        const result = mkdirSync({
-          path: "data://download/pmtiles",
-        });
-
-        logger.debug("mkdirSync", result === 0 ? "success" : "failed");
-      }
+      this.createMapDir();
 
       this.textWidget = ui.createWidget(ui.widget.TEXT, {
         x: px(80),
@@ -141,7 +150,7 @@ Page(
       // Do nothing if no download tasks were assigned
       if (!this.downloadParams || this.downloadParams === "") return;
 
-      this.textWidget.setProperty(ui.prop.TEXT, "Downloading...");
+      this.textWidget.setProperty(ui.prop.TEXT, getText("mapDownloading"));
 
       this.request({
         method: "GET_MAP",

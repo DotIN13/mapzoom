@@ -5,6 +5,9 @@ msgstr "ZennMap"
 msgid "mapTransferIntro"
 msgstr "Please open the Zepp APP on your phone and go to the settings page of this APP to download maps."
 
+msgid "mapDownloading"
+msgstr "Downloading..."
+
 msgid "transferred"
 msgstr "transferred"
 
