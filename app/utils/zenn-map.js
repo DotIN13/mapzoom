@@ -87,6 +87,9 @@ export class ZennMap {
     // Set up initial user marker location
     this.markerXY = { x: canvasW / 2, y: canvasH / 2 };
 
+    isRendering = false;
+    this.renderStart = null;
+
     // Caches
     this.tileCache = new TileCache(page, this);
     this.renderCache = new Map();
@@ -102,17 +105,15 @@ export class ZennMap {
 
     this.createWidgets(); // Depends on canvas dimensions
 
-    this.followGPS = false;
-    this.geoLocation = undefined;
-    this.geoStatus = { status: null, timestamp: Date.now() };
-
     // Set up initial center
     this.zoom = initialZoom;
     this.center = lonLatToPixelCoordinates(initialCenter, STORAGE_SCALE);
     this.initialCenter = { ...this.center };
     this.canvasCenter = { ...this.center };
 
-    isRendering = false;
+    this.followGPS = false;
+    this.geoLocation = undefined;
+    this.geoStatus = { status: null, timestamp: Date.now() };
 
     this.addListeners(); // Depends on this.zoom definition
   }
@@ -316,7 +317,7 @@ export class ZennMap {
   updateScaleBar(zoom = null) {
     zoom ||= this.zoom;
     zoom = Math.max(0, zoom);
-    zoom = Math.min(zoom, 26);
+    zoom = Math.min(zoom, MAX_DISPLAY_ZOOM);
 
     this.scaleBar?.clear();
     this.scaleBar?.addLine({
@@ -1065,6 +1066,8 @@ export class ZennMap {
     this.gridIndex.clear();
     textItems = {};
 
+    if (DEBUG) this.renderStart = Date.now();
+
     this.eventBus.emit("render", clear);
   }
 
@@ -1080,6 +1083,13 @@ export class ZennMap {
       this.drawText();
 
       this.trackpad.setEnable(true);
+
+      if (DEBUG) {
+        const elapsedTime = Date.now() - this.renderStart;
+        logger.debug(`Render finished in ${elapsedTime}ms`);
+        this.renderStart = null;
+      }
+
       return;
     }
 
