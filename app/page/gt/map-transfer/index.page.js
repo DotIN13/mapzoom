@@ -2,6 +2,7 @@ import * as ui from "@zos/ui";
 import * as router from "@zos/router";
 import { px } from "@zos/utils";
 import { mkdirSync, readdirSync, renameSync } from "@zos/fs";
+import { getText } from "@zos/i18n";
 
 import { BasePage } from "@zeppos/zml/base-page";
 
@@ -27,7 +28,7 @@ Page(
         logger.debug("File progress: ", numProgress);
         this.textWidget.setProperty(
           ui.prop.TEXT,
-          `${numProgress}% transferred...`
+          `${numProgress}% ${getText("transferred")}...`
         );
         if (numProgress === 100) {
           logger.debug("Complete.");
@@ -46,7 +47,7 @@ Page(
 
           this.textWidget.setProperty(
             ui.prop.TEXT,
-            "Transfer done, finishing..."
+            getText("mapTransferFinishing")
           );
 
           const result = renameSync({
@@ -56,11 +57,14 @@ Page(
 
           if (result === 0) {
             logger.debug("renameSync success");
-            this.textWidget.setProperty(ui.prop.TEXT, "Map download complete.");
+            this.textWidget.setProperty(
+              ui.prop.TEXT,
+              getText("mapDownloadComplete")
+            );
           } else {
             this.textWidget.setProperty(
               ui.prop.TEXT,
-              "Map download failed, please retry."
+              getText("mapDownloadFailed")
             );
           }
         }
@@ -97,7 +101,7 @@ Page(
         text_style: ui.text_style.WRAP,
         alpha: 0x99,
         enable: false,
-        text: "No maps to download.",
+        text: getText("mapTransferIntro"),
       });
 
       // Back button

@@ -1,3 +1,24 @@
 
 msgid "appName"
-msgstr "Hello World"
+msgstr "ZenMap"
+
+msgid "mapTransferIntro"
+msgstr "Please open the Zepp APP on your phone and go to the settings page of this APP to download maps."
+
+msgid "transferred"
+msgstr "transferred"
+
+msgid "mapTransferFinishing"
+msgstr "Transfer done, finishing..."
+
+msgid "mapDownloadComplete"
+msgstr "Map download complete."
+
+msgid "mapDownloadFailed"
+msgstr "Map download failed, please retry."
+
+msgid "mapDeleteSuccess"
+msgstr "Map delete success."
+
+msgid "mapDeleteFailed"
+msgstr "Map delete failed."

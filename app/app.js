@@ -1,7 +1,10 @@
 import * as router from "@zos/router";
 import { pauseDropWristScreenOff, resetDropWristScreenOff } from "@zos/display";
 import { LocalStorage } from "@zos/storage";
+import { showToast } from "@zos/interaction";
+import { getText } from "@zos/i18n";
 import { rmSync } from "@zos/fs";
+
 import { BaseApp } from "@zeppos/zml/base-app";
 
 import { logger } from "./utils/logger";
@@ -58,7 +61,17 @@ App(
           path: `data://download/pmtiles/${params.filename}`,
         });
 
-        logger.debug("rmSync", result === 0 ? "success" : "failed");
+        showToast({
+          content: getText(
+            result === 0 ? "mapDeleteSuccess" : "mapDeleteFailed"
+          ),
+        });
+
+        logger.debug(
+          "Delete",
+          params.filename,
+          result === 0 ? "success" : "failed"
+        );
       }
     },
     onDestroy() {

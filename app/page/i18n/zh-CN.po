@@ -1,0 +1,24 @@
+
+msgid "appName"
+msgstr "知莫地图"
+
+msgid "mapTransferIntro"
+msgstr "请打开手机Zepp APP，进入本APP设置界面下载地图。"
+
+msgid "transferred"
+msgstr "已传输"
+
+msgid "mapTransferFinishing"
+msgstr "传输完成，正在准备地图..."
+
+msgid "mapDownloadComplete"
+msgstr "地图下载完成。"
+
+msgid "mapDownloadFailed"
+msgstr "地图下载失败，请重试。"
+
+msgid "mapDeleteSuccess"
+msgstr "地图删除成功。"
+
+msgid "mapDeleteFailed"
+msgstr "地图删除失败。"

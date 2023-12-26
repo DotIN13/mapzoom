@@ -1,0 +1,119 @@
+
+msgid "appName"
+msgstr "知莫地图"
+
+msgid "delete"
+msgstr "删除"
+
+msgid "download"
+msgstr "下载"
+
+msgid "update"
+msgstr "更新"
+
+msgid "downloadInstructions"
+msgstr "请打开手表知莫地图APP，再点击下载地图。下载地图时请保持手表APP打开。"
+
+# 中国省市
+
+msgid "Anhui"
+msgstr "安徽"
+
+msgid "Beijing"
+msgstr "北京"
+
+msgid "Chongqing"
+msgstr "重庆"
+
+msgid "Fujian"
+msgstr "福建"
+
+msgid "Gansu"
+msgstr "甘肃"
+
+msgid "Guangdong"
+msgstr "广东"
+
+msgid "Guangxi"
+msgstr "广西"
+
+msgid "Guizhou"
+msgstr "贵州"
+
+msgid "Hainan"
+msgstr "海南"
+
+msgid "Hebei"
+msgstr "河北"
+
+msgid "Heilongjiang"
+msgstr "黑龙江"
+
+msgid "Henan"
+msgstr "河南"
+
+msgid "Hong Kong"
+msgstr "香港"
+
+msgid "Hubei"
+msgstr "湖北"
+
+msgid "Hunan"
+msgstr "湖南"
+
+msgid "Inner Mongolia"
+msgstr "内蒙古"
+
+msgid "Jiangsu"
+msgstr "江苏"
+
+msgid "Jiangxi"
+msgstr "江西"
+
+msgid "Jilin"
+msgstr "吉林"
+
+msgid "Liaoning"
+msgstr "辽宁"
+
+msgid "Macau"
+msgstr "澳门"
+
+msgid "Ningxia"
+msgstr "宁夏"
+
+msgid "Qinghai"
+msgstr "青海"
+
+msgid "Shaanxi"
+msgstr "陕西"
+
+msgid "Shandong"
+msgstr "山东"
+
+msgid "Shanghai"
+msgstr "上海"
+
+msgid "Shanxi"
+msgstr "山西"
+
+msgid "Sichuan"
+msgstr "四川"
+
+msgid "Tianjin"
+msgstr "天津"
+
+msgid "Tibet"
+msgstr "西藏"
+
+msgid "Xinjiang"
+msgstr "新疆"
+
+msgid "Yunnan"
+msgstr "云南"
+
+msgid "Zhejiang"
+msgstr "浙江"
+
+msgid "Taiwan"
+msgstr "台湾"

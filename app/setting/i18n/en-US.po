@@ -1,0 +1,119 @@
+
+msgid "appName"
+msgstr "ZenMap"
+
+msgid "delete"
+msgstr "Delete"
+
+msgid "download"
+msgstr "Download"
+
+msgid "update"
+msgstr "Update"
+
+msgid "downloadInstructions"
+msgstr "Please open the ZenMap APP on your watch before starting map downloads, and keep the watch APP open while the download is in progress."
+
+# Provinces of China
+
+msgid "Anhui"
+msgstr "Anhui"
+
+msgid "Beijing"
+msgstr "Beijing"
+
+msgid "Chongqing"
+msgstr "Chongqing"
+
+msgid "Fujian"
+msgstr "Fujian"
+
+msgid "Gansu"
+msgstr "Gansu"
+
+msgid "Guangdong"
+msgstr "Guangdong"
+
+msgid "Guangxi"
+msgstr "Guangxi"
+
+msgid "Guizhou"
+msgstr "Guizhou"
+
+msgid "Hainan"
+msgstr "Hainan"
+
+msgid "Hebei"
+msgstr "Hebei"
+
+msgid "Heilongjiang"
+msgstr "Heilongjiang"
+
+msgid "Henan"
+msgstr "Henan"
+
+msgid "Hong Kong"
+msgstr "Hong Kong"
+
+msgid "Hubei"
+msgstr "Hubei"
+
+msgid "Hunan"
+msgstr "Hunan"
+
+msgid "Inner Mongolia"
+msgstr "Inner Mongolia"
+
+msgid "Jiangsu"
+msgstr "Jiangsu"
+
+msgid "Jiangxi"
+msgstr "Jiangxi"
+
+msgid "Jilin"
+msgstr "Jilin"
+
+msgid "Liaoning"
+msgstr "Liaoning"
+
+msgid "Macau"
+msgstr "Macau"
+
+msgid "Ningxia"
+msgstr "Ningxia"
+
+msgid "Qinghai"
+msgstr "Qinghai"
+
+msgid "Shaanxi"
+msgstr "Shaanxi"
+
+msgid "Shandong"
+msgstr "Shandong"
+
+msgid "Shanghai"
+msgstr "Shanghai"
+
+msgid "Shanxi"
+msgstr "Shanxi"
+
+msgid "Sichuan"
+msgstr "Sichuan"
+
+msgid "Tianjin"
+msgstr "Tianjin"
+
+msgid "Tibet"
+msgstr "Tibet"
+
+msgid "Xinjiang"
+msgstr "Xinjiang"
+
+msgid "Yunnan"
+msgstr "Yunnan"
+
+msgid "Zhejiang"
+msgstr "Zhejiang"
+
+msgid "Taiwan"
+msgstr "Taiwan"

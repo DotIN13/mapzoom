@@ -1,3 +1,5 @@
+import { gettext as getText } from "i18n";
+
 AppSettingsPage({
   state: {
     maps: {}, // assuming this is loaded with the initial map data
@@ -95,7 +97,23 @@ AppSettingsPage({
     // Then the state update in this function will call build again to draw the merged map list.
     this.initState();
 
-    const contentItems = [];
+    const heiti =
+      '-apple-system, "Noto Sans", "Helvetica Neue", Helvetica, "Nimbus Sans L", Arial, "Liberation Sans", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", "Microsoft YaHei", "Wenquanyi Micro Hei", "WenQuanYi Zen Hei", "ST Heiti", SimHei, "WenQuanYi Zen Hei Sharp", sans-serif';
+
+    const contentItems = [
+      View(
+        {
+          style: {
+            fontWeight: "bold",
+            fontSize: "24px",
+            color: "#007aff",
+            margin: "20px 0",
+            fontFamily: heiti,
+          },
+        },
+        [getText("appName")]
+      ),
+    ];
 
     Object.entries(this.state.maps).forEach(([mapKey, mapDetails]) => {
       contentItems.push(
@@ -105,6 +123,7 @@ AppSettingsPage({
               padding: "10px",
               borderBottom: "1px solid #ccc",
               backgroundColor: "white",
+              fontFamily: heiti,
             },
           },
           [
@@ -128,7 +147,7 @@ AppSettingsPage({
                       marginBottom: "0",
                     },
                   },
-                  [mapDetails.location]
+                  [getText(mapDetails.location)]
                 ),
                 View(
                   {
@@ -143,7 +162,7 @@ AppSettingsPage({
                     // Download/Update button
                     !mapDetails.downloaded &&
                       Button({
-                        label: "Download",
+                        label: getText("download"),
                         style: iosButtonStyle(
                           mapDetails.downloaded ? "primary" : "default"
                         ),
@@ -152,7 +171,7 @@ AppSettingsPage({
                     mapDetails.downloaded &&
                       mapDetails.updateAvailable &&
                       Button({
-                        label: "Update",
+                        label: getText("update"),
                         style: iosButtonStyle(
                           mapDetails.downloaded ? "primary" : "default"
                         ),
@@ -161,7 +180,7 @@ AppSettingsPage({
                     // Delete button
                     mapDetails.downloaded &&
                       Button({
-                        label: "Delete",
+                        label: getText("delete"),
                         style: iosButtonStyle("destructive"),
                         onClick: () => this.deleteMap(mapKey),
                       }),
@@ -182,6 +201,19 @@ AppSettingsPage({
       );
     });
 
+    contentItems.push(
+      View(
+        {
+          style: {
+            fontSize: "12px",
+            color: "#8e8e93",
+            margin: "20px 5px",
+          },
+        },
+        [getText("downloadInstructions")]
+      )
+    );
+
     return View({ style: { padding: "20px", backgroundColor: "#efeff4" } }, [
       ...contentItems,
     ]);
@@ -192,7 +224,7 @@ function iosButtonStyle(type) {
   const baseStyle = {
     fontSize: "14px",
     borderRadius: "15px",
-    padding: "3px 10px",
+    padding: "3px 15px",
     textAlign: "center",
     margin: "0",
   };
