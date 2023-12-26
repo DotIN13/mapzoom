@@ -8,6 +8,9 @@ msgstr "Please open the Zepp APP on your phone and go to the settings page of th
 msgid "mapDownloading"
 msgstr "Downloading..."
 
+msgid "mapTransferNoExit"
+msgstr "Please do not exit the APP or turn off the screen."
+
 msgid "transferred"
 msgstr "transferred"
 

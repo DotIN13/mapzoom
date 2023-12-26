@@ -28,7 +28,7 @@ Page(
         logger.debug("File progress: ", numProgress);
         this.textWidget.setProperty(
           ui.prop.TEXT,
-          `${numProgress}% ${getText("transferred")}...`
+          `${numProgress}% ${getText("transferred")}... ${getText("mapTransferNoExit")}`
         );
         if (numProgress === 100) {
           logger.debug("Complete.");

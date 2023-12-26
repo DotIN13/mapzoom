@@ -8,6 +8,9 @@ msgstr "请打开手机Zepp APP，进入本APP设置界面下载地图。"
 msgid "mapDownloading"
 msgstr "下载中..."
 
+msgid "mapTransferNoExit"
+msgstr "请不要退出本APP，否则地图下载将中断。"
+
 msgid "transferred"
 msgstr "已传输"
 
