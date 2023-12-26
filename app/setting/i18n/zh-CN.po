@@ -17,103 +17,103 @@ msgstr "请打开手表知莫地图APP，再点击下载地图。下载地图时
 # 中国省市
 
 msgid "Anhui"
-msgstr "安徽"
+msgstr "安徽省"
 
 msgid "Beijing"
-msgstr "北京"
+msgstr "北京市"
 
 msgid "Chongqing"
-msgstr "重庆"
+msgstr "重庆市"
 
 msgid "Fujian"
-msgstr "福建"
+msgstr "福建省"
 
 msgid "Gansu"
-msgstr "甘肃"
+msgstr "甘肃省"
 
 msgid "Guangdong"
-msgstr "广东"
+msgstr "广东省"
 
 msgid "Guangxi"
-msgstr "广西"
+msgstr "广西壮族自治区"
 
 msgid "Guizhou"
-msgstr "贵州"
+msgstr "贵州省"
 
 msgid "Hainan"
-msgstr "海南"
+msgstr "海南省"
 
 msgid "Hebei"
-msgstr "河北"
+msgstr "河北省"
 
 msgid "Heilongjiang"
-msgstr "黑龙江"
+msgstr "黑龙江省"
 
 msgid "Henan"
-msgstr "河南"
+msgstr "河南省"
 
 msgid "Hong Kong"
-msgstr "香港"
+msgstr "香港特别行政区"
 
 msgid "Hubei"
-msgstr "湖北"
+msgstr "湖北省"
 
 msgid "Hunan"
-msgstr "湖南"
+msgstr "湖南省"
 
 msgid "Inner Mongolia"
-msgstr "内蒙古"
+msgstr "内蒙古自治区"
 
 msgid "Jiangsu"
-msgstr "江苏"
+msgstr "江苏省"
 
 msgid "Jiangxi"
-msgstr "江西"
+msgstr "江西省"
 
 msgid "Jilin"
-msgstr "吉林"
+msgstr "吉林省"
 
 msgid "Liaoning"
-msgstr "辽宁"
+msgstr "辽宁省"
 
 msgid "Macau"
-msgstr "澳门"
+msgstr "澳门特别行政区"
 
 msgid "Ningxia"
-msgstr "宁夏"
+msgstr "宁夏回族自治区"
 
 msgid "Qinghai"
-msgstr "青海"
+msgstr "青海省"
 
 msgid "Shaanxi"
-msgstr "陕西"
+msgstr "陕西省"
 
 msgid "Shandong"
-msgstr "山东"
+msgstr "山东省"
 
 msgid "Shanghai"
-msgstr "上海"
+msgstr "上海市"
 
 msgid "Shanxi"
-msgstr "山西"
+msgstr "山西省"
 
 msgid "Sichuan"
-msgstr "四川"
+msgstr "四川省"
 
 msgid "Tianjin"
-msgstr "天津"
+msgstr "天津市"
 
 msgid "Tibet"
-msgstr "西藏"
+msgstr "西藏自治区"
 
 msgid "Xinjiang"
-msgstr "新疆"
+msgstr "新疆维吾尔自治区"
 
 msgid "Yunnan"
-msgstr "云南"
+msgstr "云南省"
 
 msgid "Zhejiang"
-msgstr "浙江"
+msgstr "浙江省"
 
 msgid "Taiwan"
-msgstr "台湾"
+msgstr "台湾省"

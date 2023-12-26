@@ -15,7 +15,6 @@ import {
   DEVICE_WIDTH,
   HALF_HEIGHT,
   TILE_SIZE,
-  TILE_EXTENT,
   TILE_GRID_SIZE,
   ZOOM_SPEED_FACTOR,
   PAN_THROTTLING_DELAY,
@@ -27,7 +26,6 @@ import {
   MARKER_SIZE,
   MARKER_SIGHT_SIZE,
   SCALE_LENGTH_IN_METERS,
-  TILE_WIDTH_IN_METERS,
 } from "./globals";
 import { logger } from "./logger";
 import { TileCache } from "./tile-cache";
@@ -64,7 +62,7 @@ let textItems = {};
  * Toggle main canvas, move alt canvas off-screen.
  */
 
-export class ZoomMap {
+export class ZennMap {
   constructor(
     page,
     canvases,
@@ -808,7 +806,7 @@ export class ZoomMap {
     const buttonY = buttonProps.y;
     const buttonW = buttonProps.w;
     const buttonH = buttonProps.h;
-    const padding = 20;
+    const padding = 15;
 
     if (
       event.x < buttonX - padding ||

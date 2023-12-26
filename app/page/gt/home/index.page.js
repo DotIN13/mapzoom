@@ -14,13 +14,13 @@ import {
 } from "zosLoader:./index.page.[pf].layout.js";
 
 import { DEVICE_WIDTH, DEVICE_HEIGHT } from "../../../utils/globals";
-import { ZoomMap } from "../../../utils/mapzoom";
+import { ZennMap } from "../../../utils/zenn-map";
 import { logger } from "../../../utils/logger";
 
 const geolocation = new Geolocation();
 const compass = new Compass();
 
-let canvases, zoomMap;
+let canvases, zennMap;
 
 Page(
   BasePage({
@@ -50,7 +50,7 @@ Page(
         ui.createWidget(ui.widget.CANVAS, CANVAS_STYLE), // Text layer
       ];
 
-      zoomMap = new ZoomMap(
+      zennMap = new ZennMap(
         this,
         canvases,
         center,
@@ -60,10 +60,10 @@ Page(
         DEVICE_WIDTH,
         DEVICE_HEIGHT
       );
-      zoomMap.render();
+      zennMap.render();
 
       // Debug
-      // zoomMap.geoLocation = {
+      // zennMap.geoLocation = {
       //   lon: 121.48328974565532,
       //   lat: 31.047363611358993,
       // };
@@ -71,7 +71,7 @@ Page(
       const compassCallback = () => {
         if (compass.getStatus()) {
           const angle = compass.getDirectionAngle();
-          zoomMap.compassAngle = angle;
+          zennMap.compassAngle = angle;
         }
       };
       compass.onChange(compassCallback);
@@ -80,14 +80,14 @@ Page(
       // Geolocation updates
       const geoLocationCallback = () => {
         const status = geolocation.getStatus();
-        zoomMap.updateGeoStatus(status);
+        zennMap.updateGeoStatus(status);
 
         if (status === "A") {
           lat = geolocation.getLatitude();
           lon = geolocation.getLongitude();
           if (typeof lat != "number" || typeof lon != "number") return;
 
-          zoomMap.geoLocation = { lon, lat };
+          zennMap.geoLocation = { lon, lat };
         }
       };
 
@@ -98,7 +98,7 @@ Page(
     onDestroy() {
       logger.debug("page onDestroy invoked");
 
-      zoomMap = null;
+      zennMap = null;
 
       compass.offChange();
       compass.stop();

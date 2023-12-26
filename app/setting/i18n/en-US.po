@@ -1,6 +1,6 @@
 
 msgid "appName"
-msgstr "ZenMap"
+msgstr "ZennMap"
 
 msgid "delete"
 msgstr "Delete"
@@ -12,7 +12,7 @@ msgid "update"
 msgstr "Update"
 
 msgid "downloadInstructions"
-msgstr "Please open the ZenMap APP on your watch before starting map downloads, and keep the watch APP open while the download is in progress."
+msgstr "Please open the ZennMap APP on your watch before starting map downloads, and keep the watch APP open while the download is in progress."
 
 # Provinces of China
 

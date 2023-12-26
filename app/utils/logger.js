@@ -1,6 +1,6 @@
 import { log } from "@zos/utils";
 
-export const logger = log.getLogger("mapzoom");
+export const logger = log.getLogger("zenn-map");
 
 export const timer = (func, funcName, purpose = undefined, ...args) => {
   const start = Date.now();
