@@ -17,6 +17,8 @@ import {
 import { DEVICE_WIDTH, DEVICE_HEIGHT } from "../../../utils/globals";
 import { ZennMap } from "../../../utils/zenn-map";
 
+import { geoLocationTest } from "../../../utils/geolocation-test";
+
 const logger = log.getLogger("zenn-map-home");
 
 const geolocation = new Geolocation();
@@ -66,8 +68,8 @@ Page(
 
       // Debug
       // zennMap.geoLocation = {
-      //   lon: 121.48328974565532,
-      //   lat: 31.047363611358993,
+      //   lon: 121.483619,
+      //   lat: 31.241673,
       // };
 
       const compassCallback = () => {
@@ -83,6 +85,8 @@ Page(
       const geoLocationCallback = () => {
         const status = geolocation.getStatus();
         zennMap.updateGeoStatus(status);
+
+        return geoLocationTest(zennMap);
 
         if (status === "A") {
           lat = geolocation.getLatitude();
