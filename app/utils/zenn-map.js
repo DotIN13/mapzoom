@@ -1080,7 +1080,10 @@ export class ZennMap {
       this.moveCanvas(this.mainCanvas, { x: 0, y: 0 });
 
       // Draw text after all tiles are rendered
+      const textTimeStart = Date.now();
       this.drawText();
+      const textTimeElapsed = Date.now() - textTimeStart;
+      if (DEBUG) logger.debug(`Text drawn in ${textTimeElapsed}ms`);
 
       this.trackpad.setEnable(true);
 
@@ -1093,8 +1096,16 @@ export class ZennMap {
       return;
     }
 
+    const getTileStart = Date.now();
+
     const tileQuery = this.queue.pop();
     this.tileCache.getTile(tileQuery).then((tileData) => {
+      const elapsedTime = Date.now() - getTileStart;
+      if (DEBUG)
+        logger.debug(
+          `Tile ${tileQuery.x},${tileQuery.y} loaded in ${elapsedTime}ms`
+        );
+
       this.renderTile(tileData, tileQuery, clear);
     });
   }
@@ -1104,6 +1115,8 @@ export class ZennMap {
 
     // Return if no tile data was available
     if (!tileData) return this.eventBus.emit("render", false);
+
+    const tileTimeStart = Date.now();
 
     const tileSize = this.getRenderCache("currentTileSize");
     const canvasCenter = this.getRenderCache("currentCanvasCenter");
@@ -1239,6 +1252,12 @@ export class ZennMap {
         logger.warn(`Unsupported feature type: ${featType}`);
       }
     }
+
+    const elapsedTime = Date.now() - tileTimeStart;
+    if (DEBUG)
+      logger.debug(
+        `Tile ${tileQuery.x},${tileQuery.y} rendered in ${elapsedTime}ms`
+      );
 
     this.eventBus.emit("render", false);
   }
