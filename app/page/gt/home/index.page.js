@@ -83,18 +83,17 @@ Page(
 
       // Geolocation updates
       const geoLocationCallback = () => {
-        const status = geolocation.getStatus();
-        zennMap.updateGeoStatus(status);
-
         // return geoLocationTest(zennMap);
 
-        if (status === "A") {
-          lat = geolocation.getLatitude();
-          lon = geolocation.getLongitude();
-          if (typeof lat != "number" || typeof lon != "number") return;
+        let lon, lat;
 
-          zennMap.geoLocation = { lon, lat };
+        const timestamp = Date.now();
+        const status = geolocation.getStatus();
+        if (status === "A") {
+          lat = geolocation.getLatitude() || undefined;
+          lon = geolocation.getLongitude() || undefined;
         }
+        zennMap.updateGeoStatus({ status, lon, lat, timestamp });
       };
 
       geolocation.start();

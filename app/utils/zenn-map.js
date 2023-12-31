@@ -8,6 +8,7 @@ import {
   KEY_EVENT_CLICK,
 } from "@zos/interaction";
 import { EventBus, px, log } from "@zos/utils";
+import { getText } from "@zos/i18n";
 
 import {
   DEBUG,
@@ -26,6 +27,7 @@ import {
   MARKER_SIZE,
   MARKER_SIGHT_SIZE,
   SCALE_LENGTH_IN_METERS,
+  GEO_HISTORY_SIZE,
 } from "./globals";
 import { TileCache } from "./tile-cache";
 import GridIndex from "./grid-index";
@@ -46,6 +48,7 @@ import {
 import { CoordCache } from "./coord-cache";
 import { scaleBarCoordinates, scaleBarLabel } from "./scale-bar";
 import { GeomType, Feature, Layer } from "./vector-tile-js/vector-tile";
+import ExponentialSpeedCalculator from "./speed-calculator";
 
 const logger = log.getLogger("zenn-map-zenn-map");
 
@@ -94,6 +97,7 @@ export class ZennMap {
     this.tileCache = new TileCache(page, this);
     this.renderCache = new Map();
     this.gridIndex = new GridIndex();
+    this.speedCalc = new ExponentialSpeedCalculator();
 
     // Read center from pmtiles
     if (this.tileCache.center) {
@@ -111,9 +115,10 @@ export class ZennMap {
     this.initialCenter = { ...this.center };
     this.canvasCenter = { ...this.center };
 
-    this.followGPS = false;
-    this.geoLocation = undefined;
+    this._followGPS = false;
+    this._geoLocation = undefined;
     this.geoStatus = { status: null, timestamp: Date.now() };
+    this.geoHistory = [];
 
     this.addListeners(); // Depends on this.zoom definition
   }
@@ -172,8 +177,6 @@ export class ZennMap {
    * @param {Object} lonlat longitude and latitude
    */
   set geoLocation(lonlat) {
-    if (!lonlat) return;
-
     // Always clear cache upon location updates
     this.renderCache.delete("currentGeoLocation");
 
@@ -203,8 +206,8 @@ export class ZennMap {
     this.exploreButton.setProperty(ui.prop.SRC, exploreButtonSrc);
 
     if (val) {
-      this.updateGeoStatus();
-      this.geoInterval ||= setInterval(() => this.updateGeoStatus(), 5000);
+      this.updateExploreButton();
+      this.geoInterval ||= setInterval(() => this.updateExploreButton(), 5000);
     } else {
       this.geoInterval && clearInterval(this.geoInterval);
       this.geoInterval = undefined;
@@ -214,33 +217,50 @@ export class ZennMap {
     }
   }
 
-  updateGeoStatus(newStatus = null) {
-    if (newStatus)
-      this.geoStatus = { status: newStatus, timestamp: Date.now() };
+  updateGeoStatus(geoStatus) {
+    const { status, lon, lat } = geoStatus;
 
+    if (status) {
+      this.geoStatus = geoStatus;
+      this.geoHistory.push({ ...geoStatus });
+      if (this.geoHistory.length > GEO_HISTORY_SIZE) this.geoHistory.shift();
+    }
+
+    if (status === "A") {
+      const { speed, isValidSpeed } = this.speedCalc.updateLocation(geoStatus);
+      if (!isValidSpeed) return;
+
+      this.geoLocation = { lon, lat };
+      this.speedText.setProperty(
+        ui.prop.TEXT,
+        `${getText("speed")}\n ${speed.toFixed(1)} km/h`
+      );
+    }
+
+    if (this.followGPS) this.updateExploreButton();
+  }
+
+  updateExploreButton() {
     // Check if status is stale
-    const stale = this.geoStatus.timestamp - Date.now() > 10000;
-    if (!newStatus && stale) this.geoStatus.status = false;
+    const stale = Date.now() - this.geoStatus.timestamp > 10000;
+    if (stale) this.geoStatus.status = false;
 
-    // No animations if not following GPS location
-    if (!this.followGPS) return;
-
-    const status = this.geoStatus.status;
+    const status = this.geoStatus ? this.geoStatus.status : false;
 
     this.exploreButton.setProperty(ui.prop.VISIBLE, status === "A");
     this.exploreButtonAnimated.setProperty(ui.prop.VISIBLE, status !== "A");
 
     const isRunning = this.exploreButtonAnimated.getProperty(
-      ui.prop.ANIM_IS_RUNINNG
+      ui.prop.ANIM_IS_RUNNING
     );
 
     // Toggle animation if the animation state doesn't match the geo status
-    if ((status === "A" && !isRunning) || (status !== "A" && isRunning)) return;
-
-    this.exploreButtonAnimated.setProperty(
-      ui.prop.ANIM_STATUS,
-      isRunning ? ui.anim_status.STOP : ui.anim_status.START
-    );
+    if ((status === "A" && !isRunning) || (status !== "A" && isRunning)) {
+      this.exploreButtonAnimated.setProperty(
+        ui.prop.ANIM_STATUS,
+        isRunning ? ui.anim_status.STOP : ui.anim_status.START
+      );
+    }
   }
 
   // Update markerXY based on current geoLocation and canvas center coordinates,
@@ -327,7 +347,7 @@ export class ZennMap {
 
     const lengthInMeters = SCALE_LENGTH_IN_METERS[Math.round(zoom)];
 
-    this.zoomIndicator?.setProperty(
+    this.zoomText?.setProperty(
       ui.prop.TEXT,
       `${scaleBarLabel(lengthInMeters)}`
     );
@@ -391,7 +411,7 @@ export class ZennMap {
     );
 
     // Text indicator below the scale bar
-    this.zoomIndicatorProps = {
+    this.zoomTextProps = {
       x: px(35), // Left margin; same as scale bar
       y: px(DEVICE_HEIGHT / 2 + 10),
       w: px(120),
@@ -403,10 +423,22 @@ export class ZennMap {
       enable: false,
     };
 
-    this.zoomIndicator = ui.createWidget(
-      ui.widget.TEXT,
-      this.zoomIndicatorProps
-    );
+    this.zoomText = ui.createWidget(ui.widget.TEXT, this.zoomTextProps);
+
+    // Create a speed indicator
+    this.speedTextProps = {
+      x: px(48),
+      y: px(DEVICE_HEIGHT / 2 + 50),
+      w: px(120),
+      h: px(40),
+      align_h: ui.align.LEFT,
+      align_v: ui.align.CENTER_V,
+      text_size: 16,
+      color: 0xefefef,
+      enable: false,
+    };
+
+    this.speedText = ui.createWidget(ui.widget.TEXT, this.speedTextProps);
 
     // Create a sliding arc below all buttons
     const sliderTrackPadding = 85;

@@ -28,3 +28,6 @@ msgstr "地图删除成功。"
 
 msgid "mapDeleteFailed"
 msgstr "地图删除失败。"
+
+msgid "speed"
+msgstr "速度"

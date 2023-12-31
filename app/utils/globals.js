@@ -42,6 +42,8 @@ export const MARKER_GROUP_HALF_SIZE = MARKER_GROUP_SIZE / 2;
 export const MARKER_SIZE = 30;
 export const MARKER_SIGHT_SIZE = MARKER_SIZE * 4.61;
 
+export const GEO_HISTORY_SIZE = 3;
+
 // Zoom indicator
 // Meters to represent for the scale bar at differet zoom levels
 export const SCALE_LENGTH_IN_METERS = new Float32Array([

@@ -28,3 +28,6 @@ msgstr "Map delete success."
 
 msgid "mapDeleteFailed"
 msgstr "Map delete failed."
+
+msgid "speed"
+msgstr "Speed"
