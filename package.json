@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "flatbuffers": "^23.5.26",
+    "geojson-vt": "^3.2.1",
     "node-fetch": "^3.3.2",
     "typescript": "^5.2.2"
   },

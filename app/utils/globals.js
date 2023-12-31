@@ -32,6 +32,10 @@ export const ZOOM_SPEED_FACTOR = 0.035; // adjust this value as needed
 export const PAN_THROTTLING_DELAY = 20; // Throttle delay of 20ms
 export const ZOOM_THROTTLING_DELAY = 360; // Throttle delay of 360ms
 
+export const DOUBLE_CLICK_THRESHOLD = 200; // milliseconds
+export const LONGPRESS_THRESHOLD = 400; // milliseconds
+export const NOT_MOVING_THRESHOLD = 5; // pixels
+
 export const MAX_DISPLAY_ZOOM = 20; // Maximum zoom level to display
 
 export const STORAGE_SCALE = 10; // Scale factor for center coordinates storage

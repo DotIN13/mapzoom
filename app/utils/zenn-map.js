@@ -20,6 +20,9 @@ import {
   ZOOM_SPEED_FACTOR,
   PAN_THROTTLING_DELAY,
   ZOOM_THROTTLING_DELAY,
+  DOUBLE_CLICK_THRESHOLD,
+  LONGPRESS_THRESHOLD,
+  NOT_MOVING_THRESHOLD,
   MAX_DISPLAY_ZOOM,
   STORAGE_SCALE,
   MARKER_GROUP_SIZE,
@@ -47,8 +50,10 @@ import {
 } from "./geometry";
 import { CoordCache } from "./coord-cache";
 import { scaleBarCoordinates, scaleBarLabel } from "./scale-bar";
-import { GeomType, Feature, Layer } from "./vector-tile-js/vector-tile";
 import ExponentialSpeedCalculator from "./speed-calculator";
+import { zoomDelta, moveZoomButton } from "./zoom-button";
+
+import { GeomType, Feature, Layer } from "./vector-tile-js/vector-tile";
 
 const logger = log.getLogger("zenn-map-zenn-map");
 
@@ -472,9 +477,9 @@ export class ZennMap {
     };
 
     this.downloadButtonBg = ui.createWidget(ui.widget.CIRCLE, {
-      center_x: downloadCenterX,
-      center_y: downloadCenterY,
-      radius: 36,
+      center_x: px(downloadCenterX),
+      center_y: px(downloadCenterY),
+      radius: px(36),
       color: 0xebf1ff,
       alpha: 80,
     });
@@ -515,9 +520,9 @@ export class ZennMap {
     this.exploreButtonBg = this.exploreButtonGroup.createWidget(
       ui.widget.CIRCLE,
       {
-        center_x: 36,
-        center_y: 36,
-        radius: 36,
+        center_x: px(36),
+        center_y: px(36),
+        radius: px(36),
         color: 0xebf1ff,
         alpha: 80,
       }
@@ -570,9 +575,9 @@ export class ZennMap {
     };
 
     this.zoomButtonBgProps = {
-      center_x: 36,
-      center_y: 36,
-      radius: 36,
+      center_x: px(36),
+      center_y: px(36),
+      radius: px(36),
       color: 0xebf1ff,
       alpha: 80,
     };
@@ -591,8 +596,8 @@ export class ZennMap {
     this.trackpadProps = {
       x: 0,
       y: 0,
-      w: DEVICE_WIDTH,
-      h: DEVICE_HEIGHT,
+      w: px(DEVICE_WIDTH),
+      h: px(DEVICE_HEIGHT),
       radius: 0,
       alpha: 0,
       color: 0xffffff,
@@ -601,61 +606,107 @@ export class ZennMap {
     this.trackpad = ui.createWidget(ui.widget.FILL_RECT, this.trackpadProps);
   }
 
+  goToMapTransfer() {
+    router.replace({ url: "page/gt/map-transfer/index.page" });
+  }
+
+  toggleFollowGPS() {
+    this.followGPS = !this.followGPS;
+    this.updateUserMarker();
+  }
+
+  onZoomButtonDown() {
+    this.sliderTrack.setProperty(ui.prop.VISIBLE, true);
+    this.downloadButton.setProperty(ui.prop.VISIBLE, false);
+    this.downloadButtonBg.setProperty(ui.prop.VISIBLE, false);
+    this.exploreButtonGroup.setProperty(ui.prop.VISIBLE, false);
+  }
+
+  onZoomButtonMove(e) {
+    // When zooming, update the scale bar according to the distance
+    // between the current position and the center.
+    let { delta, angleDelta } = zoomDelta(e);
+    this.updateScaleBar(this.zoom + delta);
+    moveZoomButton(
+      angleDelta,
+      this.zoomButtonGroupProps,
+      this.zoomButtonGroup,
+      this.zoomButtonBgProps,
+      this.zoomButtonBg
+    );
+  }
+
+  onZoomButtonUp(e) {
+    this.sliderTrack.setProperty(ui.prop.VISIBLE, false);
+    this.downloadButton.setProperty(ui.prop.VISIBLE, true);
+    this.downloadButtonBg.setProperty(ui.prop.VISIBLE, true);
+    this.exploreButtonGroup.setProperty(ui.prop.VISIBLE, true);
+
+    // Revert to original zoom button position
+    this.zoomButtonGroup.setProperty(ui.prop.MORE, this.zoomButtonGroupProps);
+    this.zoomButtonBg.setProperty(ui.prop.MORE, this.zoomButtonBgProps);
+
+    const { delta } = zoomDelta(e);
+    this.zoomAndRedraw(delta);
+  }
+
+  onPanning(_e, isPanning, notMoving) {
+    const timeDiff = Date.now() - isPanning;
+
+    if (notMoving) {
+      const offset = this.calculateOffset();
+      const offsetAcc = Math.abs(offset.x) + Math.abs(offset.y);
+      if (offsetAcc > NOT_MOVING_THRESHOLD) notMoving = false;
+    }
+
+    // Check for normal panning
+    if (!notMoving) {
+      this.updateCenter(this.center, { redraw: true });
+      return this.updateUserMarker();
+    }
+
+    // Check for long press
+    if (timeDiff > LONGPRESS_THRESHOLD) return logger.debug("Long press");
+
+    // Check for double click
+    if (
+      this.lastClickTime &&
+      Date.now() - this.lastClickTime < DOUBLE_CLICK_THRESHOLD
+    ) {
+      logger.debug("Double click");
+      this.lastClickTime = null; // Reset the last click time
+      return;
+    }
+
+    // Wait to confirm if it's just a single click
+    setTimeout(() => {
+      // If lastClickTime is not updated by a second click, it's a single click
+      if (
+        this.lastClickTime &&
+        Date.now() - this.lastClickTime >= DOUBLE_CLICK_THRESHOLD
+      ) {
+        logger.debug("Click");
+        this.lastClickTime = null; // Reset the last click time
+      }
+    }, DOUBLE_CLICK_THRESHOLD);
+
+    this.lastClickTime = Date.now();
+  }
+
   addListeners() {
-    let isPanning = false;
+    let isPanning = false; // Note: clicking is a form of panning where distance and duration is short
     let isGesture = false;
-    let isZooming = false; // Zooming with button
+    let isZooming = false; // Zooming with slider button
+    let isButton = false;
+    let notMoving = true; // Whether the user is pressing still
     let lastPosition = null;
     let dragTrace = { x: [], y: [] };
+
+    this.lastClickTime = null;
 
     let lastZoomUpdate = null;
     let wheelDegrees = 0;
     let zoomTimeout = null;
-
-    function zoomDelta(e, _zoom) {
-      // When finger moving up, y goes smaller, but we need the delta to grow larger
-      let deltaScale = -(e.y - DEVICE_HEIGHT / 2) / (DEVICE_HEIGHT / 2 - 35); // Deduct the slider padding
-      deltaScale = Math.max(-1, deltaScale);
-      deltaScale = Math.min(1, deltaScale);
-
-      const delta = 5 * deltaScale;
-      const angleDelta = -90 * deltaScale;
-      return { delta, angleDelta };
-    }
-
-    function moveZoomButton(
-      angleDelta,
-      widgetProps,
-      buttonGroup,
-      buttonBgProps,
-      buttonBg
-    ) {
-      const circleCenterX = DEVICE_WIDTH / 2; // Center X coordinate of the circle (watch screen)
-      const circleCenterY = DEVICE_HEIGHT / 2; // Center Y coordinate of the circle (watch screen)
-      const radius = circleCenterX - 53; // Radius of the circle (slightly less than half the screen width)
-      const buttonWidth = widgetProps.w; // Width of the button
-
-      // Convert angleDelta from degrees to radians
-      const radians = (angleDelta * Math.PI) / 180;
-
-      // Calculate new position of the button
-      // We adjust by 90 degrees (Math.PI / 2 radians) to start from the bottom of the screen
-      const newX = circleCenterX + radius * Math.cos(radians) - buttonWidth / 2;
-      const newY = circleCenterY + radius * Math.sin(radians) - buttonWidth / 2;
-
-      // Update zoom button properties
-      buttonGroup.setProperty(ui.prop.MORE, {
-        ...widgetProps,
-        x: px(newX),
-        y: px(newY),
-      });
-
-      buttonBg.setProperty(ui.prop.MORE, {
-        ...buttonBgProps,
-        color: 0x005fae,
-        alpha: 200,
-      });
-    }
 
     // Handle crown wheel zooming
     onDigitalCrown({
@@ -708,23 +759,16 @@ export class ZennMap {
       },
     });
 
-    // Trackpad panning
+    // Trackpad callbacks
     this.trackpad.addEventListener(ui.event.CLICK_DOWN, (e) => {
       if (isRendering) return;
 
       // Determine if a button is clicked
-      let res = false;
+      if (this.onAreaClick(e, this.downloadButtonProps))
+        return (isButton = "download");
 
-      res = this.buttonOnClick(e, this.downloadButtonProps, () =>
-        router.replace({ url: "page/gt/map-transfer/index.page" })
-      );
-      if (res) return;
-
-      res = this.buttonOnClick(e, this.exploreButtonGroupProps, () => {
-        this.followGPS = !this.followGPS;
-        this.updateUserMarker();
-      });
-      if (res) return;
+      if (this.onAreaClick(e, this.exploreButtonGroupProps))
+        return (isButton = "explore");
 
       // If no button clicked, move on to drag tracing
       dragTrace.x.push(e.x);
@@ -742,17 +786,12 @@ export class ZennMap {
       this.toggleAllButtons(false); // Disable all buttons to avoid interference with panning or zooming
 
       // Determine if the user is pressing the zoom button
-      isZooming = this.buttonOnClick(e, this.zoomButtonGroupProps, () => {
-        this.sliderTrack.setProperty(ui.prop.VISIBLE, true);
-        this.downloadButton.setProperty(ui.prop.VISIBLE, false);
-        this.downloadButtonBg.setProperty(ui.prop.VISIBLE, false);
-        this.exploreButtonGroup.setProperty(ui.prop.VISIBLE, false);
-      });
-      if (isZooming) return;
+      isZooming = this.onAreaClick(e, this.zoomButtonGroupProps);
+      if (isZooming) return this.onZoomButtonDown();
 
       // Otherwise, user is panning
       this.followGPS = false;
-      isPanning = true;
+      isPanning = Date.now();
 
       // last position is currently only useful for panning
       lastPosition = { x: e.x, y: e.y };
@@ -760,6 +799,7 @@ export class ZennMap {
 
     this.trackpad.addEventListener(ui.event.MOVE, (e) => {
       if (isRendering) return;
+      if (isButton) return; // Do nothing if button
 
       dragTrace.x.push(e.x);
       dragTrace.y.push(e.y);
@@ -770,25 +810,16 @@ export class ZennMap {
       if (currentTime - this.lastCenterUpdate < PAN_THROTTLING_DELAY) return;
 
       // If zooming
-      if (isZooming) {
-        // When zooming, update the scale bar according to the distance
-        // between the current position and the center.
-        let { delta, angleDelta } = zoomDelta(e, this.zoom);
-        this.updateScaleBar(this.zoom + delta);
-        moveZoomButton(
-          angleDelta,
-          this.zoomButtonGroupProps,
-          this.zoomButtonGroup,
-          this.zoomButtonBgProps,
-          this.zoomButtonBg
-        );
-        return;
-      }
+      if (isZooming) return this.onZoomButtonMove(e);
 
       // If panning
       // Update center without immediate rendering
-      if (e && lastPosition)
-        this.updateCenter(this.newCenter(e, lastPosition), { redraw: false });
+      if (e && lastPosition) {
+        const newCenter = this.newCenter(e, lastPosition);
+        const offset = this.updateCenter(newCenter, { redraw: false });
+        const offsetAcc = Math.abs(offset.x) + Math.abs(offset.y);
+        if (notMoving && offsetAcc > NOT_MOVING_THRESHOLD) notMoving = false;
+      }
 
       // If panning, log current position
       this.lastCenterUpdate = currentTime;
@@ -798,59 +829,49 @@ export class ZennMap {
     this.trackpad.addEventListener(ui.event.CLICK_UP, (e) => {
       if (isRendering) return;
 
+      // If button
+      const downloadClick = this.onAreaClick(e, this.downloadButtonProps);
+      if (isButton === "download" && downloadClick) this.goToMapTransfer();
+
+      const exploreClick = this.onAreaClick(e, this.exploreButtonGroupProps);
+      if (isButton === "explore" && exploreClick) this.toggleFollowGPS();
+
       // If gesture
       if (
         isGesture &&
         dragTrace.x[0] > DEVICE_WIDTH * 0.8 &&
         e.x < DEVICE_WIDTH * 0.4
       ) {
-        return router.replace({ url: "page/gt/map-transfer/index.page" });
-      }
-
-      dragTrace = { x: [], y: [] };
-
-      // If panning
-      if (isPanning) {
-        this.updateCenter(this.center, { redraw: true });
-        this.updateUserMarker();
+        this.goToMapTransfer();
       }
 
       // If zooming
-      if (isZooming) {
-        this.sliderTrack.setProperty(ui.prop.VISIBLE, false);
-        this.downloadButton.setProperty(ui.prop.VISIBLE, true);
-        this.downloadButtonBg.setProperty(ui.prop.VISIBLE, true);
-        this.exploreButtonGroup.setProperty(ui.prop.VISIBLE, true);
+      if (isZooming) this.onZoomButtonUp(e);
 
-        // Revert to original zoom button position
-        this.zoomButtonGroup.setProperty(
-          ui.prop.MORE,
-          this.zoomButtonGroupProps
-        );
-        this.zoomButtonBg.setProperty(ui.prop.MORE, this.zoomButtonBgProps);
-
-        const { delta } = zoomDelta(e, this.zoom);
-        this.zoomAndRedraw(delta);
-      }
+      // If panning
+      if (isPanning) this.onPanning(e, isPanning, notMoving);
 
       this.toggleAllButtons(true); // Restore button functionalities
 
       isPanning = false;
       isGesture = false;
       isZooming = false;
+      isButton = false;
+      notMoving = true;
       lastPosition = null;
+      dragTrace = { x: [], y: [] };
     });
 
     this.eventBus.on("render", (clear) => this.nextTile(clear));
   }
 
   // Determine if the given button is clicked
-  buttonOnClick(event, buttonProps, callback = undefined) {
+  onAreaClick(event, buttonProps) {
     const buttonX = buttonProps.x;
     const buttonY = buttonProps.y;
     const buttonW = buttonProps.w;
     const buttonH = buttonProps.h;
-    const padding = 15;
+    const padding = 18;
 
     if (
       event.x < buttonX - padding ||
@@ -861,7 +882,6 @@ export class ZennMap {
       return false;
     }
 
-    if (callback) callback();
     return true;
   }
 
@@ -902,7 +922,7 @@ export class ZennMap {
       this.moveCanvas(this.mainCanvas, offset);
       this.moveCanvas(this.textCanvas, offset);
       if (opts.moveMarker) this.moveUserMarker(offset);
-      return;
+      return offset;
     }
 
     // When updating center after panning, initialize a full redraw.
