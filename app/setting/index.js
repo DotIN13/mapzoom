@@ -1,5 +1,7 @@
 import { gettext as getText } from "i18n";
 
+const DEBUG = false;
+
 AppSettingsPage({
   state: {
     maps: {}, // assuming this is loaded with the initial map data
@@ -75,9 +77,10 @@ AppSettingsPage({
 
     let onlineMaps = {};
     try {
-      const res = await fetch(
-        "https://mapzoom.wannaexpresso.com/api/list-maps"
-      );
+      const url = DEBUG
+        ? "http://192.168.1.119:3000/api/list-maps"
+        : "https://mapzoom.wannaexpresso.com/api/list-maps";
+      const res = await fetch(url);
       const resJson = await res.json();
       onlineMaps = resJson.maps;
     } catch (err) {

@@ -5,6 +5,8 @@ import { fileTransferModule } from "./file-transfer-module";
 
 const logger = Logger.getLogger("message-app-side");
 
+const DEBUG = false;
+
 AppSideService(
   BaseSideService({
     ...fileDownloadModule,
@@ -56,7 +58,7 @@ AppSideService(
       const { method: action, params } = req;
 
       if (action === "GET_MAP") {
-        let mapEntry, url, filePath;
+        let mapEntry, mapUrl, filePath;
 
         try {
           mapEntry = JSON.parse(params);
@@ -64,10 +66,13 @@ AppSideService(
           const { filename } = mapEntry;
           filePath = `data://pmtiles/${filename}`;
 
+          const url = DEBUG
+            ? `http://192.168.1.119:3000/api/download-map?filePath=${filename}`
+            : `https://mapzoom.wannaexpresso.com/api/download-map?filePath=${filename}`;
+
           // Fetch OSS file url
           const res = await fetch({
-            url: `https://mapzoom.wannaexpresso.com/api/download-map?filePath=${filename}`,
-            // url: `http://localhost:3000/api/download-map?filePath=${filename}`,
+            url,
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -78,13 +83,13 @@ AppSideService(
           if (resJSON.status !== "success")
             throw Error("Unable to fetch file URL", res.message);
 
-          url = resJSON.url;
+          mapUrl = resJSON.url;
         } catch (err) {
           logger.error(err);
           return res(null, { status: "error", message: err });
         }
 
-        const downloadTask = this.downloadFile(url, filePath);
+        const downloadTask = this.downloadFile(mapUrl, filePath);
 
         downloadTask.onSuccess = (e) => {
           // logger.debug(e.filePath, e.tempFilePath, e.statusCode);

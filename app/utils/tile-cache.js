@@ -20,8 +20,11 @@ export class TileCache {
 
     const app = getApp();
     const { localStorage } = app._options.globalData;
-    const activeMap =
-      localStorage.getItem("active-map") || "shanghai_chn_6bd2.pmtiles";
+    const activeMap = localStorage.getItem("active-map") || undefined;
+    if (!activeMap) {
+      this.pmtiles = null;
+      return;
+    }
 
     this.pmtiles = new PMTiles(`data://download/pmtiles/${activeMap}`);
   }
@@ -58,11 +61,13 @@ export class TileCache {
     const { z, x, y } = tileQuery;
 
     return new Promise((resolve) => {
-      const data = this.pmtiles?.getZxy(z, x, y);
+      if (!this.pmtiles) return resolve(null);
+
+      const data = this.pmtiles.getZxy(z, x, y);
       if (!data) return resolve(null);
 
       const buf = new flatbuffers.ByteBuffer(data);
-      resolve(Tile.getRootAsTile(buf));
+      return resolve(Tile.getRootAsTile(buf));
     }).catch((e) => logger.warn("Get Tile from PMTiles error", e));
   }
 

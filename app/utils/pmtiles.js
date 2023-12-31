@@ -175,6 +175,12 @@ function getHeader(fd) {
     );
   }
 
+  if (header.maxZoom > 15) {
+    logger.warn(
+      `PMTiles max zoom level ${header.maxZoom} exceeds the limit of 15`
+    );
+  }
+
   return header;
 }
 
@@ -191,39 +197,6 @@ export function getHeaderAndRoot(fd) {
   return [header, rootDir];
 }
 
-function deserializeIndex(buffer) {
-  const p = { buf: new Uint8Array(buffer), pos: 0 };
-  const numEntries = readVarInt(p);
-
-  const entries = [];
-
-  let lastId = 0;
-  for (let i = 0; i < numEntries; i++) {
-    const v = readVarInt(p);
-    entries.push({ tileId: lastId + v, offset: 0, length: 0, runLength: 1 });
-    lastId += v;
-  }
-
-  for (let i = 0; i < numEntries; i++) {
-    entries[i].runLength = readVarInt(p);
-  }
-
-  for (let i = 0; i < numEntries; i++) {
-    entries[i].length = readVarInt(p);
-  }
-
-  for (let i = 0; i < numEntries; i++) {
-    const v = readVarInt(p);
-    if (v === 0 && i > 0) {
-      entries[i].offset = entries[i - 1].offset + entries[i - 1].length;
-    } else {
-      entries[i].offset = v - 1;
-    }
-  }
-
-  return entries;
-}
-
 function parseDirectory(fd, offset, length, header) {
   const buffer = new ArrayBuffer(length);
   readSync({
@@ -235,7 +208,7 @@ function parseDirectory(fd, offset, length, header) {
   const data = decompress(buffer, header.internalCompression);
 
   const directory = deserializeIndex(data);
-  if (directory.length === 0) {
+  if (directory[0].length === 0) {
     throw new Error("Empty directory.");
   }
 
@@ -243,31 +216,76 @@ function parseDirectory(fd, offset, length, header) {
   return directory;
 }
 
+// Use typed arrays for performance, but limited to 32-bit integer tileIds,
+// which translate to max zoom 15.
+function deserializeIndex(buffer) {
+  const p = { buf: new Uint8Array(buffer), pos: 0 };
+  const numEntries = readVarInt(p);
+
+  // Separate typed arrays for each field
+  const tileIds = new Uint32Array(numEntries);
+  const offsets = new Uint32Array(numEntries);
+  const lengths = new Uint32Array(numEntries);
+  const runLengths = new Uint32Array(numEntries);
+
+  let lastId = 0;
+  for (let i = 0; i < numEntries; i++) {
+    const v = readVarInt(p);
+    tileIds[i] = lastId + v;
+    lastId += v;
+  }
+
+  for (let i = 0; i < numEntries; i++) {
+    runLengths[i] = readVarInt(p);
+  }
+
+  for (let i = 0; i < numEntries; i++) {
+    lengths[i] = readVarInt(p);
+  }
+
+  for (let i = 0; i < numEntries; i++) {
+    const v = readVarInt(p);
+    offsets[i] = v === 0 && i > 0 ? offsets[i - 1] + lengths[i - 1] : v - 1;
+  }
+
+  return [tileIds, offsets, lengths, runLengths];
+}
+
 function findTile(entries, tileId) {
+  const [tileIds, offsets, lengths, runLengths] = entries;
   let left = 0;
-  let right = entries.length - 1;
+  let right = tileIds.length - 1;
 
   while (left <= right) {
     const mid = (left + right) >> 1;
-    const difference = tileId - entries[mid].tileId;
+    const midTileId = tileIds[mid];
+
+    const difference = tileId - midTileId;
 
     if (difference > 0) {
       left = mid + 1;
     } else if (difference < 0) {
       right = mid - 1;
     } else {
-      return entries[mid];
+      return {
+        tileId: tileIds[mid],
+        offset: offsets[mid],
+        length: lengths[mid],
+        runLength: runLengths[mid],
+      };
     }
   }
 
-  // At this point, left > right
-  if (right >= 0) {
-    if (entries[right].runLength === 0) {
-      return entries[right];
-    }
-    if (tileId - entries[right].tileId < entries[right].runLength) {
-      return entries[right];
-    }
+  if (
+    right >= 0 &&
+    (runLengths[right] === 0 || tileId - tileIds[right] < runLengths[right])
+  ) {
+    return {
+      tileId: tileIds[right],
+      offset: offsets[right],
+      length: lengths[right],
+      runLength: runLengths[right],
+    };
   }
 
   return null;
@@ -353,8 +371,7 @@ export class PMTiles {
 
     if (!minHitsKey) return false;
 
-    // logger.debug("Dir cache pruned: ", minHitsKey);
-
+    logger.debug("Dir cache pruned: ", minHitsKey);
     return minHitsKey;
   }
 
@@ -362,7 +379,6 @@ export class PMTiles {
     if (this.fd === undefined) return null;
 
     const tileId = zxyToTileId(z, x, y);
-
     // logger.debug("Getting tile: ", tileId);
 
     // Ensure tile zoom is within the limits defined in the header
@@ -390,6 +406,8 @@ export class PMTiles {
             position: this.header.tileDataOffset + entry.offset,
           },
         });
+
+        // logger.debug("decompressing")
 
         return decompress(tileBuffer, this.header.tileCompression);
       } else {

@@ -66,12 +66,17 @@ const configurePlacesStyle = (zoom, props) => {
   let fillColor = null;
   let visible = false;
 
-  if (props["pmap:kind"] === "region" && zoom < 11) {
+  if (props["pmap:kind"] === "country") {
+    fillColor = 0xffffff;
+    visible = true;
+  }
+
+  if (props["pmap:kind"] === "region") {
     fillColor = 0xfefefe;
     visible = true;
   }
 
-  if (props["pmap:kind"] === "locality" && zoom >= 11 && zoom < 13) {
+  if (props["pmap:kind"] === "locality") {
     fillColor = 0xdedede;
     visible = true;
   }
@@ -80,19 +85,16 @@ const configurePlacesStyle = (zoom, props) => {
 };
 
 const configurePoisStyle = (zoom, props) => {
-  let visible = false;
-
-  if (zoom >= props["pmap:min_zoom"]) {
-    visible = true;
-  }
-
-  return { visible };
+  return {};
 };
 
 const configureRoadsStyle = (zoom, props) => {
   let lineWidth = 2;
   let lineColor = 0x727272;
-  if (props["pmap:kind"] === "major_road") {
+  if (props["pmap:kind"] === "highway") {
+    lineWidth = zoom >= 15 ? 6 : zoom >= 12 ? 4 : zoom >= 10 ? 3 : 2;
+    lineColor = 0x808080;
+  } else if (props["pmap:kind"] === "major_road") {
     lineWidth = zoom >= 15 ? 6 : zoom >= 12 ? 4 : zoom >= 10 ? 3 : 2;
     lineColor = 0x808080;
   } else if (props["pmap:kind"] === "medium_road") {
@@ -108,11 +110,52 @@ const configureRoadsStyle = (zoom, props) => {
   };
 };
 
-const configureTransitStyle = (zoom, props) => ({
-  "line-width": 1,
-  "line-color": 0x555555,
-  "fill-color": 0xf2efe9,
-});
+const shanghaiMetroColors = {
+  上海轨交1号线: 0xe3022a,
+  上海轨交2号线: 0x82bf24,
+  上海轨交3号线: 0xfbd601,
+  上海轨交4号线: 0x461d85,
+  上海轨交5号线: 0x944b9a,
+  上海轨交6号线: 0xe20066,
+  上海轨交7号线: 0xec6e00,
+  上海轨交8号线: 0x0095d9,
+  上海轨交9号线: 0x87c9ec,
+  上海轨交10号线: 0xc7afd3,
+  上海轨交11号线: 0x861a2a,
+  上海轨交12号线: 0x00785f,
+  上海轨交13号线: 0xe799c0,
+  上海轨交14号线: 0x616020,
+  上海轨交15号线: 0xcab48f,
+  上海轨交16号线: 0x98d1c0,
+  上海轨交17号线: 0xbc7970,
+  上海轨交18号线: 0xc4984f,
+  上海轨交19号线: 0x40924f,
+  上海轨交20号线: 0x435b9e,
+  上海轨交21号线: 0xd6c677,
+  上海轨交23号线: 0xe0815e,
+};
+
+const configureTransitStyle = (zoom, props) => {
+  // Default color
+  let lineColor = 0xf39614;
+
+  if (props["pmap:kind"] == "rail") {
+    // Check if the name matches a Shanghai Metro line and assign the corresponding color
+    if (props["name"] && shanghaiMetroColors[props["name"]]) {
+      lineColor = shanghaiMetroColors[props["name"]];
+    }
+  }
+
+  if (props["pmap:kind"] == "ferry") {
+    lineColor = 0xa2cffe;
+  }
+
+  return {
+    "line-width": zoom > 15 ? 3 : 2,
+    "line-color": lineColor,
+    "fill-color": 0xf2efe9,
+  };
+};
 
 const configureWaterStyle = (zoom, props) => ({
   "line-width": null,

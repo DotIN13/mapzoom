@@ -9,7 +9,8 @@ export default class GridIndex {
     this.grid = new Uint8Array(this.gridHeight); // Each Uint8 represents a row
   }
 
-  placeText(text, x, y, size = 20) {
+  placeText(textItem) {
+    const { x, y, text, size } = textItem;
     if (x < 0 || y < 0 || x >= DEVICE_WIDTH || y >= DEVICE_HEIGHT) return false;
 
     const textWidth = text.length * size; // Assuming each character is 10 pixels wide

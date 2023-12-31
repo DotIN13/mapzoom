@@ -9,7 +9,7 @@ msgid "mapDownloading"
 msgstr "下载中..."
 
 msgid "mapTransferNoExit"
-msgstr "请不要退出本APP，否则地图下载将中断。"
+msgstr "请不要离开此界面，否则地图下载将中断。"
 
 msgid "transferred"
 msgstr "已传输"
@@ -21,7 +21,7 @@ msgid "mapDownloadComplete"
 msgstr "地图下载完成。"
 
 msgid "mapDownloadFailed"
-msgstr "地图下载失败，请重试。"
+msgstr "下载失败，请重试。"
 
 msgid "mapDeleteSuccess"
 msgstr "地图删除成功。"

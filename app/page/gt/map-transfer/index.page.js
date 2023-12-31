@@ -1,7 +1,7 @@
 import * as ui from "@zos/ui";
 import * as router from "@zos/router";
 import { px, log } from "@zos/utils";
-import { mkdirSync, readdirSync, renameSync } from "@zos/fs";
+import { mkdirSync, readdirSync, renameSync, rmSync } from "@zos/fs";
 import { getText } from "@zos/i18n";
 
 import { BasePage } from "@zeppos/zml/base-page";
@@ -29,7 +29,9 @@ Page(
         logger.debug("File progress: ", numProgress);
         this.textWidget.setProperty(
           ui.prop.TEXT,
-          `${numProgress}% ${getText("transferred")}... ${getText("mapTransferNoExit")}`
+          `${numProgress}% ${getText("transferred")}... ${getText(
+            "mapTransferNoExit"
+          )}`
         );
         if (numProgress === 100) {
           logger.debug("Complete.");
@@ -51,17 +53,16 @@ Page(
             getText("mapTransferFinishing")
           );
 
-          const mkdirResult = this.createMapDir();
-          if (!mkdirResult)
-            return this.textWidget.setProperty(
-              ui.prop.TEXT,
-              getText("mapDownloadFailed")
-            );
+          this.mkdir("data://download/pmtiles");
+          const newPath = `data://download/pmtiles/${fileHandler.fileName}`;
+
+          rmSync({ path: newPath }); // Remove the file if it already exists
 
           const renameResult = renameSync({
             oldPath: fileHandler.filePath,
-            newPath: `data://download/pmtiles/${fileHandler.fileName}`,
+            newPath,
           });
+
           if (renameResult !== 0)
             return this.textWidget.setProperty(
               ui.prop.TEXT,
@@ -77,17 +78,14 @@ Page(
       });
     },
 
-    createMapDir() {
-      const readRes = readdirSync({
-        path: "data://download/pmtiles",
-      });
-      if (readRes === 0) return true;
+    mkdir(path) {
+      const readRes = readdirSync({ path });
+      if (readRes !== undefined) return true;
 
       // Create the directory if it does not exist
-      logger.debug("PMTiles directory doesn't exist, creating...");
-      const result = mkdirSync({
-        path: "data://download/pmtiles",
-      });
+      logger.debug(`Directory ${path} does not exist. Creating...`);
+
+      const result = mkdirSync({ path });
       logger.debug("mkdirSync", result === 0 ? "success" : "failed");
       if (result === 0) return true;
 
@@ -97,7 +95,8 @@ Page(
     build() {
       console.log("Map transfer page build invoked.");
 
-      this.createMapDir();
+      this.mkdir("data://download");
+      this.mkdir("data://download/pmtiles");
 
       this.textWidget = ui.createWidget(ui.widget.TEXT, {
         x: px(80),
@@ -151,7 +150,10 @@ Page(
       // Do nothing if no download tasks were assigned
       if (!this.downloadParams || this.downloadParams === "") return;
 
-      this.textWidget.setProperty(ui.prop.TEXT, getText("mapDownloading"));
+      this.textWidget.setProperty(
+        ui.prop.TEXT,
+        `${getText("mapDownloading")} ${getText("mapTransferNoExit")}`
+      );
 
       this.request({
         method: "GET_MAP",

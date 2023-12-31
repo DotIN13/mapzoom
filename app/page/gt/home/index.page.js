@@ -17,7 +17,7 @@ import {
 import { DEVICE_WIDTH, DEVICE_HEIGHT } from "../../../utils/globals";
 import { ZennMap } from "../../../utils/zenn-map";
 
-import { geoLocationTest } from "../../../utils/geolocation-test";
+// import { geoLocationTest } from "../../../utils/geolocation-test";
 
 const logger = log.getLogger("zenn-map-home");
 
@@ -86,7 +86,7 @@ Page(
         const status = geolocation.getStatus();
         zennMap.updateGeoStatus(status);
 
-        return geoLocationTest(zennMap);
+        // return geoLocationTest(zennMap);
 
         if (status === "A") {
           lat = geolocation.getLatitude();
