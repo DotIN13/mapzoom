@@ -369,9 +369,14 @@ export class ZennMap {
     delta,
     center = { x: DEVICE_WIDTH / 2, y: DEVICE_HEIGHT / 2 }
   ) {
+    delta = Math.max(-20, delta);
+    delta = Math.min(20, delta);
+
     const scale = Math.pow(2, delta);
     let size = (DEVICE_HEIGHT / 3) * scale;
-    size = Math.max(10, size); // Minimum size of 10 pixels
+
+    size = Math.max(30, size); // Minimum size of 10 pixels
+    size = Math.min(DEVICE_HEIGHT - 200, size); // Maximum size of the screen height
 
     const zoomRectProps = {
       ...this.zoomRectProps,
@@ -384,20 +389,79 @@ export class ZennMap {
     this.zoomRect.setProperty(ui.prop.MORE, zoomRectProps);
   }
 
-  createWidgets() {
-    // Zoom rect indicator
+  createZoomRect() {
     this.zoomRectProps = {
-      x: px(DEVICE_WIDTH / 2 - DEVICE_HEIGHT / 6),
-      y: px(DEVICE_HEIGHT / 2 - DEVICE_HEIGHT / 6),
-      w: px(DEVICE_HEIGHT / 3),
+      x: px(DEVICE_WIDTH / 2 - DEVICE_WIDTH / 3 / 2),
+      y: px(DEVICE_HEIGHT / 2 - DEVICE_HEIGHT / 3 / 2),
+      w: px(DEVICE_WIDTH / 3),
       h: px(DEVICE_HEIGHT / 3),
       radius: 4,
       line_width: 4,
       color: 0xe3eefa,
       enable: false,
     };
+
+    // Create the rectangle
     this.zoomRect = ui.createWidget(ui.widget.STROKE_RECT, this.zoomRectProps);
     this.zoomRect.setProperty(ui.prop.VISIBLE, false);
+  }
+
+  animateZoomRect(center, callback = null) {
+    this.zoomRect.setProperty(ui.prop.VISIBLE, true);
+
+    const initialWidth = 40;
+    const initialHeight = 40;
+
+    const initialX = center.x - initialWidth / 2;
+    const initialY = center.y - initialHeight / 2;
+
+    // Animation to increase the size while keeping it centered
+    const anim_increaseW = {
+      anim_rate: "easeinout",
+      anim_duration: 140,
+      anim_from: px(initialWidth),
+      anim_to: px(initialWidth * 6),
+      anim_prop: ui.prop.W,
+    };
+
+    const anim_increaseH = {
+      anim_rate: "easeinout",
+      anim_duration: 140,
+      anim_from: px(initialHeight),
+      anim_to: px(initialHeight * 6),
+      anim_prop: ui.prop.H,
+    };
+
+    const anim_moveX = {
+      anim_rate: "easeinout",
+      anim_duration: 140,
+      anim_from: px(initialX),
+      anim_to: px(center.x - (initialWidth * 6) / 2), // Adjust X to keep centered after scaling
+      anim_prop: ui.prop.X,
+    };
+
+    const anim_moveY = {
+      anim_rate: "easeinout",
+      anim_duration: 140,
+      anim_from: px(initialY),
+      anim_to: px(center.y - (initialHeight * 6) / 2), // Adjust Y to keep centered after scaling
+      anim_prop: ui.prop.Y,
+    };
+
+    // Setting up the animation
+    this.zoomRect.setProperty(ui.prop.ANIM, {
+      anim_steps: [anim_increaseW, anim_increaseH, anim_moveX, anim_moveY],
+      anim_fps: 60,
+      anim_complete_func: () => {
+        this.zoomRect.setProperty(ui.prop.VISIBLE, false);
+        if (callback) callback();
+      },
+    });
+  }
+
+  createWidgets() {
+    // Zoom rect indicator
+    this.createZoomRect();
 
     // Create user location marker
     // Initialize the marker outside of the viewport
@@ -719,12 +783,19 @@ export class ZennMap {
       this.lastClickTime &&
       Date.now() - this.lastClickTime < DOUBLE_CLICK_THRESHOLD
     ) {
+      // logger.debug("Double click");
       this.lastClickTime = null; // Reset the last click time
 
-      this.zoom += 1;
-      this.updateScaleBar();
-      const newCenter = this.newCenter(e, { x: 0, y: 0 });
-      return this.updateCenter(newCenter, { redraw: true });
+      this.animateZoomRect(e, () => {
+        const canvasCenter = {
+          x: this.canvasW / 2,
+          y: this.canvasH / 2,
+        };
+        const newCenter = this.newCenter(canvasCenter, e);
+
+        this.zoom += 1;
+        return this.updateCenter(newCenter, { redraw: true });
+      });
     }
 
     // Wait to confirm if it's just a single click
@@ -734,7 +805,7 @@ export class ZennMap {
         this.lastClickTime &&
         Date.now() - this.lastClickTime >= DOUBLE_CLICK_THRESHOLD
       ) {
-        logger.debug("Click");
+        // logger.debug("Click");
         this.lastClickTime = null; // Reset the last click time
       }
     }, DOUBLE_CLICK_THRESHOLD);
@@ -779,15 +850,15 @@ export class ZennMap {
           this.zoomRect.setProperty(ui.prop.VISIBLE, true);
           this.updateZoomRect(delta);
 
+          // If the wheel is still spinning, don't update the zoom level
           if (zoomTimeout) clearTimeout(zoomTimeout);
           zoomTimeout = setTimeout(() => {
-            // If the wheel is still spinning, don't update the zoom level
-            if (wheelDegrees == 0) return;
-
             const currentTime = Date.now(); // Throttling
             if (currentTime - lastZoomUpdate < ZOOM_THROTTLING_DELAY) return;
 
             this.resetZoomRect();
+
+            if (wheelDegrees == 0) return;
 
             // Update zoom level
             this.zoomAndRedraw(delta);
@@ -832,7 +903,7 @@ export class ZennMap {
       // Determine if the user is performing a gesture
       if (
         Math.sqrt((e.x - HALF_HEIGHT) ** 2 + (e.y - HALF_HEIGHT) ** 2) >
-        HALF_HEIGHT - 30
+        HALF_HEIGHT - 12
       ) {
         isGesture = true;
         return;
@@ -1145,7 +1216,7 @@ export class ZennMap {
 
     // When zooming, toggle canvas to render on the off-screen canvas
     this.toggleCanvas();
-    this.render(true);
+    this.render();
 
     this.updateUserMarker();
   }
