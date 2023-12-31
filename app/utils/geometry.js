@@ -1,4 +1,4 @@
-import { TILE_EXTENT } from "./globals";
+import { TILE_EXTENT, TILE_BLEED } from "./globals";
 import { TagType } from "./vector-tile-js/vector-tile";
 
 /******************* Tiles *********************/
@@ -108,8 +108,8 @@ export function parseProperties(feature, keys, layer) {
 }
 
 export function mapPointCoords(geometry, begin, cache) {
-  let x = cache.cache[geometry[begin] + 128];
-  let y = cache.cache[geometry[begin + 1] + 128];
+  let x = cache.cache[geometry[begin] + TILE_BLEED];
+  let y = cache.cache[geometry[begin + 1] + TILE_BLEED];
 
   if (isNaN(x)) x = (geometry[begin] / TILE_EXTENT) * cache.tileSize;
   if (isNaN(y)) y = (geometry[begin + 1] / TILE_EXTENT) * cache.tileSize;
@@ -121,8 +121,8 @@ export function mapLineStringCoords(geometry, range, cache) {
   const [i, j] = range;
 
   for (let k = i; k < j; k += 2) {
-    let x = cache.cache[geometry[k] + 128];
-    let y = cache.cache[geometry[k + 1] + 128];
+    let x = cache.cache[geometry[k] + TILE_BLEED];
+    let y = cache.cache[geometry[k + 1] + TILE_BLEED];
 
     if (isNaN(x)) x = (geometry[k] / TILE_EXTENT) * cache.tileSize;
     if (isNaN(y)) y = (geometry[k + 1] / TILE_EXTENT) * cache.tileSize;
@@ -138,8 +138,8 @@ export function mapPolygonCoords(geometry, range, cache) {
   let ring = [];
 
   for (let k = i; k < j; k += 2) {
-    let x = cache.cache[geometry[k] + 128];
-    let y = cache.cache[geometry[k + 1] + 128];
+    let x = cache.cache[geometry[k] + TILE_BLEED];
+    let y = cache.cache[geometry[k + 1] + TILE_BLEED];
 
     if (isNaN(x)) x = (geometry[k] / TILE_EXTENT) * cache.tileSize;
     if (isNaN(y)) y = (geometry[k + 1] / TILE_EXTENT) * cache.tileSize;

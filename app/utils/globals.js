@@ -1,6 +1,6 @@
 import { getDeviceInfo } from "@zos/device";
 
-export const DEBUG = true;
+export const DEBUG = false;
 export const VERSION = "1";
 
 export const { width: DEVICE_WIDTH, height: DEVICE_HEIGHT } = getDeviceInfo();
@@ -11,10 +11,11 @@ export const TILE_EXTENT = 4096;
 export const TILE_GRID_SIZE = 4;
 
 // Create a precomputed tile projection from TILE_EXTENT to 0..1
-export const TILE_PROJECTION = new Float32Array(TILE_EXTENT + 256);
+export const TILE_BLEED = 256;
+export const TILE_PROJECTION = new Float32Array(TILE_EXTENT + TILE_BLEED * 2);
 
-for (let i = 0; i < TILE_EXTENT + 256; i++) {
-  TILE_PROJECTION[i] = (i - 128) / TILE_EXTENT;
+for (let i = 0; i < TILE_EXTENT + TILE_BLEED * 2; i++) {
+  TILE_PROJECTION[i] = (i - TILE_BLEED) / TILE_EXTENT;
 }
 
 export const TILE_SCALE = TILE_SIZE / TILE_EXTENT;
