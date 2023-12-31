@@ -1,4 +1,4 @@
-export default class GzipDecompressor {
+class GzipDecompressor {
   constructor() {
     this.fleb = new Uint8Array([
       0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5,
@@ -133,7 +133,7 @@ export default class GzipDecompressor {
   }
 
   _max(a) {
-    const m = a[0];
+    let m = a[0];
     for (let i = 1; i < a.length; ++i) {
       if (a[i] > m) m = a[i];
     }
@@ -165,7 +165,7 @@ export default class GzipDecompressor {
     if (d[0] != 31 || d[1] != 139 || d[2] != 8)
       this._err(6, "invalid gzip data");
     const flg = d[3];
-    const st = 10;
+    let st = 10;
     if (flg & 4) st += (d[10] | (d[11] << 8)) + 2;
     for (let zs = ((flg >> 3) & 1) + ((flg >> 4) & 1); zs > 0; zs -= !d[st++]);
     return st + (flg & 2);
@@ -370,3 +370,5 @@ export default class GzipDecompressor {
     );
   }
 }
+
+export default new GzipDecompressor();

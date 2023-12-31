@@ -1,13 +1,13 @@
-import GzipDecompressor from "./gzip-decompressor.mjs";
+import gzipDecompressor from "./gzip-decompressor.mjs";
 import * as flatbuffers from "flatbuffers";
 
 import { vector_tile } from "./vector-tile-js/vector_tile.js";
+import nodeFetch, { AbortError } from "node-fetch";
 
-const gzipDecompressor = new GzipDecompressor();
-
-const [z, x, y] = [10, 857, 417];
-fetch(
-  `http://192.168.5.121:8080/tiles/shanghai-20231119-mini-fbs/${z}/${x}/${y}.mvt`,
+// const [z, x, y] = [10, 857, 417];
+const [z, x, y] = [15, 27441, 13384];
+nodeFetch(
+  `http://localhost:8080/shanghai-mini-20231229-fbs/${z}/${x}/${y}.mvt`,
   {
     headers: {
       accept:
@@ -17,9 +17,10 @@ fetch(
       pragma: "no-cache",
       "upgrade-insecure-requests": "1",
     },
-    referrerPolicy: "strict-origin-when-cross-origin",
+    // referrerPolicy: "strict-origin-when-cross-origin",
     body: null,
     method: "GET",
+    compress: false,
   }
 )
   .then((res) => res.arrayBuffer())
@@ -28,22 +29,22 @@ fetch(
     console.log("length: ", bytes.byteLength);
     console.log(bytes);
 
-    const buf = new flatbuffers.ByteBuffer(bytes);
+    const inflated = gzipDecompressor.gunzipSync(bytes)
+    const buf = new flatbuffers.ByteBuffer(inflated);
     const tile = vector_tile.Tile.getRootAsTile(buf);
 
-    console.log(tile.layersLength())
+    console.log(tile.layers(0).features(0).pmapKind());
   });
 
+// let data = [];
 
-  // let data = [];
+// // A chunk of data has been received.
+// resp.on('data', (chunk) => {
+//   data.push(chunk);
+// });
 
-  // // A chunk of data has been received.
-  // resp.on('data', (chunk) => {
-  //   data.push(chunk);
-  // });
-
-  // // The whole response has been received.
-  // resp.on('end', () => {
-  //   let buffer = Buffer.concat(data);
-  //   // Now `buffer` contains the whole binary data
-  // });
+// // The whole response has been received.
+// resp.on('end', () => {
+//   let buffer = Buffer.concat(data);
+//   // Now `buffer` contains the whole binary data
+// });
