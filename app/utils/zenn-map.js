@@ -358,7 +358,47 @@ export class ZennMap {
     );
   }
 
+  resetZoomRect() {
+    this.zoomRect.setProperty(ui.prop.VISIBLE, false);
+    this.zoomRect.setProperty(ui.prop.MORE, {
+      ...this.zoomRectProps,
+    });
+  }
+
+  updateZoomRect(
+    delta,
+    center = { x: DEVICE_WIDTH / 2, y: DEVICE_HEIGHT / 2 }
+  ) {
+    const scale = Math.pow(2, delta);
+    let size = (DEVICE_HEIGHT / 3) * scale;
+    size = Math.max(10, size); // Minimum size of 10 pixels
+
+    const zoomRectProps = {
+      ...this.zoomRectProps,
+      x: px(center.x - size / 2),
+      y: px(center.y - size / 2),
+      w: px(size),
+      h: px(size),
+    };
+
+    this.zoomRect.setProperty(ui.prop.MORE, zoomRectProps);
+  }
+
   createWidgets() {
+    // Zoom rect indicator
+    this.zoomRectProps = {
+      x: px(DEVICE_WIDTH / 2 - DEVICE_HEIGHT / 6),
+      y: px(DEVICE_HEIGHT / 2 - DEVICE_HEIGHT / 6),
+      w: px(DEVICE_HEIGHT / 3),
+      h: px(DEVICE_HEIGHT / 3),
+      radius: 4,
+      line_width: 4,
+      color: 0xe3eefa,
+      enable: false,
+    };
+    this.zoomRect = ui.createWidget(ui.widget.STROKE_RECT, this.zoomRectProps);
+    this.zoomRect.setProperty(ui.prop.VISIBLE, false);
+
     // Create user location marker
     // Initialize the marker outside of the viewport
     this.userMarkerProps = {
@@ -620,6 +660,7 @@ export class ZennMap {
     this.downloadButton.setProperty(ui.prop.VISIBLE, false);
     this.downloadButtonBg.setProperty(ui.prop.VISIBLE, false);
     this.exploreButtonGroup.setProperty(ui.prop.VISIBLE, false);
+    this.zoomRect.setProperty(ui.prop.VISIBLE, true);
   }
 
   onZoomButtonMove(e) {
@@ -627,6 +668,10 @@ export class ZennMap {
     // between the current position and the center.
     let { delta, angleDelta } = zoomDelta(e);
     this.updateScaleBar(this.zoom + delta);
+
+    // Update zoom rect
+    this.updateZoomRect(delta);
+
     moveZoomButton(
       angleDelta,
       this.zoomButtonGroupProps,
@@ -641,6 +686,7 @@ export class ZennMap {
     this.downloadButton.setProperty(ui.prop.VISIBLE, true);
     this.downloadButtonBg.setProperty(ui.prop.VISIBLE, true);
     this.exploreButtonGroup.setProperty(ui.prop.VISIBLE, true);
+    this.resetZoomRect();
 
     // Revert to original zoom button position
     this.zoomButtonGroup.setProperty(ui.prop.MORE, this.zoomButtonGroupProps);
@@ -650,7 +696,7 @@ export class ZennMap {
     this.zoomAndRedraw(delta);
   }
 
-  onPanning(_e, isPanning, notMoving) {
+  onPanning(e, isPanning, notMoving) {
     const timeDiff = Date.now() - isPanning;
 
     if (notMoving) {
@@ -673,9 +719,12 @@ export class ZennMap {
       this.lastClickTime &&
       Date.now() - this.lastClickTime < DOUBLE_CLICK_THRESHOLD
     ) {
-      logger.debug("Double click");
       this.lastClickTime = null; // Reset the last click time
-      return;
+
+      this.zoom += 1;
+      this.updateScaleBar();
+      const newCenter = this.newCenter(e, { x: 0, y: 0 });
+      return this.updateCenter(newCenter, { redraw: true });
     }
 
     // Wait to confirm if it's just a single click
@@ -723,8 +772,12 @@ export class ZennMap {
           // KEY_HOME is the Crown wheel
           wheelDegrees -= degree; // degree is negative when rolling up
 
-          const newZoom = this.zoom + wheelDegrees * ZOOM_SPEED_FACTOR;
+          const delta = wheelDegrees * ZOOM_SPEED_FACTOR;
+          const newZoom = this.zoom + delta;
+
           this.updateScaleBar(newZoom);
+          this.zoomRect.setProperty(ui.prop.VISIBLE, true);
+          this.updateZoomRect(delta);
 
           if (zoomTimeout) clearTimeout(zoomTimeout);
           zoomTimeout = setTimeout(() => {
@@ -734,8 +787,10 @@ export class ZennMap {
             const currentTime = Date.now(); // Throttling
             if (currentTime - lastZoomUpdate < ZOOM_THROTTLING_DELAY) return;
 
+            this.resetZoomRect();
+
             // Update zoom level
-            this.zoomAndRedraw(wheelDegrees * ZOOM_SPEED_FACTOR);
+            this.zoomAndRedraw(delta);
 
             // Reset wheel degrees after map redraw
             wheelDegrees = 0;
