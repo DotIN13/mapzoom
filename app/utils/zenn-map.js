@@ -51,7 +51,7 @@ const logger = log.getLogger("zenn-map-zenn-map");
 
 let isRendering = false; // Global Render Indicator
 let coordCache = new CoordCache();
-let textItems = {};
+let textItems = new Map();
 
 /**
  * Three canvases setup.
@@ -471,7 +471,7 @@ export class ZennMap {
 
     this.exploreButtonProps = {
       // Place the download button at 4 o'clock
-      x: px(36 - 46 / 2 - 1),
+      x: px(36 - 46 / 2),
       y: px(36 - 46 / 2),
       w: px(46),
       h: px(46),
@@ -755,7 +755,8 @@ export class ZennMap {
 
       // If panning
       // Update center without immediate rendering
-      this.updateCenter(this.newCenter(e, lastPosition), { redraw: false });
+      if (e && lastPosition)
+        this.updateCenter(this.newCenter(e, lastPosition), { redraw: false });
 
       // If panning, log current position
       this.lastCenterUpdate = currentTime;
@@ -923,29 +924,26 @@ export class ZennMap {
   }
 
   /**
-   * Calculate the tiles covering the viewport based on the center pixel.
-   * @returns {Array} - An array of tiles covering the viewport.
+   * Calculate the viewport tiles based on zoom level and canvas dimensions.
+   * @returns {Array} Array of tile information.
    */
   viewportTiles() {
-    let canvasCenter, tileSize, z;
-    const maxZoom = this.tileCache.maxZoom;
+    // Canvas dimensions divided by two for center calculation
     const halfCanvasW = this.canvasW / 2;
     const halfCanvasH = this.canvasH / 2;
 
-    // Adjust zoom and center based on maxZoom
-    if (this.zoom > maxZoom) {
-      const tail = this.zoom - Math.floor(this.zoom);
-      const zoom = maxZoom + tail;
-      canvasCenter = scaleCoordinates(this.canvasCenter, STORAGE_SCALE, zoom);
-      tileSize = TILE_SIZE * Math.pow(2, tail);
-      z = Math.floor(maxZoom);
-    } else {
-      canvasCenter = this.getRenderCache("currentCanvasCenter");
-      tileSize = this.getRenderCache("currentTileSize");
-      z = Math.floor(this.zoom);
-    }
+    // Determine the effective zoom level, capped by maxZoom
+    const maxZoom = Math.floor(this.tileCache.maxZoom);
+    const zoom = Math.floor(this.zoom);
+    const effectiveZoom = this.zoom >= maxZoom + 1 ? maxZoom : zoom;
 
-    // Calculate view boundaries
+    // Current center of the canvas
+    const canvasCenter = this.getRenderCache("currentCanvasCenter");
+
+    // Calculate the size of each tile
+    const tileSize = TILE_SIZE * Math.pow(2, this.zoom - zoom);
+
+    // Determine the viewport boundaries
     const viewBB = new Float32Array([
       canvasCenter.x - halfCanvasW,
       canvasCenter.x + halfCanvasW,
@@ -953,33 +951,43 @@ export class ZennMap {
       canvasCenter.y + halfCanvasH,
     ]);
 
-    // Determine tile range
-    const startX = Math.floor(viewBB[0] / tileSize);
-    const endX = Math.floor(viewBB[1] / tileSize);
-    const startY = Math.floor(viewBB[2] / tileSize);
-    const endY = Math.floor(viewBB[3] / tileSize);
+    // Calculate the start and end indices for tiles
+    let startX = Math.floor(viewBB[0] / tileSize);
+    let endX = Math.floor(viewBB[1] / tileSize);
+    let startY = Math.floor(viewBB[2] / tileSize);
+    let endY = Math.floor(viewBB[3] / tileSize);
 
-    const tiles = [];
-    let tileX = startX * tileSize;
-
-    for (let x = startX; x <= endX; x++) {
-      let tileY = startY * tileSize;
-
-      for (let y = startY; y <= endY; y++) {
-        const tileBB = new Float32Array([
-          tileX,
-          tileX + tileSize, // X bounds
-          tileY,
-          tileY + tileSize, // Y bounds
-        ]);
-        tiles.push({ z, x, y, tileBB, viewBB });
-        tileY += tileSize;
-      }
-
-      tileX += tileSize;
+    if (this.zoom >= maxZoom + 1) {
+      const scale = Math.pow(2, zoom - maxZoom);
+      startX = Math.floor(startX / scale);
+      endX = Math.floor(endX / scale);
+      startY = Math.floor(startY / scale);
+      endY = Math.floor(endY / scale);
     }
 
-    // logger.debug(JSON.stringify(tiles));
+    // Array to store tile information
+    const tiles = [];
+    const scaledTileSize = tileSize * Math.pow(2, zoom - effectiveZoom);
+
+    // Generate tiles within the calculated indices
+    for (let x = startX; x <= endX; x++) {
+      let tileX = x * scaledTileSize;
+
+      for (let y = startY; y <= endY; y++) {
+        let tileY = y * scaledTileSize;
+
+        // Calculate the bounding box for each tile
+        const tileBB = new Float32Array([
+          tileX,
+          tileX + scaledTileSize,
+          tileY,
+          tileY + scaledTileSize,
+        ]);
+
+        // Add the tile information to the array
+        tiles.push({ z: effectiveZoom, x, y, tileBB, viewBB });
+      }
+    }
 
     return tiles;
   }
@@ -1010,13 +1018,15 @@ export class ZennMap {
     this.moveCanvas(this.textCanvas, { x: 0, y: 0 });
     this.textCanvas.clear(this.defaultCanvasStyle);
 
-    for (const [text, item] of Object.entries(textItems)) {
+    for (let [name, item] of textItems.entries()) {
+      if (!this.gridIndex.placeText(item)) continue;
+
       this.textCanvas.drawText({
-        x: item.coord.x,
-        y: item.coord.y,
-        text_size: size,
+        x: item.x,
+        y: item.y,
+        text_size: item.size || size,
         color,
-        text,
+        text: item.text,
       });
     }
   }
@@ -1039,7 +1049,8 @@ export class ZennMap {
     // Set render indicators
     isRendering = true;
     this.trackpad.setEnable(false);
-    const startTime = Date.now();
+
+    // const startTime = Date.now();
 
     try {
       this.commitRender(clear);
@@ -1049,8 +1060,10 @@ export class ZennMap {
 
     isRendering = false;
 
-    const elapsedTime = Date.now() - startTime;
-    if (DEBUG) logger.debug(`Render started in ${elapsedTime}ms`);
+    // if (DEBUG) {
+    //   const timeElapsed = Date.now() - startTime;
+    //   logger.debug(`Render started in ${timeElapsed}ms`);
+    // }
   }
 
   commitRender(clear = false) {
@@ -1058,13 +1071,15 @@ export class ZennMap {
     this.queue = this.viewportTiles();
     if (this.queue.length === 0) return;
 
+    // logger.debug(`Queue length: ${this.queue.length}`);
+
     this.mainCanvas.setPaint({ color: 0xffff00, line_width: 2 });
 
     const tileSize = this.getRenderCache("currentTileSize");
 
     coordCache.newCache(tileSize);
     this.gridIndex.clear();
-    textItems = {};
+    textItems.clear();
 
     if (DEBUG) this.renderStart = Date.now();
 
@@ -1080,31 +1095,36 @@ export class ZennMap {
       this.moveCanvas(this.mainCanvas, { x: 0, y: 0 });
 
       // Draw text after all tiles are rendered
-      const textTimeStart = Date.now();
+      // const textTimeStart = Date.now();
       this.drawText();
-      const textTimeElapsed = Date.now() - textTimeStart;
-      if (DEBUG) logger.debug(`Text drawn in ${textTimeElapsed}ms`);
+      // if (DEBUG) {
+      //   const textTimeElapsed = Date.now() - textTimeStart;
+      //   logger.debug(`Text drawn in ${textTimeElapsed}ms`);
+      // }
 
       this.trackpad.setEnable(true);
 
       if (DEBUG) {
-        const elapsedTime = Date.now() - this.renderStart;
-        logger.debug(`Render finished in ${elapsedTime}ms`);
+        const timeElapsed = Date.now() - this.renderStart;
+        logger.debug(`Render finished in ${timeElapsed}ms`);
         this.renderStart = null;
       }
 
       return;
     }
 
-    const getTileStart = Date.now();
+    // const getTileStart = Date.now();
 
     const tileQuery = this.queue.pop();
+    logger.debug(`Getting tile ${tileQuery.z} ${tileQuery.x} ${tileQuery.y}`);
+
     this.tileCache.getTile(tileQuery).then((tileData) => {
-      const elapsedTime = Date.now() - getTileStart;
-      if (DEBUG)
-        logger.debug(
-          `Tile ${tileQuery.x},${tileQuery.y} loaded in ${elapsedTime}ms`
-        );
+      // if (DEBUG) {
+      //   const timeElapsed = Date.now() - getTileStart;
+      //   logger.debug(
+      //     `Tile ${tileQuery.x},${tileQuery.y} loaded in ${timeElapsed}ms`
+      //   );
+      // }
 
       this.renderTile(tileData, tileQuery, clear);
     });
@@ -1116,7 +1136,14 @@ export class ZennMap {
     // Return if no tile data was available
     if (!tileData) return this.eventBus.emit("render", false);
 
-    const tileTimeStart = Date.now();
+    // const tileTimeStart = Date.now();
+    // const stats = {
+    //   total: 0,
+    //   renderTotal: 0,
+    //   [GeomType.POINT]: 0,
+    //   [GeomType.LINESTRING]: 0,
+    //   [GeomType.POLYGON]: 0,
+    // };
 
     const tileSize = this.getRenderCache("currentTileSize");
     const canvasCenter = this.getRenderCache("currentCanvasCenter");
@@ -1130,6 +1157,13 @@ export class ZennMap {
       tileQuery.viewBB,
       TILE_GRID_SIZE
     );
+
+    // if (DEBUG) {
+    //   logger.debug(tileQuery.tileBB, tileQuery.viewBB);
+    //   logger.debug(
+    //     `Tile ${tileQuery.x},${tileQuery.y} visible: ${visibleSectors}`
+    //   );
+    // }
 
     coordCache.baseTile.x =
       tileQuery.x * tileSize - (canvasCenter.x - this.canvasW / 2);
@@ -1145,26 +1179,33 @@ export class ZennMap {
 
       // Iterate through features in the layer
       for (let j = 0; j < layer.featuresLength(); j++) {
+        // if (DEBUG) stats.total++; // Stats
+
         const feature = layer.features(j, featureTemp);
 
         const coverage = feature.coverage();
         if ((coverage & visibleSectors) === 0) continue;
 
+        const minZoom = feature.pmapMinZoom();
+        if (this.zoom < minZoom) continue;
+
         // Load properties
         const name = feature.name() || feature.nameEn();
-        featPropsTemp["name"] = name;
-
         const featType = feature.type();
+        featPropsTemp["name"] = name;
         featPropsTemp["type"] = featType;
-
         featPropsTemp["pmap:kind"] = feature.pmapKind();
-        featPropsTemp["pmap:min_zoom"] = feature.pmapMinZoom();
+        featPropsTemp["pmap:min_zoom"] = minZoom;
 
         const style = styleBuilder
-          ? styleBuilder(this.zoom, featPropsTemp)
+          ? styleBuilder(this.zoom, featPropsTemp) || {}
           : {};
 
         if (style.visible === false) continue;
+
+        // Stats
+        // if (DEBUG) stats.renderTotal++;
+        // if (DEBUG) stats[featType]++;
 
         this.mainCanvas.setPaint({
           color: style["line-color"] || 0xeeeeee,
@@ -1174,20 +1215,20 @@ export class ZennMap {
         const geometry = feature.geometryArray();
 
         if (featType === GeomType.POINT) {
-          let point, textX, textY;
+          let point;
 
           for (const pointStart of parsePoint(geometry)) {
             point = mapPointCoords(geometry, pointStart, coordCache);
 
-            const size = style["font-size"] || 20;
-            textX = point.x + 8;
-            textY = point.y - size - 4;
-            if (!this.gridIndex.placeText(name, textX, textY, size)) continue;
-
-            if (name && !(name in textItems)) {
-              textItems[name] = {
-                coord: { x: textX, y: textY },
-              };
+            if (name && !textItems.has(name)) {
+              const size = style["font-size"] || 20;
+              // Store necessary data for later text rendering
+              textItems.set(name, {
+                size,
+                x: point.x + 8, // Placeholder, to be calculated later
+                y: point.y - size - 4, // Placeholder, to be calculated later
+                text: name,
+              });
             }
 
             this.mainCanvas.drawCircle({
@@ -1221,18 +1262,15 @@ export class ZennMap {
             }
           }
 
-          if (name && !(name in textItems)) {
+          if (name && !textItems.has(name)) {
             const size = style["font-size"] || 20;
-            const textX = geometry[m] - (size * name.length) / 2;
-            const textY = geometry[m + 1];
-
-            if (this.gridIndex.placeText(name, textX, textY, size))
-              textItems[name] = {
-                coord: {
-                  x: textX,
-                  y: textY,
-                },
-              };
+            // Store necessary data for later text rendering
+            textItems.set(name, {
+              size,
+              x: geometry[m] - (size * name.length) / 2, // Placeholder, to be calculated later
+              y: geometry[m + 1] - size / 2, // Placeholder, to be calculated later
+              text: name,
+            });
           }
 
           continue;
@@ -1253,11 +1291,13 @@ export class ZennMap {
       }
     }
 
-    const elapsedTime = Date.now() - tileTimeStart;
-    if (DEBUG)
-      logger.debug(
-        `Tile ${tileQuery.x},${tileQuery.y} rendered in ${elapsedTime}ms`
-      );
+    // if (DEBUG) {
+    //   const timeElapsed = Date.now() - tileTimeStart;
+    //   logger.debug(
+    //     `Tile ${tileQuery.x},${tileQuery.y} rendered in ${timeElapsed}ms`
+    //   );
+    // }
+    // if (DEBUG) logger.debug(JSON.stringify(stats));
 
     this.eventBus.emit("render", false);
   }
