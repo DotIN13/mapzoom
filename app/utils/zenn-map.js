@@ -1297,8 +1297,16 @@ export class ZennMap {
 
   // Eventbus callback, render the next tile in the queue
   nextTile(clear = false) {
-    if (this.queue.length === 0) {
-      // logger.debug(JSON.stringify(textItems));
+    const promises = [];
+    for (let tileQuery of this.queue) {
+      const tileRender = this.tileCache.getTile(tileQuery).then((tileData) => {
+        this.renderTile(tileData, tileQuery, clear);
+      });
+      clear = false;
+      promises.push(tileRender);
+    }
+
+    Promise.allSettled(promises).then(() => {
       this.outcastCanvas(this.altCanvas);
       this.altCanvas.clear(this.defaultCanvasStyle);
       this.moveCanvas(this.mainCanvas, { x: 0, y: 0 });
@@ -1318,24 +1326,6 @@ export class ZennMap {
         logger.debug(`Render finished in ${timeElapsed}ms`);
         this.renderStart = null;
       }
-
-      return;
-    }
-
-    // const getTileStart = Date.now();
-
-    const tileQuery = this.queue.pop();
-    logger.debug(`Getting tile ${tileQuery.z} ${tileQuery.x} ${tileQuery.y}`);
-
-    this.tileCache.getTile(tileQuery).then((tileData) => {
-      // if (DEBUG) {
-      //   const timeElapsed = Date.now() - getTileStart;
-      //   logger.debug(
-      //     `Tile ${tileQuery.x},${tileQuery.y} loaded in ${timeElapsed}ms`
-      //   );
-      // }
-
-      this.renderTile(tileData, tileQuery, clear);
     });
   }
 
@@ -1343,7 +1333,7 @@ export class ZennMap {
     if (clear) this.mainCanvas.clear(this.defaultCanvasStyle);
 
     // Return if no tile data was available
-    if (!tileData) return this.eventBus.emit("render", false);
+    if (!tileData) return;
 
     // const tileTimeStart = Date.now();
     // const stats = {
@@ -1508,6 +1498,6 @@ export class ZennMap {
     // }
     // if (DEBUG) logger.debug(JSON.stringify(stats));
 
-    this.eventBus.emit("render", false);
+    // this.eventBus.emit("render", false);
   }
 }
