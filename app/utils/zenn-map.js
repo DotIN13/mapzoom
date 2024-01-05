@@ -120,10 +120,10 @@ export class ZennMap {
     this.initialCenter = { ...this.center };
     this.canvasCenter = { ...this.center };
 
-    this._followGPS = false;
-    this._geoLocation = undefined;
     this.geoStatus = { status: null, timestamp: Date.now() };
     this.geoHistory = [];
+    this._geoLocation = undefined;
+    this.followGPS = true; // Update explore button, depends on geoStatus
 
     this.addListeners(); // Depends on this.zoom definition
   }
@@ -233,24 +233,30 @@ export class ZennMap {
 
     if (status === "A") {
       const { speed, isValidSpeed } = this.speedCalc.updateLocation(geoStatus);
-      if (!isValidSpeed) return;
-
-      this.geoLocation = { lon, lat };
-      this.speedText.setProperty(
-        ui.prop.TEXT,
-        `${getText("speed")}\n ${speed.toFixed(1)} km/h`
-      );
+      if (isValidSpeed) {
+        this.geoLocation = { lon, lat };
+        this.speedText.setProperty(
+          ui.prop.TEXT,
+          `${getText("speed")}\n ${speed.toFixed(1)} km/h`
+        );
+      }
     }
 
     if (this.followGPS) this.updateExploreButton();
   }
 
   updateExploreButton() {
-    // Check if status is stale
-    const stale = Date.now() - this.geoStatus.timestamp > 10000;
-    if (stale) this.geoStatus.status = false;
+    let status;
 
-    const status = this.geoStatus ? this.geoStatus.status : false;
+    if (this.geoStatus) {
+      // Check if status is stale
+      const stale = Date.now() - this.geoStatus.timestamp > 10000;
+      if (stale) this.geoStatus.status = false;
+
+      status = this.geoStatus.status;
+    } else {
+      status = false; // Status is false if geoStatus is not found
+    }
 
     this.exploreButton.setProperty(ui.prop.VISIBLE, status === "A");
     this.exploreButtonAnimated.setProperty(ui.prop.VISIBLE, status !== "A");
@@ -260,7 +266,7 @@ export class ZennMap {
     );
 
     // Toggle animation if the animation state doesn't match the geo status
-    if ((status === "A" && !isRunning) || (status !== "A" && isRunning)) {
+    if ((status !== "A" && !isRunning) || (status === "A" && isRunning)) {
       this.exploreButtonAnimated.setProperty(
         ui.prop.ANIM_STATUS,
         isRunning ? ui.anim_status.STOP : ui.anim_status.START
@@ -375,8 +381,28 @@ export class ZennMap {
     const scale = Math.pow(2, delta);
     let size = (DEVICE_HEIGHT / 3) * scale;
 
-    size = Math.max(30, size); // Minimum size of 10 pixels
-    size = Math.min(DEVICE_HEIGHT - 200, size); // Maximum size of the screen height
+    // Define thresholds for zoom
+    const minSize = 30; // Minimum size
+    const maxSize = DEVICE_HEIGHT - 200; // Maximum size
+
+    // Calculate radius based on zoom level
+    let radius;
+    if (size <= maxSize) {
+      radius = size / 2; // Increase radius as size increases
+    } else {
+      radius = maxSize / 2;
+    }
+
+    // Adjust line width linearly based on zoom level over the threshold
+    let lineWidth = 4; // Default line width
+    if (size > maxSize) {
+      // Increase line width linearly with the size over the threshold
+      lineWidth += Math.log((size + maxSize) / maxSize) * 2; // Adjust multiplier as needed
+    }
+
+    // Adjust size within constraints
+    size = Math.max(minSize, size);
+    size = Math.min(maxSize, size);
 
     const zoomRectProps = {
       ...this.zoomRectProps,
@@ -384,6 +410,8 @@ export class ZennMap {
       y: px(center.y - size / 2),
       w: px(size),
       h: px(size),
+      radius: px(radius),
+      line_width: px(lineWidth),
     };
 
     this.zoomRect.setProperty(ui.prop.MORE, zoomRectProps);
@@ -397,7 +425,7 @@ export class ZennMap {
       h: px(DEVICE_HEIGHT / 3),
       radius: 4,
       line_width: 4,
-      color: 0xe3eefa,
+      color: 0xcde5ff,
       enable: false,
     };
 
@@ -637,17 +665,20 @@ export class ZennMap {
       this.exploreButtonProps
     );
 
-    this.exploreButtonAnimated = ui.createWidget(ui.widget.IMG_ANIM, {
-      anim_path: "image/explore-46-anim",
-      anim_prefix: "frame",
-      anim_ext: "png",
-      anim_fps: 22,
-      anim_size: 30,
-      repeat_count: 0,
-      anim_status: ui.anim_status.STOP,
-      x: this.exploreButtonGroupProps.x + this.exploreButtonProps.x,
-      y: this.exploreButtonGroupProps.y + this.exploreButtonProps.y,
-    });
+    this.exploreButtonAnimated = this.exploreButtonGroup.createWidget(
+      ui.widget.IMG_ANIM,
+      {
+        anim_path: "image/explore-46-anim",
+        anim_prefix: "frame",
+        anim_ext: "png",
+        anim_fps: 22,
+        anim_size: 30,
+        repeat_count: 0,
+        anim_status: ui.anim_status.STOP,
+        x: this.exploreButtonProps.x,
+        y: this.exploreButtonProps.y,
+      }
+    );
 
     // Zoom button
     // Create Explore Button
@@ -724,7 +755,7 @@ export class ZennMap {
     this.downloadButton.setProperty(ui.prop.VISIBLE, false);
     this.downloadButtonBg.setProperty(ui.prop.VISIBLE, false);
     this.exploreButtonGroup.setProperty(ui.prop.VISIBLE, false);
-    this.zoomRect.setProperty(ui.prop.VISIBLE, true);
+    // this.zoomRect.setProperty(ui.prop.VISIBLE, true);
   }
 
   onZoomButtonMove(e) {
@@ -734,7 +765,7 @@ export class ZennMap {
     this.updateScaleBar(this.zoom + delta);
 
     // Update zoom rect
-    this.updateZoomRect(delta);
+    // this.updateZoomRect(delta);
 
     moveZoomButton(
       angleDelta,
@@ -750,7 +781,7 @@ export class ZennMap {
     this.downloadButton.setProperty(ui.prop.VISIBLE, true);
     this.downloadButtonBg.setProperty(ui.prop.VISIBLE, true);
     this.exploreButtonGroup.setProperty(ui.prop.VISIBLE, true);
-    this.resetZoomRect();
+    // this.resetZoomRect();
 
     // Revert to original zoom button position
     this.zoomButtonGroup.setProperty(ui.prop.MORE, this.zoomButtonGroupProps);
