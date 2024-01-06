@@ -1476,8 +1476,8 @@ export class ZennMap {
             // Store necessary data for later text rendering
             textItems.set(name, {
               size,
-              x: geometry[m] - (size * name.length) / 2, // Placeholder, to be calculated later
-              y: geometry[m + 1] - size / 2, // Placeholder, to be calculated later
+              x: geometry[m] - ((size + 2) * name.length) / 2,
+              y: geometry[m + 1] - size / 2,
               text: name,
             });
           }
