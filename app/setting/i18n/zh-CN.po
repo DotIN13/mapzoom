@@ -11,6 +11,12 @@ msgstr "下载"
 msgid "update"
 msgstr "更新"
 
+msgid "using"
+msgstr "使用中"
+
+msgid "use"
+msgstr "使用"
+
 msgid "downloadInstructions"
 msgstr "请打开手表知莫地图APP，再点击下载地图。下载地图时请保持手表APP打开。"
 

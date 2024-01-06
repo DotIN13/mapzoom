@@ -48,7 +48,7 @@ App(
           logger.error(err);
         }
 
-        localStorage.setItem("active-map", params.filename);
+        localStorage.setItem("active-map", params.localFilename);
       }
 
       if (method === "DELETE_MAP") {
@@ -59,7 +59,7 @@ App(
         }
 
         const result = rmSync({
-          path: `data://download/pmtiles/${params.filename}`,
+          path: `data://download/pmtiles/${params.localFilename}`,
         });
 
         showToast({

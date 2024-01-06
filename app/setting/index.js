@@ -190,7 +190,7 @@ AppSettingsPage({
                     // Set Active button
                     mapDetails.downloaded &&
                       Button({
-                        label: mapDetails.active ? "Using" : "Use",
+                        label: mapDetails.active ? getText("using") : getText("use"),
                         style: iosButtonStyle("default"),
                         onClick: () =>
                           !mapDetails.active && this.setActiveMap(mapKey),

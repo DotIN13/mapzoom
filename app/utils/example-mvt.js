@@ -9,7 +9,7 @@ import {
 import * as flatbuffers from "flatbuffers";
 
 import { logger } from "./logger";
-import { vector_tile } from "./vector-tile-js/vector_tile";
+import * as vector_tile from "./vector-tile-js/vector-tile";
 import { firstPass } from "./mvt";
 
 export function exampleMvt() {

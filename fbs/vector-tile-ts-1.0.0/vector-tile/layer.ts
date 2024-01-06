@@ -2,8 +2,8 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { Feature } from '../vector-tile/feature.js';
-import { Value } from '../vector-tile/value.js';
+import { Feature } from './feature.js';
+import { Value } from './value.js';
 
 
 export class Layer {

@@ -2,7 +2,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { Layer } from '../vector-tile/layer.js';
+import { Layer } from './layer.js';
 
 
 export class Tile {

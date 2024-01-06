@@ -1,0 +1,36 @@
+namespace vector_tile;
+
+enum GeomType : byte {
+    UNKNOWN = 0,
+    POINT = 1,
+    LINESTRING = 2,
+    POLYGON = 3
+}
+
+table Feature {
+    id:uint32 = 0;
+    coverage:uint16 = 0;
+
+    // Fixed properties
+    name_zh:string;
+    name_en:string;
+    name_detail:string;
+    pmap_kind:string;
+    pmap_min_zoom:uint8;
+    type:GeomType = UNKNOWN;
+    geometry:[int16];
+}
+
+table Layer {
+    version:uint8 = 2;
+    name:string;
+    features:[Feature];
+    extent:uint16 = 4096;
+}
+
+table Tile {
+    layers:[Layer];
+    grid:uint8 = 4;
+}
+
+root_type Tile;

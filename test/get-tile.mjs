@@ -1,7 +1,7 @@
 import gzipDecompressor from "./gzip-decompressor.mjs";
 import * as flatbuffers from "flatbuffers";
 
-import { vector_tile } from "./vector-tile-js/vector_tile.js";
+import * as vector_tile from "./vector-tile-js/vector-tile";
 import nodeFetch, { AbortError } from "node-fetch";
 
 // const [z, x, y] = [10, 857, 417];

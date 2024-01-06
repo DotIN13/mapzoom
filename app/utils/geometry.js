@@ -1,5 +1,4 @@
 import { TILE_EXTENT, TILE_BLEED } from "./globals";
-import { TagType } from "./vector-tile-js/vector-tile";
 
 /******************* Tiles *********************/
 
@@ -82,29 +81,6 @@ export function parsePolygon(geometry) {
       return this;
     },
   };
-}
-
-export function parseProperties(feature, keys, layer) {
-  const props = new Set(["name", "pmap:kind"]);
-  const properties = {};
-  const tags = feature.tagsArray();
-
-  for (let i = 0; i < tags.length; i += 2) {
-    const key = keys[tags[i]];
-
-    if (props.delete(key)) {
-      let value = layer.values(tags[i + 1]);
-      const valueType = value.tagType();
-
-      if (valueType === TagType.STRING) {
-        properties[key] = value.stringValue();
-      }
-    }
-
-    if (props.size === 0) return properties;
-  }
-
-  return properties;
 }
 
 export function mapPointCoords(geometry, begin, cache) {

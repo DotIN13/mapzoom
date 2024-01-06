@@ -2,7 +2,7 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-import { TagType } from '../vector-tile/tag-type.js';
+import { TagType } from './tag-type.js';
 
 
 export class Value {

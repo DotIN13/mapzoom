@@ -11,6 +11,12 @@ msgstr "Download"
 msgid "update"
 msgstr "Update"
 
+msgid "using"
+msgstr "Using"
+
+msgid "use"
+msgstr "Use"
+
 msgid "downloadInstructions"
 msgstr "Please open the ZennMap APP on your watch before starting map downloads, and keep the watch APP open while the download is in progress."
 

@@ -1368,7 +1368,7 @@ export class ZennMap {
         if (this.zoom < minZoom) continue;
 
         // Load properties
-        const name = feature.name() || feature.nameEn();
+        const name = feature.nameZh() || feature.nameEn();
         const featType = feature.type();
         featPropsTemp["name"] = name;
         featPropsTemp["type"] = featType;
